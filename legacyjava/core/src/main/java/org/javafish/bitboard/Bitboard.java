@@ -177,40 +177,6 @@ public class Bitboard {
         return side == Side.WHITE ? 0x2 : 0x200000000000000L;
     }
 
-
-//    public static Iterable<Integer> iter(long target_bb) {
-//        return new BitboardIter(target_bb);
-//    }
-//
-//    public static class BitboardIter implements Iterable<Integer> {
-//        private long target_bb;
-//
-//        public BitboardIter(long target_bb) {
-//            this.target_bb = target_bb;
-//        }
-//
-//        @Override
-//        public Iterator<Integer> iterator() {
-//            return new Iterator<>() {
-//                @Override
-//                public boolean hasNext() {
-//                    return target_bb != 0;
-//                }
-//
-//                @Override
-//                public Integer next() {
-//                    int toSq = MyBitboard.lsb(target_bb);
-//                    target_bb = MyBitboard.extractLsb(target_bb);
-//                    return toSq;
-//                }
-//            };
-//        }
-//    }
-//
-//    public static void printBitboard(long bb){
-//        System.out.println(bitboardToString(bb));
-//    }
-
     public static String bitboardToString(long bb){
         StringBuilder result = new StringBuilder();
         for (int rank = 56; rank >= 0; rank -= 8){
@@ -221,10 +187,6 @@ public class Bitboard {
         }
         return result.toString();
     }
-
-//    public long get_vertical_attacks(long occupied, int pos) {
-//        return getLineAttacks(occupied, LINE_MASKS[pos + Directions.Vertical.ordinal() * 64]);
-//    }
 
     public static long getLineAttacks(long occupied, LineAttackMask patterns) {
         //  https://www.chessprogramming.org/Obstruction_Difference
