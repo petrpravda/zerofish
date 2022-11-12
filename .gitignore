@@ -1,0 +1,14 @@
+## IDE project files
+/.viminfo
+/.buildpath
+/.settings
+/.project
+/.cache
+/build
+/nbbuild
+/nbdist
+/nbproject/private
+/.vscode
+/.idea
+/legacyjava/core/src/test/resources/org/javafish/eval/db/ccrl-40-2-elo-3400.epd
+/legacyjava/core/src/test/resources/org/javafish/eval/db/ccrl-40-2-elo-3400.epd.xz
