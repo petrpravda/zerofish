@@ -1,1 +1,15 @@
+## IDE project files
+/.viminfo
+/.buildpath
+/.settings
+/.project
+/.cache
+/build
+/nbbuild
+/nbdist
+/nbproject/private
+/.vscode
+/.idea
+
+
 /target
