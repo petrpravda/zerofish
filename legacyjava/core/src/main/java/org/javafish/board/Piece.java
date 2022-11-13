@@ -16,7 +16,7 @@ public class Piece {
     public final static int BLACK_KING = 13;
     public final static int NONE = 14;
 
-    public final static int NPIECES = 15;
+    public final static int PIECES_COUNT = 15;
 
     public static int flip(int piece) { return piece ^ 8; }
 

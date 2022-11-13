@@ -1,4 +1,123 @@
+#![allow(unused_variables)]
+
+use crate::board_state::BoardState;
+use crate::side::{WHITE};
+
 pub const START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+pub fn from_fen_default(fen: &str) -> BoardState { // TODO remove
+    from_fen(fen, 100)
+}
+
+pub fn from_fen(fen: &str, max_search_depth: usize) -> BoardState {
+    let mut fen_parts = fen.split(' ');
+    let pieces_part = fen_parts.next().unwrap();
+
+    pieces_part.split('/').rev().flat_map(|x| x.chars())
+        .map(|x| if x.is_ascii_digit() {vec!['1'; x.to_digit(10).unwrap() as usize]} else {vec![x]})
+        .map(|y| y.into_iter())
+        .flat_map(|z| z)
+        .for_each(|x| { println!("{}", x) });
+
+
+        // .flat_map(|x| x)
+        // .for_each(|x| { println!("{}", x)});
+    //println!("{}", pieces_part);
+
+    BoardState::new(&[0; 64], WHITE, 0, 0, 0, 0, 100)
+}
+// public static BoardState fromFen(String fen, Integer maxSearchDepth) {
+//         List<String> fenParts = Arrays.asList(fen.split("\\s+"));
+//
+//         String squares = expandFenPieces(fenParts.get(0));
+//         List<String> squaresList = Arrays.asList(squares.split("/"));
+//         Collections.reverse(squaresList);
+//         int[] items = squaresList.stream()
+//                 .flatMap(line -> line.chars().mapToObj(c -> (char) c))
+//                 .mapToInt(c -> switch (c) {
+//                             case '1' -> Piece.NONE;
+//                             case 'P' -> Piece.WHITE_PAWN;
+//                             case 'N' -> Piece.WHITE_KNIGHT;
+//                             case 'B' -> Piece.WHITE_BISHOP;
+//                             case 'R' -> Piece.WHITE_ROOK;
+//                             case 'Q' -> Piece.WHITE_QUEEN;
+//                             case 'K' -> Piece.WHITE_KING;
+//                             case 'p' -> Piece.BLACK_PAWN;
+//                             case 'n' -> Piece.BLACK_KNIGHT;
+//                             case 'b' -> Piece.BLACK_BISHOP;
+//                             case 'r' -> Piece.BLACK_ROOK;
+//                             case 'q' -> Piece.BLACK_QUEEN;
+//                             case 'k' -> Piece.BLACK_KING;
+//                             default -> throw new IllegalArgumentException(String.format("Character \"%s\" not known.", c));
+//                         }
+//                 )
+//                 .toArray();
+//
+// //                        .forEach(x -> System.out.println(x)))
+// //                .forEach(line -> System.out.println(line));
+// //        Collections.rev
+// //        int file;
+// //        int rank = 0;
+// //        for (String r : ranks) {
+// //            file = 0;
+// //            for (int i = 0; i < r.length(); i++) {
+// //                char c = r.charAt(i);
+// //                if (Character.isDigit(c)) {
+// //                    file += Integer.parseInt(c + "");
+// //                } else {
+// //                    int sq = Square.encode(rank, file);
+// //                    EnumPieceType pieceType = EnumPieceType.fromFen(c);
+// //                    EnumColor color = Character.isUpperCase(c) ? EnumColor.WHITE : EnumColor.BLACK;
+// //                    items[63 - sq] = pieceType.ordinal() * color.getValue();
+// //
+// //                    file++;
+// //                }
+// //            }
+// //            rank++;
+// //        }
+//
+//         long entry = 0L;
+//         String castlingFlags = fenParts.get(2);
+//         if (!castlingFlags.contains("K") || items[WHITE_KING_INITIAL_SQUARE] != Piece.WHITE_KING
+//                 || items[Long.numberOfTrailingZeros(WHITE_KINGS_ROOK_MASK)] != Piece.WHITE_ROOK)
+//             entry |= WHITE_KINGS_ROOK_MASK;
+//         if (!castlingFlags.contains("Q") || items[WHITE_KING_INITIAL_SQUARE] != Piece.WHITE_KING
+//                 || items[Long.numberOfTrailingZeros(WHITE_QUEENS_ROOK_MASK)] != Piece.WHITE_ROOK)
+//             entry |= WHITE_QUEENS_ROOK_MASK;
+//         if (!castlingFlags.contains("k") || items[BLACK_KING_INITIAL_SQUARE] != Piece.BLACK_KING
+//                 || items[Long.numberOfTrailingZeros(BLACK_KINGS_ROOK_MASK)] != Piece.BLACK_ROOK)
+//             entry |= BLACK_KINGS_ROOK_MASK;
+//         if (!castlingFlags.contains("q") || items[BLACK_KING_INITIAL_SQUARE] != Piece.BLACK_KING
+//                 || items[Long.numberOfTrailingZeros(BLACK_QUEENS_ROOK_MASK)] != Piece.BLACK_ROOK)
+//             entry |= BLACK_QUEENS_ROOK_MASK;
+//
+//
+//         String enpassant = fenParts.get(3);
+//         long enPassantMask = enpassant.length() < 2 ? 0 : 1L << Square.getSquareFromName(enpassant);
+// //        Integer enpassantSquare = Optional.ofNullable(enpassant.length() < 2 ? null : enpassant).map(Square::getSquareFromName).orElse(null);
+//         String halfMoveClock = fenParts.get(4);
+//         String fullMoveCount = fenParts.get(5);
+//
+//         // EnumColor side_to_play = fenParts.get(1).equalsIgnoreCase("w") ? EnumColor.WHITE : EnumColor.BLACK;
+//         int side_to_play = fenParts.get(1).equalsIgnoreCase("w") ? Side.WHITE : Side.BLACK;
+//
+//         return new BoardState(items, side_to_play, entry, enPassantMask, Integer.parseInt(halfMoveClock), Integer.parseInt(fullMoveCount),
+//                 Optional.ofNullable(maxSearchDepth).orElse(MAX_SEARCH_DEPTH));
+//     }
+
+
+#[cfg(test)]
+mod tests {
+    // use super::*;
+
+    use crate::fen::{from_fen_default};
+
+    #[test]
+    fn from_fen_developed() {
+        let state = from_fen_default("r2q1rk1/pbp2ppp/1pnp1n2/8/2PPp3/2P1P3/P1N2PPP/R1BQKB1R w kq - 0 10");
+        println!("{}", state);
+    }
+}
 
 // #[derive(Debug)]
 // pub struct FenError {

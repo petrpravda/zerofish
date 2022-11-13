@@ -3,6 +3,9 @@ mod engine;
 mod engine_thread;
 mod fen;
 mod bitboard;
+mod board_state;
+mod piece;
+mod side;
 
 fn main() {
     uci::start_uci_loop(&engine_thread::spawn_engine_thread());

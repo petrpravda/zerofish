@@ -8,8 +8,6 @@ import org.javafish.move.Zobrist;
 import java.util.List;
 
 import static org.javafish.Constants.CHESSBOARD_LINE;
-import static org.javafish.bitboard.Bitboard.DARK_SQUARES;
-import static org.javafish.bitboard.Bitboard.LIGHT_SQUARES;
 import static org.javafish.bitboard.Bitboard.PAWN_DOUBLE_PUSH_LINES;
 import static org.javafish.bitboard.Bitboard.PAWN_FINAL_RANKS;
 import static org.javafish.bitboard.Bitboard.PAWN_RANKS;
@@ -46,7 +44,6 @@ import static org.javafish.board.Square.G8;
 import static org.javafish.board.Square.H1;
 import static org.javafish.board.Square.H8;
 import static org.javafish.board.Square.NO_SQUARE;
-import static org.javafish.eval.PieceSquareTable.BASIC_MATERIAL_VALUE;
 import static org.javafish.eval.PieceSquareTable.EGS;
 import static org.javafish.eval.PieceSquareTable.MGS;
 
@@ -56,7 +53,7 @@ public class BoardState implements Cloneable {
 
     public int ply;
     private long[] history;
-    private long[] piece_bb = new long[Piece.NPIECES];
+    private long[] piece_bb = new long[Piece.PIECES_COUNT];
     public int[] items = new int[64];
     private int sideToPlay;
     private long hash;
