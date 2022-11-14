@@ -16,8 +16,6 @@ At the time, I'm porting the previous engine (legacyjava) into Rust language (fo
 
 ### Executing program
 
-* How to run the program
-
 Get source files
 ```
 git clone https://github.com/petrpravda/0fish.git
@@ -35,8 +33,6 @@ engine/target/release/zerofish
 
 ## Authors
 
-Contributors names and contact info
-
 Petr Pravda  
 
 ## Version History
@@ -51,8 +47,9 @@ This project is licensed under the GPL License
 ## Acknowledgments
 
 I got inspiration from many GPL chess engines. Most notably from
-* [awesome-readme](https://github.com/matiassingers/awesome-readme)
+* [velvet](https://github.com/mhonert/velvet-chess)
 
 
 Inspiration, code snippets, etc.
-* [awesome-readme](https://github.com/matiassingers/awesome-readme)
+* [Square mapping](https://www.chessprogramming.org/Square_Mapping_Considerations)
+* [Obstruction Difference algorithm](https://www.chessprogramming.org/Obstruction_Difference)
