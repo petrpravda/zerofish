@@ -14,17 +14,17 @@ At the time, I'm porting the previous engine (legacyjava) into Rust language (fo
 
 * it doesn't have any 
 
-### Installing
-
-* How/where to download your program
-* Any modifications needed to be made to files/folders
-
 ### Executing program
 
 * How to run the program
-* Step-by-step bullets
+Get source files
 ```
-code blocks for commands
+git clone https://github.com/petrpravda/0fish.git
+```
+
+Go to 0fish directory and make executable with
+```
+cargo build --manifest-path=engine/Cargo.toml --release
 ```
 
 ## Authors

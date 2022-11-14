@@ -172,9 +172,9 @@ impl Engine {
                     // output.push_str(format!("Fen: {}\n", write_fen(&self.board)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     // output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
-                    let output = "Hello World".to_string();
+                    let output = "";
                     println!("{}", output);
-                    output
+                    output.to_string()
                 }
 
                 "isready" => self.is_ready(),
@@ -245,7 +245,6 @@ impl Engine {
                     result
                 }
             };
-            println!("EOR");
             result
         } else {
             "Empty command".to_string()
