@@ -1,18 +1,38 @@
-//     public final static int WHITE_PAWN = 0;
-//     public final static int WHITE_KNIGHT = 1;
-//     public final static int WHITE_BISHOP = 2;
-//     public final static int WHITE_ROOK = 3;
-//     public final static int WHITE_QUEEN = 4;
-//     public final static int WHITE_KING = 5;
-//     public final static int BLACK_PAWN = 8;
-//     public final static int BLACK_KNIGHT = 9;
-//     public final static int BLACK_BISHOP = 10;
-//     public final static int BLACK_ROOK = 11;
-//     public final static int BLACK_QUEEN = 12;
-//     public final static int BLACK_KING = 13;
-//     public final static int NONE = 14;
-//
+  pub type Piece = u8;
+
+  pub const WHITE_PAWN: Piece = 0;
+  pub const WHITE_KNIGHT: Piece = 1;
+  pub const WHITE_BISHOP: Piece = 2;
+  pub const WHITE_ROOK: Piece = 3;
+  pub const WHITE_QUEEN: Piece = 4;
+  pub const WHITE_KING: Piece = 5;
+  pub const BLACK_PAWN: Piece = 8;
+  pub const BLACK_KNIGHT: Piece = 9;
+  pub const BLACK_BISHOP: Piece = 10;
+  pub const BLACK_ROOK: Piece = 11;
+  pub const BLACK_QUEEN: Piece = 12;
+  pub const BLACK_KING: Piece = 13;
+  pub const NONE: Piece = 14;
+
   pub const PIECES_COUNT: usize = 15;
+
+  pub fn parse_piece(c: char) -> Piece {
+    match c {
+      'P' => WHITE_PAWN,
+      'N' => WHITE_KNIGHT,
+      'B' => WHITE_BISHOP,
+      'R' => WHITE_ROOK,
+      'Q' => WHITE_QUEEN,
+      'K' => WHITE_KING,
+      'p' => BLACK_PAWN,
+      'n' => BLACK_KNIGHT,
+      'b' => BLACK_BISHOP,
+      'r' => BLACK_ROOK,
+      'q' => BLACK_QUEEN,
+      'k' => BLACK_KING,
+      _ => NONE,
+    }
+  }
 //
 //     public static int flip(int piece) { return piece ^ 8; }
 //

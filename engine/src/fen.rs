@@ -1,6 +1,7 @@
 #![allow(unused_variables)]
 
 use crate::board_state::BoardState;
+use crate::piece::{parse_piece, Piece};
 use crate::side::{WHITE};
 
 pub const START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -13,18 +14,22 @@ pub fn from_fen(fen: &str, max_search_depth: usize) -> BoardState {
     let mut fen_parts = fen.split(' ');
     let pieces_part = fen_parts.next().unwrap();
 
-    pieces_part.split('/').rev().flat_map(|x| x.chars())
+    let pieces: Vec<Piece> = pieces_part.split('/').rev().flat_map(|x| x.chars())
         .map(|x| if x.is_ascii_digit() {vec!['1'; x.to_digit(10).unwrap() as usize]} else {vec![x]})
         .map(|y| y.into_iter())
         .flat_map(|z| z)
-        .for_each(|x| { println!("{}", x) });
+        .map(|x| parse_piece(x))
+        .collect();
+        //.for_each(|x| { println!("{}", x) });
 
 
         // .flat_map(|x| x)
         // .for_each(|x| { println!("{}", x)});
     //println!("{}", pieces_part);
 
-    BoardState::new(&[0; 64], WHITE, 0, 0, 0, 0, 100)
+    let items: [Piece; 64] = pieces.try_into().unwrap();
+    BoardState::new(&items, WHITE, 0, 0, 0, 0, 100)
+    // BoardState::new(&[0; 64], WHITE, 0, 0, 0, 0, 100)
 }
 // public static BoardState fromFen(String fen, Integer maxSearchDepth) {
 //         List<String> fenParts = Arrays.asList(fen.split("\\s+"));

@@ -1,7 +1,7 @@
 #![allow(unused_variables, dead_code)]
 
 use std::fmt;
-use crate::piece::PIECES_COUNT;
+use crate::piece::{Piece, PIECES_COUNT};
 use crate::side::Side;
 
 //     public static int TOTAL_PHASE = 24;
@@ -11,7 +11,7 @@ pub struct BoardState {
     ply: usize,
     history: Vec<u64>,
     piece_bb: [u64; PIECES_COUNT],
-    items: [u8; 64],
+    items: [Piece; 64],
     side_to_play: Side,
     hash: u64,
     full_move_normalized: usize,
@@ -35,7 +35,7 @@ impl fmt::Display for BoardState {
 
 impl BoardState {
     pub fn new(
-        items: &[u8],
+        items: &[Piece],
         side_to_play: Side,
         movements: u64,
         en_passant: u64,

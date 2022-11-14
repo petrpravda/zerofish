@@ -11,3 +11,5 @@
 /.vscode
 /.idea
 
+core/target
+
