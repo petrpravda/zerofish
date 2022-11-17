@@ -1,4 +1,6 @@
-  pub type Piece = u8;
+use crate::side::Side;
+
+pub type Piece = u8;
 
   pub const WHITE_PAWN: Piece = 0;
   pub const WHITE_KNIGHT: Piece = 1;
@@ -52,6 +54,16 @@
       _ => '?',
     }
   }
+
+  pub type PieceType = u8;
+
+  pub const PAWN: PieceType = 0;
+  pub const KNIGHT: PieceType = 1;
+  pub const BISHOP: PieceType = 2;
+  pub const ROOK: PieceType = 3;
+  pub const QUEEN: PieceType = 4;
+  pub const KING: PieceType = 5;
+
 //
 //     public static int flip(int piece) { return piece ^ 8; }
 //
@@ -63,10 +75,10 @@
 //         return (piece & 0b1000) >>> 3;
 //     }
 //
-//     public static int makePiece(int side, int pieceType){
-//         return (side << 3) + pieceType;
-//     }
-//
+    pub fn make_piece(side: Side, piece_type: PieceType) -> Piece {
+        return (side << 3) + piece_type;
+    }
+
 //     public static String getNotation(int piece){
 //         return switch (piece) {
 //             case WHITE_PAWN -> "P";

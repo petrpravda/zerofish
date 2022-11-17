@@ -7,6 +7,7 @@ mod board_state;
 mod piece;
 mod side;
 mod square;
+mod r#move;
 
 fn main() {
     uci::start_uci_loop(&engine_thread::spawn_engine_thread());

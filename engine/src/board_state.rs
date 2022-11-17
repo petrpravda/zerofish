@@ -1,8 +1,9 @@
 #![allow(unused_variables, dead_code)]
 
 use std::fmt;
-use crate::piece::{Piece, PIECES_COUNT, to_piece_char};
-use crate::side::Side;
+use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, make_piece, Piece, PIECES_COUNT, PieceType, to_piece_char, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
+use crate::r#move::MoveList;
+use crate::side::{BLACK, flip, Side, WHITE};
 
 //     public static int TOTAL_PHASE = 24;
 //     public static int[] PIECE_PHASES = {0, 1, 1, 2, 4, 0};
@@ -196,41 +197,47 @@ impl BoardState {
     //         return hash;
     //     }
     //
-    //     public long bitboardOf(int piece){
-    //         return piece_bb[piece];
-    //     }
-    //
-    //     public long bitboardOf(int side, int pieceType){
-    //         return piece_bb[Piece.makePiece(side, pieceType)];
-    //     }
-    //
+        pub fn bitboard_of_piece(&self, piece: Piece) -> u64 {
+            return self.piece_bb[piece as usize];
+        }
+
+        pub fn bitboard_of(&self, side: Side, piece_type: PieceType) -> u64 {
+            self.piece_bb[make_piece(side, piece_type) as usize]
+        }
+
     //     public long checkers(){
     //         return checkers;
     //     }
     //
-    //     public long diagonalSliders(int side){
-    //         return side == Side.WHITE ? piece_bb[Piece.WHITE_BISHOP] | piece_bb[Piece.WHITE_QUEEN] :
-    //                                  piece_bb[Piece.BLACK_BISHOP] | piece_bb[Piece.BLACK_QUEEN];
-    //     }
-    //
-    //     public long orthogonalSliders(int side){
-    //         return side == Side.WHITE ? piece_bb[Piece.WHITE_ROOK] | piece_bb[Piece.WHITE_QUEEN] :
-    //                 piece_bb[Piece.BLACK_ROOK] | piece_bb[Piece.BLACK_QUEEN];
-    //     }
-    //
-    //     public long allPieces(int side){
-    //         return side == Side.WHITE ? piece_bb[Piece.WHITE_PAWN] | piece_bb[Piece.WHITE_KNIGHT] |
-    //                                  piece_bb[Piece.WHITE_BISHOP] | piece_bb[Piece.WHITE_ROOK] |
-    //                                  piece_bb[Piece.WHITE_QUEEN] | piece_bb[Piece.WHITE_KING] :
-    //
-    //                                  piece_bb[Piece.BLACK_PAWN] | piece_bb[Piece.BLACK_KNIGHT] |
-    //                                  piece_bb[Piece.BLACK_BISHOP] | piece_bb[Piece.BLACK_ROOK] |
-    //                                  piece_bb[Piece.BLACK_QUEEN] | piece_bb[Piece.BLACK_KING];
-    //     }
-    //
-    //     public long allPieces() {
-    //         return allPieces(Side.WHITE) | allPieces(Side.BLACK);
-    //     }
+        pub fn diagonal_sliders(&self, side: Side) -> u64 {
+            match side {
+                WHITE => self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize],
+                _ => self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize]
+            }
+        }
+
+        pub fn orthogonal_sliders(&self, side: Side) -> u64 {
+            match side {
+                WHITE => self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize],
+                _ => self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]
+            }
+        }
+
+        pub fn all_pieces_for_side(&self, side: Side) -> u64 {
+            return match side {
+                WHITE => self.piece_bb[WHITE_PAWN as usize] | self.piece_bb[WHITE_KNIGHT as usize] |
+                    self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_ROOK as usize] |
+                    self.piece_bb[WHITE_QUEEN as usize] | self.piece_bb[WHITE_KING as usize],
+                _ =>
+                    self.piece_bb[BLACK_PAWN as usize] | self.piece_bb[BLACK_KNIGHT as usize] |
+                    self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_ROOK as usize] |
+                    self.piece_bb[BLACK_QUEEN as usize] | self.piece_bb[BLACK_KING as usize]
+            }
+        }
+
+        pub fn all_pieces(&self) -> u64 {
+            self.all_pieces_for_side(WHITE) | self.all_pieces_for_side(BLACK)
+        }
     //
     //     public long attackersFrom(int square, long occ, int side){
     //         return side == Side.WHITE ? (pawnAttacks(square, Side.BLACK) & piece_bb[Piece.WHITE_PAWN]) |
@@ -263,7 +270,7 @@ impl BoardState {
     //     }
     //
     //     public BoardState doMove(String uciMove) {
-    //         return performMove(this.generateLegalMoves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
+    //         return performMove(this.generate_legal_moves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
     //     }
     //
     //     public BoardState doNullMove() {
@@ -329,39 +336,39 @@ impl BoardState {
     //                 break;
     //             case Move.PR_KNIGHT:
     //                 state.removePiece(move.from());
-    //                 state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.KNIGHT), move.to());
+    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.KNIGHT), move.to());
     //                 break;
     //             case Move.PR_BISHOP:
     //                 state.removePiece(move.from());
-    //                 state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.BISHOP), move.to());
+    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.BISHOP), move.to());
     //                 break;
     //             case Move.PR_ROOK:
     //                 state.removePiece(move.from());
-    //                 state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.ROOK), move.to());
+    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.ROOK), move.to());
     //                 break;
     //             case Move.PR_QUEEN:
     //                 state.removePiece(move.from());
-    //                 state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.QUEEN), move.to());
+    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.QUEEN), move.to());
     //                 break;
     //             case Move.PC_KNIGHT:
     //                 state.removePiece(move.from());
     //                 state.removePiece(move.to());
-    //                 state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.KNIGHT), move.to());
+    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.KNIGHT), move.to());
     //                 break;
     //             case Move.PC_BISHOP:
     //                 state.removePiece(move.from());
     //                 state.removePiece(move.to());
-    //                 state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.BISHOP), move.to());
+    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.BISHOP), move.to());
     //                 break;
     //             case Move.PC_ROOK:
     //                 state.removePiece(move.from());
     //                 state.removePiece(move.to());
-    //                 state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.ROOK), move.to());
+    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.ROOK), move.to());
     //                 break;
     //             case Move.PC_QUEEN:
     //                 state.removePiece(move.from());
     //                 state.removePiece(move.to());
-    //                 state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.QUEEN), move.to());
+    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.QUEEN), move.to());
     //                 break;
     //             case Move.CAPTURE:
     //                 state.halfMoveClock = 0;
@@ -381,20 +388,20 @@ impl BoardState {
     //     public boolean kingAttacked(){
     //         final int us = sideToPlay;
     //         final int them = Side.flip(sideToPlay);
-    //         final int ourKing = Long.numberOfTrailingZeros(bitboardOf(us, PieceType.KING));
+    //         final int ourKing = Long.numberOfTrailingZeros(bitboard_of(us, PieceType.KING));
     //
-    //         if ((pawnAttacks(ourKing, us) & bitboardOf(them, PieceType.PAWN)) != 0)
+    //         if ((pawnAttacks(ourKing, us) & bitboard_of(them, PieceType.PAWN)) != 0)
     //             return true;
     //
-    //         if ((getKnightAttacks(ourKing) & bitboardOf(them, PieceType.KNIGHT)) != 0)
+    //         if ((getKnightAttacks(ourKing) & bitboard_of(them, PieceType.KNIGHT)) != 0)
     //             return true;
     //
-    //         final long usBb = allPieces(us);
-    //         final long themBb = allPieces(them);
-    //         final long all = usBb | themBb;
+    //         let usBb = all_pieces(us);
+    //         let themBb = all_pieces(them);
+    //         let all = usBb | themBb;
     //
-    //         final long theirDiagSliders = diagonalSliders(them);
-    //         final long theirOrthSliders = orthogonalSliders(them);
+    //         let theirDiagSliders = diagonal_sliders(them);
+    //         let theirOrthSliders = orthogonal_sliders(them);
     //
     //         if ((getRookAttacks(ourKing, all) & theirOrthSliders) != 0)
     //             return true;
@@ -429,9 +436,9 @@ impl BoardState {
     //      */
     //     public long attackedPiecesUndefended(int side) {
     //         int sideThem = Side.flip(side);
-    //         final long usBb = allPieces(side);
-    //         final long themBb = allPieces(sideThem);
-    //         final long all = usBb | themBb;
+    //         let usBb = all_pieces(side);
+    //         let themBb = all_pieces(sideThem);
+    //         let all = usBb | themBb;
     //
     //         long attackedPieces = this.attackedPieces(side);
     //         long attackedUndefendedPieces = 0L;
@@ -463,35 +470,35 @@ impl BoardState {
     //         final int us = Side.flip(side);
     //         final int them = side;
     //
-    //         long pawns = pawnAttacks(square, us) & bitboardOf(them, PieceType.PAWN);
+    //         long pawns = pawnAttacks(square, us) & bitboard_of(them, PieceType.PAWN);
     //         if (pawns != 0)
     //             return Long.numberOfTrailingZeros(pawns);
     //
-    //         long knights = getKnightAttacks(square) & bitboardOf(them, PieceType.KNIGHT);
+    //         long knights = getKnightAttacks(square) & bitboard_of(them, PieceType.KNIGHT);
     //         if (knights != 0)
     //             return Long.numberOfTrailingZeros(knights);
     //
-    //         final long usBb = allPieces(us);
-    //         final long themBb = allPieces(them);
-    //         final long all = usBb | themBb;
+    //         let usBb = all_pieces(us);
+    //         let themBb = all_pieces(them);
+    //         let all = usBb | themBb;
     //
-    //         final long bishopAttacks = getBishopAttacks(square, all);
-    //         long bishops = bishopAttacks & bitboardOf(them, PieceType.BISHOP);
+    //         let bishopAttacks = getBishopAttacks(square, all);
+    //         long bishops = bishopAttacks & bitboard_of(them, PieceType.BISHOP);
     //
     //         if (bishops != 0)
     //             return Long.numberOfTrailingZeros(bishops);
     //
-    //         final long rookAttacks = getRookAttacks(square, all);
-    //         long rooks = rookAttacks & bitboardOf(them, PieceType.ROOK);
+    //         let rookAttacks = getRookAttacks(square, all);
+    //         long rooks = rookAttacks & bitboard_of(them, PieceType.ROOK);
     //         if (rooks != 0)
     //             return Long.numberOfTrailingZeros(rooks);
     //
-    //         long queens = (bishopAttacks | rookAttacks) & bitboardOf(them, PieceType.QUEEN);
+    //         long queens = (bishopAttacks | rookAttacks) & bitboard_of(them, PieceType.QUEEN);
     //         if (queens != 0)
     //             return Long.numberOfTrailingZeros(queens);
     //
     //         if (withAttackingKing) {
-    //             long kings = getKingAttacks(square) & bitboardOf(them, PieceType.KING);
+    //             long kings = getKingAttacks(square) & bitboard_of(them, PieceType.KING);
     //             if (kings != 0) {
     //                 return Long.numberOfTrailingZeros(kings);
     //             }
@@ -501,25 +508,25 @@ impl BoardState {
     //     }
     //
     // //    public boolean isInsufficientMaterial(int color){
-    // //        if ((bitboardOf(color, PieceType.PAWN) | bitboardOf(color, PieceType.ROOK) | bitboardOf(color, PieceType.QUEEN)) != 0)
+    // //        if ((bitboard_of(color, PieceType.PAWN) | bitboard_of(color, PieceType.ROOK) | bitboard_of(color, PieceType.QUEEN)) != 0)
     // //            return false;
     // //
-    // //        long ourPieces = allPieces(color);
-    // //        long theirPieces = allPieces(Side.flip(color));
-    // //        if (bitboardOf(color, PieceType.KNIGHT) != 0)
-    // //            return Long.bitCount(ourPieces) <= 2 && (theirPieces & ~bitboardOf(Side.flip(color), PieceType.KING) & ~bitboardOf(Side.flip(color), PieceType.QUEEN)) == 0;
+    // //        long ourPieces = all_pieces(color);
+    // //        long theirPieces = all_pieces(Side.flip(color));
+    // //        if (bitboard_of(color, PieceType.KNIGHT) != 0)
+    // //            return Long.bitCount(ourPieces) <= 2 && (theirPieces & ~bitboard_of(Side.flip(color), PieceType.KING) & ~bitboard_of(Side.flip(color), PieceType.QUEEN)) == 0;
     // //
-    // //        long ourBishops = bitboardOf(color, PieceType.BISHOP);
+    // //        long ourBishops = bitboard_of(color, PieceType.BISHOP);
     // //        if (ourBishops != 0){
     // //            boolean sameColor = (ourBishops & DARK_SQUARES) == 0 || (ourBishops & LIGHT_SQUARES) == 0;
-    // //            return sameColor && (bitboardOf(color, PieceType.PAWN) | bitboardOf(Side.flip(color), PieceType.PAWN)) == 0
-    // //                    || (bitboardOf(color, PieceType.KNIGHT) | bitboardOf(Side.flip(color), PieceType.KNIGHT)) == 0;
+    // //            return sameColor && (bitboard_of(color, PieceType.PAWN) | bitboard_of(Side.flip(color), PieceType.PAWN)) == 0
+    // //                    || (bitboard_of(color, PieceType.KNIGHT) | bitboard_of(Side.flip(color), PieceType.KNIGHT)) == 0;
     // //        }
     // //        return true;
     // //    }
     // //
     //     public boolean isRepetitionOrFifty(BoardPosition position){
-    //         final long lastMoveBits = this.ply > 0 ? this.history[this.ply - 1] : position.history[position.historyIndex - 1];
+    //         let lastMoveBits = this.ply > 0 ? this.history[this.ply - 1] : position.history[position.historyIndex - 1];
     //         int count = 0;
     //         int index = this.ply - 1;
     //         while (index >= 0) {
@@ -537,49 +544,52 @@ impl BoardState {
     //     }
     //
     //     public boolean hasNonPawnMaterial(int side) {
-    //         int start = Piece.makePiece(side, PieceType.KNIGHT);
-    //         int end = Piece.makePiece(side, PieceType.QUEEN);
+    //         int start = Piece.make_piece(side, PieceType.KNIGHT);
+    //         int end = Piece.make_piece(side, PieceType.QUEEN);
     //         for (int piece = start; piece <= end; piece++){
-    //             if (bitboardOf(piece) != 0)
+    //             if (bitboard_of(piece) != 0)
     //                 return true;
     //         }
     //         return false;
     //     }
     //
-    //     public MoveList generateLegalMoves(){
-    //         return this.generateLegalMoves(false);
+    //     public MoveList generate_legal_moves(){
+    //         return this.generate_legal_moves(false);
     //     }
     //
     //     public MoveList generateLegalQuiescence(){
-    //         return generateLegalMoves(true);
+    //         return generate_legal_moves(true);
     //     }
-    //
-    //     public MoveList generateLegalMoves(boolean onlyQuiescence) {
-    //         MoveList moves = new MoveList();
-    //         final int us = sideToPlay;
-    //         final int them = Side.flip(sideToPlay);
-    //
-    //         final long usBb = allPieces(us);
-    //         final long themBb = allPieces(them);
-    //         final long all = usBb | themBb;
-    //
-    //         long ourKingBb = bitboardOf(us, PieceType.KING);
-    //         final int ourKing = Long.numberOfTrailingZeros(ourKingBb);
-    //         final int theirKing = Long.numberOfTrailingZeros(bitboardOf(them, PieceType.KING));
-    //
-    //         final long ourBishopsAndQueens = diagonalSliders(us);
-    //         final long theirBishopsAndQueens = diagonalSliders(them);
-    //         final long ourRooksAndQueens = orthogonalSliders(us);
-    //         final long theirRooksAndQueens = orthogonalSliders(them);
-    //
+
+    pub fn generate_legal_moves(&self, only_quiescence: bool) -> MoveList {
+        let moves = MoveList::new();
+        let us = self.side_to_play;
+        let them = flip(self.side_to_play);
+
+        let us_bb = self.all_pieces_for_side(us);
+        let them_bb = self.all_pieces_for_side(them);
+        let all = us_bb | them_bb;
+
+        let our_king_bb = self.bitboard_of(us, KING);
+        let our_king = our_king_bb.trailing_zeros() as usize;
+        let their_king = self.bitboard_of(them, KING).trailing_zeros() as usize;
+
+        let our_bishops_and_queens = self.diagonal_sliders(us);
+        let their_bishops_and_queens = self.diagonal_sliders(them);
+        let our_rooks_and_queens = self.orthogonal_sliders(us);
+        let their_rooks_and_queens = self.orthogonal_sliders(them);
+
+        moves
+    }
+
     //         // General purpose to keep down initialized primitives
     //         long b1, b2, b3;
     //
     //         // Squares that the king can't move to
     //         long underAttack = 0;
-    //         underAttack |= pawnAttacks(bitboardOf(them, PieceType.PAWN), them) | getKingAttacks(theirKing);
+    //         underAttack |= pawnAttacks(bitboard_of(them, PieceType.PAWN), them) | getKingAttacks(theirKing);
     //
-    //         b1 = bitboardOf(them, PieceType.KNIGHT);
+    //         b1 = bitboard_of(them, PieceType.KNIGHT);
     //         while (b1 != 0){
     //             underAttack |= getKnightAttacks(Long.numberOfTrailingZeros(b1));
     //             b1 = Bitboard.extractLsb(b1);
@@ -609,8 +619,8 @@ impl BoardState {
     //         long quietMask;
     //         int s;
     //
-    //         checkers = (getKnightAttacks(ourKing) & bitboardOf(them, PieceType.KNIGHT))
-    //                 | (pawnAttacks(ourKing, us) & bitboardOf(them, PieceType.PAWN));
+    //         checkers = (getKnightAttacks(ourKing) & bitboard_of(them, PieceType.KNIGHT))
+    //                 | (pawnAttacks(ourKing, us) & bitboard_of(them, PieceType.PAWN));
     //
     //         long candidates = (getRookAttacks(ourKing, themBb) & theirRooksAndQueens)
     //                 | (getBishopAttacks(ourKing, themBb) & theirBishopsAndQueens);
@@ -627,7 +637,7 @@ impl BoardState {
     //                 pinned ^= b1;
     //         }
     //
-    //         final long notPinned = ~pinned;
+    //         let notPinned = ~pinned;
     //         switch(Long.bitCount(checkers)){
     //             case 2:
     //                 return moves;
@@ -639,7 +649,7 @@ impl BoardState {
     //                         //if (checkers == Bitboard.shift(enPassant, Square.relative_dir(Square.SOUTH, us))){
     //                         if (checkers == (us == Side.WHITE ? enPassant >>> 8 : enPassant << 8)){
     //                             int enPassantSquare = Long.numberOfTrailingZeros(enPassant);
-    //                             b1 = pawnAttacks(enPassantSquare, them) & bitboardOf(us, PieceType.PAWN) & notPinned;
+    //                             b1 = pawnAttacks(enPassantSquare, them) & bitboard_of(us, PieceType.PAWN) & notPinned;
     //                             while (b1 != 0){
     //                                 moves.add(new Move(Long.numberOfTrailingZeros(b1), enPassantSquare, Move.EN_PASSANT));
     //                                 b1 = Bitboard.extractLsb(b1);
@@ -679,7 +689,7 @@ impl BoardState {
     //
     //                 if (enPassant != 0L) {
     //                     int enPassantSquare = Long.numberOfTrailingZeros(enPassant);
-    //                     b2 = pawnAttacks(enPassantSquare, them) & bitboardOf(us, PieceType.PAWN);
+    //                     b2 = pawnAttacks(enPassantSquare, them) & bitboard_of(us, PieceType.PAWN);
     //                     // b2 holds pawns that can do an ep capture
     //                     b1 = b2 & notPinned;
     //                     while (b1 != 0) {
@@ -711,7 +721,7 @@ impl BoardState {
     //                 }
     //
     //                 // For each pinned rook, bishop, or queen...
-    //                 b1 = ~(notPinned | bitboardOf(us, PieceType.KNIGHT));
+    //                 b1 = ~(notPinned | bitboard_of(us, PieceType.KNIGHT));
     //                 while (b1 != 0){
     //                     s = Long.numberOfTrailingZeros(b1);
     //                     b1 = Bitboard.extractLsb(b1);
@@ -724,7 +734,7 @@ impl BoardState {
     //                 }
     //
     //                 // for each pinned pawn
-    //                 b1 = ~notPinned & bitboardOf(us, PieceType.PAWN);
+    //                 b1 = ~notPinned & bitboard_of(us, PieceType.PAWN);
     //                 while (b1 != 0){
     //                     s = Long.numberOfTrailingZeros(b1);
     //                     b1 = Bitboard.extractLsb(b1);
@@ -753,7 +763,7 @@ impl BoardState {
     //         }
     //
     //         //non-pinned knight moves.
-    //         b1 = bitboardOf(us, PieceType.KNIGHT) & notPinned;
+    //         b1 = bitboard_of(us, PieceType.KNIGHT) & notPinned;
     //         while (b1 != 0){
     //             s = Long.numberOfTrailingZeros(b1);
     //             b1 = Bitboard.extractLsb(b1);
@@ -786,7 +796,7 @@ impl BoardState {
     //             }
     //         }
     //
-    //         b1 = bitboardOf(us, PieceType.PAWN) & notPinned & ~PAWN_RANKS[us];
+    //         b1 = bitboard_of(us, PieceType.PAWN) & notPinned & ~PAWN_RANKS[us];
     //
     //         if (!onlyQuiescence) {
     //             // single pawn pushes
@@ -826,7 +836,7 @@ impl BoardState {
     //             moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.CAPTURE));
     //         }
     //
-    //         b1 = bitboardOf(us, PieceType.PAWN) & notPinned & PAWN_RANKS[us];
+    //         b1 = bitboard_of(us, PieceType.PAWN) & notPinned & PAWN_RANKS[us];
     //         if (b1 != 0){
     //             if (!onlyQuiescence) {
     //                 b2 = (us == Side.WHITE ? b1 << 8 : b1 >>> 8) & quietMask;
@@ -924,7 +934,7 @@ impl BoardState {
     //         int index = 0;
     //         for (int side = Side.WHITE; side <= Side.BLACK; side++) {
     //             for (int piece = PieceType.PAWN; piece <= PieceType.QUEEN; piece++) {
-    //                 long bitboard = this.bitboardOf(side, piece);
+    //                 long bitboard = this.bitboard_of(side, piece);
     //                 for (int i = 0; i < 8; i++) {
     //                     result[index++] = (byte)((bitboard & 0xFF00000000000000L) >> 56);
     //                     bitboard <<= 8;
@@ -933,7 +943,7 @@ impl BoardState {
     //
     //         }
     //         return new Params(result,
-    //             Long.numberOfTrailingZeros(bitboardOf(Side.WHITE, PieceType.KING)),
-    //             Long.numberOfTrailingZeros(bitboardOf(Side.BLACK, PieceType.KING)));
+    //             Long.numberOfTrailingZeros(bitboard_of(Side.WHITE, PieceType.KING)),
+    //             Long.numberOfTrailingZeros(bitboard_of(Side.BLACK, PieceType.KING)));
     //     }
 }
