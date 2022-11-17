@@ -1,18 +1,20 @@
 #![allow(dead_code)]
 
+use crate::side::{Side, WHITE};
+
 pub struct Bitboard {
 
 
 }
 
 impl Bitboard {
-    //     public static final long FULL_BOARD = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111L;
+    //     pub const FULL_BOARD = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111L;
     //
     //     private static final long LEFT_PAWN_ATTACK_MASK = 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110L;
     //     private static final long RIGHT_PAWN_ATTACK_MASK = 0b1111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111L;
     //
-    //     public static final long LIGHT_SQUARES = 0x55AA55AA55AA55AAL;
-    //     public static final long DARK_SQUARES = 0xAA55AA55AA55AA55L;
+    //     pub const LIGHT_SQUARES = 0x55AA55AA55AA55AAL;
+    //     pub const DARK_SQUARES = 0xAA55AA55AA55AA55L;
     //
     // //    WHITE_PAWN_FREEPATH = create_pawn_free_path_patterns(-1);
     // //    BLACK_PAWN_FREEPATH = create_pawn_free_path_patterns(1);
@@ -26,31 +28,31 @@ impl Bitboard {
     //             0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000L,
     //             0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000L,
     //     };
-    //     public static final long PAWN_FINAL_RANKS = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111L;
+    //     pub const PAWN_FINAL_RANKS = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111L;
     //
     //     // Patterns to check, whether the fields between king and rook are empty
-    //     public static final long BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN =
+    //     pub const BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN =
     //             0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000L;
-    //     public static final long BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN =
+    //     pub const BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN =
     //             0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000L;
     //
-    //     public static final long WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN =
+    //     pub const WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN =
     //             0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000L;
-    //     public static final long WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN =
+    //     pub const WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN =
     //             0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110L;
-    //
-    //
-    //     // Patterns to check, whether king and rook squares are not are empty
-    //     public static final long BLACK_KING_SIDE_CASTLING_BIT_PATTERN =
-    //             0b10010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000L;
-    //     public static final long BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN =
-    //             0b00010001_00000000_00000000_00000000_00000000_00000000_00000000_00000000L;
-    //
-    //     public static final long WHITE_KING_SIDE_CASTLING_BIT_PATTERN =
-    //             0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10010000L;
-    //     public static final long WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN =
-    //             0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010001L;
-    //
+
+
+    // Patterns to check, whether king and rook squares are not are empty
+    pub const BLACK_KING_SIDE_CASTLING_BIT_PATTERN: u64 =
+            0b10010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+    pub const BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN: u64 =
+            0b00010001_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+
+    pub const WHITE_KING_SIDE_CASTLING_BIT_PATTERN: u64 =
+            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10010000;
+    pub const WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN: u64 =
+            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010001;
+
     pub const WHITE_KINGS_ROOK_MASK: u64 =
                 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000000;
     pub const  WHITE_QUEENS_ROOK_MASK: u64 =
@@ -60,12 +62,12 @@ impl Bitboard {
     pub const  BLACK_KINGS_ROOK_MASK: u64 =
                 0b10000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
     //
-    //     public static final long WHITE_OUTPOST_MASK =
+    //     pub const WHITE_OUTPOST_MASK =
     //             0b00000000_11111111_11111111_11111111_11111111_00000000_00000000_00000000L;
-    //     public static final long BLACK_OUTPOST_MASK =
+    //     pub const BLACK_OUTPOST_MASK =
     //             0b00000000_00000000_00000000_11111111_11111111_11111111_11111111_00000000L;
     //
-    //     public static final long LONG_DIAGONALS[] = {
+    //     pub const LONG_DIAGONALS[] = {
     //                     0b00000001_00000010_00000100_00001000_00010000_00100000_01000000_10000000L,
     //                     0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001L};
     //
@@ -75,8 +77,8 @@ impl Bitboard {
 
 
     //
-    //     public static final long BACK_ROWS = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111L;
-    //     public static final long FILE_A = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001L;
+    //     pub const BACK_ROWS = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111L;
+    //     pub const FILE_A = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001L;
     //
     //     public static final LineAttackMask[] LINE_MASKS = calculateLinePatterns();
     //
@@ -317,14 +319,20 @@ impl Bitboard {
     //     }
     //
     //
-    //     public static long castlingPiecesKingsideMask(int side){
-    //         return side == Side.WHITE ? WHITE_KING_SIDE_CASTLING_BIT_PATTERN : BLACK_KING_SIDE_CASTLING_BIT_PATTERN;
-    //     }
-    //
-    //     public static long castlingPiecesQueensideMask(int side){
-    //         return side == Side.WHITE ? WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN : BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN;
-    //     }
-    //
+        pub fn castling_pieces_kingside_mask(side: Side) -> u64 {
+            match side {
+                WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BIT_PATTERN,
+                _ => Bitboard::BLACK_KING_SIDE_CASTLING_BIT_PATTERN
+            }
+        }
+
+        pub fn castling_pieces_queenside_mask(side: Side) -> u64 {
+            match side {
+                WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN,
+                _ => Bitboard::BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN
+            }
+        }
+
     //     public static long castlingBlockersKingsideMask(int side){
     //         return side == Side.WHITE ? WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN :
     //                 BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN;

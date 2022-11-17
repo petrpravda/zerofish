@@ -20,3 +20,11 @@ pub fn parse(side: char) -> Side {
         _ => panic!()
     }
 }
+
+pub fn to_string(side: Side) -> char {
+    match side {
+        WHITE => 'w',
+        BLACK => 'b',
+        _ => panic!()
+    }
+}

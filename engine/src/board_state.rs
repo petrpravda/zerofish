@@ -13,8 +13,8 @@ pub struct BoardState {
     ply: usize,
     history: Vec<u64>,
     piece_bb: [u64; PIECES_COUNT],
-    items: [Piece; 64],
-    side_to_play: Side,
+    pub items: [Piece; 64],
+    pub side_to_play: Side,
     hash: u64,
     full_move_normalized: usize,
     half_move_clock: usize,
@@ -22,8 +22,8 @@ pub struct BoardState {
     mg: i32,
     eg: i32,
     checkers: u64,
-    movements: u64,
-    en_passant: u64
+    pub(crate) movements: u64,
+    pub en_passant: u64
 }
 
 impl fmt::Display for BoardState {
@@ -702,10 +702,10 @@ impl BoardState {
     //                 }
     //
     //                 if (!onlyQuiescence) {
-    //                     if (0 == ((this.movements & Bitboard.castlingPiecesKingsideMask(us)) | ((all | underAttack) & Bitboard.castlingBlockersKingsideMask(us))))
+    //                     if (0 == ((this.movements & Bitboard.castling_pieces_kingside_mask(us)) | ((all | underAttack) & Bitboard.castlingBlockersKingsideMask(us))))
     //                         moves.add(us == Side.WHITE ? new Move(E1, G1, Move.OO) : new Move(E8, G8, Move.OO));
     //
-    //                     if (0 == ((this.movements & Bitboard.castlingPiecesQueensideMask(us)) |
+    //                     if (0 == ((this.movements & Bitboard.castling_pieces_queenside_mask(us)) |
     //                             ((all | (underAttack & ~ignoreOOODanger(us))) & Bitboard.castlingBlockersQueensideMask(us))))
     //                         moves.add(us == Side.WHITE ? new Move(E1, C1, Move.OOO) : new Move(E8, C8, Move.OOO));
     //                 }

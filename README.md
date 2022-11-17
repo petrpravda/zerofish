@@ -4,7 +4,7 @@
 
 ## Description
 
-It aims at 3000+ ELO strenght which it doesn't have yet.
+It aims at 3000+ ELO strength which it doesn't have yet.
 It is based upon my previous project "javafish" which was implemented in Java. The javafish chess engine works, but it doesn't have any advanced evaluation besides material evaluation. I estimate its strength roughly about 2400 ELO.
 At the time, I'm porting the previous engine (legacyjava) into Rust language (folder called engine).
 
