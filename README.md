@@ -1,6 +1,6 @@
 # 0fish
 
-0fish is a free, open-source, minimalistic engine written in Rust implementing UCI.
+0fish is a free, open-source, minimalistic chess engine written in Rust implementing UCI.
 
 ## Description
 
