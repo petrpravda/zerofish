@@ -75,21 +75,28 @@ pub fn to_fen(state: &BoardState) -> String {
 
     let side = crate::side::to_string(state.side_to_play);
 
-    let mut rights = String::new();
+    let mut castling = String::new();
     if (Bitboard::castling_pieces_kingside_mask(WHITE) & state.movements) == 0 {
-        rights.push('K');
+        castling.push('K');
     }
     if (Bitboard::castling_pieces_queenside_mask(WHITE) & state.movements) == 0 {
-        rights.push('Q');
+        castling.push('Q');
     }
     if (Bitboard::castling_pieces_kingside_mask(BLACK) & state.movements) == 0 {
-        rights.push('k');
+        castling.push('k');
     }
     if (Bitboard::castling_pieces_queenside_mask(BLACK) & state.movements) == 0 {
-        rights.push('q');
+        castling.push('q');
     }
 
-    format!("{} {}", pieces, if rights.len() > 0 {rights} else {"-".to_string()})
+    format!("{} {} {} {} {} {}",
+            pieces,
+            side,
+            if castling.len() > 0 { castling } else {"-".to_string()},
+            if state.en_passant > 0 {Square::get_name(state.en_passant.trailing_zeros() as usize)} else {"-".to_string()},
+            state.half_move_clock,
+            (state.full_move_normalized / 2) + 1
+    )
 }
 
 #[cfg(test)]
@@ -144,6 +151,23 @@ mod tests {
     fn to_fen_startpos() {
         let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         let fen = to_fen(&state);
+        assert_eq!(fen, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    }
+
+    #[test]
+    fn to_fen_no_castling() {
+        let fen_without_castling = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+        let state = from_fen_default(fen_without_castling);
+        let fen = to_fen(&state);
+        assert_eq!(fen, fen_without_castling);
+    }
+
+    #[test]
+    fn to_fen_with_en_passant() {
+        let fen_with_en_passant = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+        let state = from_fen_default(fen_with_en_passant);
+        let fen = to_fen(&state);
         println!("{}", fen);
+        assert_eq!(fen, fen_with_en_passant);
     }
 }
