@@ -1,7 +1,8 @@
 #![allow(unused_variables, dead_code)]
 
 use std::fmt;
-use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, make_piece, Piece, PIECES_COUNT, PieceType, to_piece_char, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
+use crate::bitboard::{Bitboard, BitIter};
+use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, KNIGHT, make_piece, NONE, PAWN, Piece, PIECES_COUNT, PieceType, to_piece_char, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::r#move::MoveList;
 use crate::side::{BLACK, flip, Side, WHITE};
 
@@ -24,7 +25,9 @@ pub struct BoardState {
     eg: i32,
     checkers: u64,
     pub(crate) movements: u64,
-    pub en_passant: u64
+    pub en_passant: u64,
+
+    pub(crate) bitboard: Bitboard,
 }
 
 impl fmt::Display for BoardState {
@@ -44,11 +47,11 @@ impl BoardState {
         max_search_depth: usize
     ) -> Self {
         if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len()) }
-        let board_state = BoardState {
+        let mut board_state = BoardState {
             ply: 0,
             history: vec![],
             piece_bb: [0; PIECES_COUNT],
-            items: (*items).clone(),
+            items: [0; 64], //(*items).clone(),
             side_to_play,
             hash: 0,
             full_move_normalized: 0,
@@ -58,8 +61,18 @@ impl BoardState {
             eg: 0,
             checkers: 0,
             movements,
-            en_passant
+            en_passant,
+            bitboard: Bitboard::new()
         };
+
+        for i in 0..64 {
+            let item = items[i];
+            if item != NONE {
+                board_state.setPieceAt(item, i);
+            } else {
+                board_state.items[i] = NONE;
+            }
+        }
 
         board_state
     }
@@ -142,22 +155,22 @@ impl BoardState {
     //         return Piece.typeOf(items[square]);
     //     }
     //
-    //     public void setPieceAt(int piece, int square){
-    //
-    //         //update incremental evaluation terms
-    //         phase -= PIECE_PHASES[Piece.typeOf(piece)];
-    //         mg += MGS[piece][square];
-    //         eg += EGS[piece][square];
-    //         // materialScore += materialValue(piece);
-    //
-    //         //set piece on board
-    //         items[square] = piece;
-    //         piece_bb[piece] |= 1L << square;
-    //
-    //         //update hashes
-    //         hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
-    //     }
-    //
+        pub fn setPieceAt(&mut self, piece: Piece, square: usize) {
+
+            // //update incremental evaluation terms
+            // phase -= PIECE_PHASES[Piece.typeOf(piece)];
+            // mg += MGS[piece][square];
+            // eg += EGS[piece][square];
+            // // materialScore += materialValue(piece);
+
+            //set piece on board
+            self.items[square] = piece;
+            self.piece_bb[piece as usize] |= 1u64 << square;
+
+            // //update hashes
+            // hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
+        }
+
     //     public void removePiece(int square){
     //         int piece = items[square];
     //         phase += PIECE_PHASES[Piece.typeOf(piece)];
@@ -562,7 +575,7 @@ impl BoardState {
     //     }
 
     pub fn generate_legal_moves(&self, only_quiescence: bool) -> MoveList {
-        let moves = MoveList::new();
+        let mut moves = MoveList::new();
         let us = self.side_to_play;
         let them = flip(self.side_to_play);
 
@@ -579,39 +592,35 @@ impl BoardState {
         let our_rooks_and_queens = self.orthogonal_sliders(us);
         let their_rooks_and_queens = self.orthogonal_sliders(them);
 
+        // General purpose to keep down initialized primitives
+        let mut b1: u64 = 0;
+        let mut b2: u64 = 0;
+        let mut b3: u64 = 0;
+
+        // Squares that the king can't move to
+        let mut underAttack: u64 = 0;
+        underAttack |= Bitboard::pawnAttacks(self.bitboard_of(them, PAWN), them) | self.bitboard.getKingAttacks(their_king);
+
+        for b1 in BitIter(self.bitboard_of(them, KNIGHT)) {
+            underAttack |= self.bitboard.getKnightAttacks(b1 as usize);
+        }
+
+        for b1 in BitIter(their_bishops_and_queens) {
+            underAttack |= self.bitboard.get_bishop_attacks(b1.trailing_zeros() as usize, all ^ (1u64 << our_king as u8));
+        }
+
+        for b1 in BitIter(their_rooks_and_queens) {
+            underAttack |= self.bitboard.get_rook_attacks(b1.trailing_zeros() as usize, all ^ (1u64 << our_king as u8));
+        }
+
+        b1 = self.bitboard.getKingAttacks(our_king) & !(us_bb | underAttack);
+
+        moves.makeQuiets(our_king as u8, b1 & !them_bb);
+        moves.makeCaptures(our_king as u8, b1 & them_bb);
+
         moves
     }
 
-    //         // General purpose to keep down initialized primitives
-    //         long b1, b2, b3;
-    //
-    //         // Squares that the king can't move to
-    //         long underAttack = 0;
-    //         underAttack |= pawnAttacks(bitboard_of(them, PieceType.PAWN), them) | getKingAttacks(theirKing);
-    //
-    //         b1 = bitboard_of(them, PieceType.KNIGHT);
-    //         while (b1 != 0){
-    //             underAttack |= getKnightAttacks(Long.numberOfTrailingZeros(b1));
-    //             b1 = Bitboard.extractLsb(b1);
-    //         }
-    //
-    //
-    //         b1 = theirBishopsAndQueens;
-    //         while (b1 != 0){
-    //             underAttack |= getBishopAttacks(Long.numberOfTrailingZeros(b1), all ^ 1L << ourKing);
-    //             b1 = Bitboard.extractLsb(b1);
-    //         }
-    //
-    //         b1 = theirRooksAndQueens;
-    //         while (b1 != 0){
-    //             underAttack |= getRookAttacks(Long.numberOfTrailingZeros(b1), all ^ 1L << ourKing);
-    //             b1 = Bitboard.extractLsb(b1);
-    //         }
-    //
-    //         b1 = getKingAttacks(ourKing) & ~(usBb | underAttack);
-    //
-    //         moves.makeQ(ourKing, b1 & ~themBb);
-    //         moves.makeC(ourKing, b1 & themBb);
     //
     //         //captureMask contains destinations where there is an enemy piece that is checking the king and must be captured
     //         //quietMask contains squares where pieces must be moved to block an incoming attack on the king
@@ -946,4 +955,17 @@ impl BoardState {
     //             Long.numberOfTrailingZeros(bitboard_of(Side.WHITE, PieceType.KING)),
     //             Long.numberOfTrailingZeros(bitboard_of(Side.BLACK, PieceType.KING)));
     //     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::fen::{from_fen_default, to_fen};
+
+    #[test]
+    fn from_fen_startpos() {
+        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let moves = state.generate_legal_moves(false);
+        // assert_eq!(state.to_string(), );
+    }
 }

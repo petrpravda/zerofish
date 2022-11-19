@@ -5,6 +5,8 @@ pub struct Square {
 }
 
 impl Square {
+    pub const NO_SQUARE: u8 = 64;
+
     pub fn get_square_from_name(square: &str) -> u8 {
         let file = square.chars().nth(0).unwrap() as u8 - b'a';
         let rank = square.chars().nth(1).unwrap() as u8 - b'1';

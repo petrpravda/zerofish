@@ -1,4 +1,3 @@
 - reflect version number - CARGO_PKG_VERSION / uci.rs
-- impl to_fen()
-- test to_fen()
 - perfts
+- fill in missing functionality in setPieceAt

@@ -1,17 +1,193 @@
 #![allow(dead_code)]
 
+use std::time::Instant;
+use crate::bitboard::Direction::{AntiDiagonal, Diagonal, Horizontal, Vertical};
 use crate::side::{Side, WHITE};
 
+struct dir(i8, i8);
+
+const KNIGHT_MOVE_DIRECTIONS: [dir; 8] = [dir(-2, -1), dir(-2, 1), dir(2, -1), dir(2, 1),
+    dir(-1, -2), dir(-1, 2), dir(1, -2), dir(1, 2)];
+const KING_MOVE_DIRECTIONS: [dir; 8] = [dir(0, -1), dir(1, -1), dir(1, 0), dir(1, 1),
+    dir(0, 1), dir(-1, 1), dir(-1, 0), dir(-1, -1)];
+
+struct SquarePosition {
+    file: i8,
+    rank: i8
+}
+
+impl SquarePosition {
+    fn fromSquareIndex(square: u8) -> Self {
+        SquarePosition{ file: (square % 8) as i8, rank: (square / 8) as i8 }
+    }
+
+    fn toSquareIndex(&self) -> u8 {
+        (self.file + self.rank * 8) as u8
+    }
+
+    fn moveInDirection(&self, direction: &dir) -> SquarePosition {
+        SquarePosition{ file: self.file + direction.0, rank: self.rank + direction.1 }
+    }
+
+    fn isOnBoard(&self) -> bool {
+        return self.file >= 0 && self.file < 8 && self.rank >= 0 && self.rank < 8;
+    }
+}
+
+pub struct BitIter(pub u64);
+
+impl Iterator for BitIter {
+    type Item = u32; // TODO change to u8
+    fn next(&mut self) -> Option<u32> {
+        if self.0 == 0 {
+            return None;
+        }
+
+        let pos = self.0.trailing_zeros();
+        self.0 ^= 1 << pos as u64;
+        Some(pos)
+    }
+}
+
+#[repr(usize)]
+enum Direction {
+    Horizontal = 0,
+    Vertical = 1,
+    Diagonal = 2,
+    AntiDiagonal = 3,
+}
+
+const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields on the board
+
+pub const DIRECTIONS: [usize; 4] = [
+    Horizontal as usize,
+    Vertical as usize,
+    Diagonal as usize,
+    AntiDiagonal as usize,
+];
+
+#[derive(Copy, Clone)]
+struct LinePatterns {
+    lower: u64,
+    upper: u64,
+    combined: u64
+}
+
+const DIRECTION_COL_OFFSET: [i32; 4] = [-1, 0, 1, -1]; // TODO unify with dir()
+const DIRECTION_ROW_OFFSET: [i32; 4] = [0, -1, -1, -1];
+
+const fn calc_line_patterns() -> [LinePatterns; 64 * 4] {
+    let mut patterns: [LinePatterns; 64 * 4] = [LinePatterns{lower: 0, upper: 0, combined: 0}; 64 * 4];
+
+    let mut index = 0;
+    let mut dir_index = 0;
+    while dir_index < DIRECTIONS.len() {
+        let diri = DIRECTIONS[dir_index];
+        let mut pos = 0;
+        while pos < 64 {
+            let lower = calc_pattern(pos, DIRECTION_COL_OFFSET[diri], DIRECTION_ROW_OFFSET[diri]);
+            let upper = calc_pattern(pos, -DIRECTION_COL_OFFSET[diri], -DIRECTION_ROW_OFFSET[diri]);
+            let combined = upper | lower;
+            patterns[index] = LinePatterns{lower, upper, combined};
+            index += 1;
+            pos += 1;
+        }
+        dir_index += 1;
+    }
+
+    patterns
+}
+
+const fn calc_pattern(pos: i32, dir_col: i32, dir_row: i32) -> u64 {
+    let mut col = pos % 8;
+    let mut row = pos / 8;
+
+    let mut pattern: u64 = 0;
+
+    let mut i = 1;
+    while i <= MAX_FIELD_DISTANCE {
+        col += dir_col;
+        row += dir_row;
+
+        if col < 0 || col > 7 || row < 0 || row > 7 {
+            break;
+        }
+
+        let pattern_index = row * 8 + col;
+        pattern |= 1 << pattern_index as u64;
+
+        i += 1;
+    }
+
+    pattern
+}
+
 pub struct Bitboard {
-
-
+    KING_ATTACKS: [u64; 64],
+    KNIGHT_ATTACKS: [u64; 64],
+    LINE_MASKS: [LinePatterns; 64 * 4],
 }
 
 impl Bitboard {
+    pub fn new() -> Self {
+        let start = Instant::now();
+        // let WHITE_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(-1);
+        // let WHITE_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(-1);
+        // let BLACK_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(1);
+        // let WHITE_PAWN_FREESIDES: [u64; 64] = create_pawn_free_sides_patterns(-1);
+        // let BLACK_PAWN_FREESIDES: [u64; 64]= create_pawn_free_sides_patterns(1);
+        // let WHITE_KING_SHIELD: [u64; 64]= create_king_shield_patterns(-1);
+        // let BLACK_KING_SHIELD: [u64; 64]= create_king_shield_patterns(1);
+        // let KING_DANGER_ZONE: [u64; 64]= create_king_danger_zone_patterns();
+        // let LINE_MASKS: [LinePatterns; 64 * 4] = calc_line_patterns();
+        //
+        let result = Self {
+            KING_ATTACKS: Bitboard::generateAttacks(KING_MOVE_DIRECTIONS),
+            KNIGHT_ATTACKS: Bitboard::generateAttacks(KNIGHT_MOVE_DIRECTIONS),
+            LINE_MASKS: calc_line_patterns(),
+            // BLACK_PAWN_FREEPATH,
+            // WHITE_PAWN_FREESIDES,
+            // BLACK_PAWN_FREESIDES,
+            // WHITE_KING_SHIELD,
+            // BLACK_KING_SHIELD,
+            // KING_DANGER_ZONE,
+            // LINE_MASKS
+        };
+
+        let end = Instant::now();
+
+        let duration = end.duration_since(start);
+        let msg = format!("Bitboard initialized in {} μs", duration.as_micros());
+        let _msgRef = msg.as_str();
+        eprintln!("{}", msg);
+
+        // let elapsed_time = start.elapsed();
+        // eprintln!("Bitboard initialized in {} μs", elapsed_time.unwrap().as_micros());
+        result
+    }
+
+
+    fn generateAttacks(moveDirections: [dir; 8]) -> [u64; 64] {
+        let result = (0u8..64)
+            .map(|square| SquarePosition::fromSquareIndex(square))
+            .map(|sp| {
+                let res = moveDirections.iter().map(|md| sp.moveInDirection(md))
+                    .filter(|sp| sp.isOnBoard())
+                    .map(|sp| 1u64 << sp.toSquareIndex())
+                    .reduce(|a, b| a|b)
+                    .unwrap();
+                return res;
+            })
+            .collect::<Vec<u64>>();
+        let res2: [u64; 64] = result.try_into().unwrap();
+        res2
+    }
+
+
     //     pub const FULL_BOARD = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111L;
     //
-    //     private static final long LEFT_PAWN_ATTACK_MASK = 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110L;
-    //     private static final long RIGHT_PAWN_ATTACK_MASK = 0b1111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111L;
+    pub const LEFT_PAWN_ATTACK_MASK: u64 = 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110;
+    pub const RIGHT_PAWN_ATTACK_MASK: u64 = 0b1111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111;
     //
     //     pub const LIGHT_SQUARES = 0x55AA55AA55AA55AAL;
     //     pub const DARK_SQUARES = 0xAA55AA55AA55AA55L;
@@ -183,6 +359,22 @@ impl Bitboard {
     //         return result.toString();
     //     }
     //
+
+    fn get_line_attacks(occupied: u64, patterns: &LinePatterns) -> u64 {
+        // Uses the obstruction difference algorithm to determine line attacks
+        // https://www.chessprogramming.org/Obstruction_Difference
+        let lower = patterns.lower & occupied;
+        let upper = patterns.upper & occupied;
+        let ms1b = 0x8000000000000000 >> ((lower | 1).leading_zeros() as u64);
+        let ls1b = upper & upper.wrapping_neg();
+        let odiff = ls1b.wrapping_shl(1).wrapping_sub(ms1b);
+        patterns.combined & odiff
+
+        // TODO
+        // odiff = upper ^ (upper - ms1B); // Daniel Infuehr's improvement
+        // return pMask->lineEx & odiff; // (pMask->lower | pMask->upper) & odiff;
+    }
+
     //     public static long getLineAttacks(long occupied, LineAttackMask patterns) {
     //         //  https://www.chessprogramming.org/Obstruction_Difference
     //         long lower = patterns.lower & occupied;
@@ -203,6 +395,8 @@ impl Bitboard {
     //         return combined & diff;
     //     }
     //
+
+
     //     public record LineAttackMask(long lower, long upper, long combined) {
     //     }
     //
@@ -251,11 +445,18 @@ impl Bitboard {
     //         return pattern;
     //     }
     //
-    //     public static long getBishopAttacks(int sq, long occ) {
-    //         return getLineAttacks(occ, LINE_MASKS[Directions.Diagonal.maskIndex(sq)])
-    //         | getLineAttacks(occ, LINE_MASKS[Directions.AntiDiagonal.maskIndex(sq)]);
-    //     }
-    //
+
+    pub fn get_bishop_attacks(&self, sq: usize, occupied: u64) -> u64 {
+        Bitboard::get_line_attacks(occupied, unsafe { self.LINE_MASKS.get_unchecked(sq + (Diagonal as usize * 64)) })
+            | Bitboard::get_line_attacks(occupied, unsafe { self.LINE_MASKS.get_unchecked(sq as usize + (AntiDiagonal as usize * 64)) })
+    }
+
+    pub fn get_rook_attacks(&self, sq: usize, occupied: u64) -> u64 {
+        Bitboard::get_line_attacks(occupied, unsafe { self.LINE_MASKS.get_unchecked(sq as usize + (Horizontal as usize * 64)) })
+            | Bitboard::get_line_attacks(occupied, unsafe { self.LINE_MASKS.get_unchecked(sq as usize + (Vertical as usize * 64)) })
+    }
+
+
     //     public static long getRookAttacks(int sq, long occ) {
     //         return getLineAttacks(occ, LINE_MASKS[Directions.Horizontal.maskIndex(sq)])
     //                 | getLineAttacks(occ, LINE_MASKS[Directions.Vertical.maskIndex(sq)]);
@@ -269,56 +470,45 @@ impl Bitboard {
     //         return getBishopAttacks(sq, occ) | getRookAttacks(sq, occ);
     //     }
     //
-    //     public static long getKnightAttacks(int sq) {
-    //         return KNIGHT_ATTACKS[sq];
-    //     }
-    //
-    //
-    //     public static long getKingAttacks(int sq) {
-    //         return KING_ATTACKS[sq];
-    //     }
-    //
-    //     public static long whiteLeftPawnAttacks(long pawns) {
-    //         return (pawns & LEFT_PAWN_ATTACK_MASK) << 7;
-    //     }
-    //
-    //     public static long whiteRightPawnAttacks(long pawns) {
-    //         return (pawns & RIGHT_PAWN_ATTACK_MASK) << 9;
-    //     }
-    //
-    //     public static long blackLeftPawnAttacks(long pawns) {
-    //         return (pawns & LEFT_PAWN_ATTACK_MASK) >>> 9;
-    //     }
-    //
-    //     public static long blackRightPawnAttacks(long pawns) {
-    //         return (pawns & RIGHT_PAWN_ATTACK_MASK) >>> 7;
-    //     }
-    //
-    //     public static long pawnAttacks(int square, int side) {
-    //         long bb = 1L << square;
-    //         if (side == Side.WHITE) {
-    //             return whiteLeftPawnAttacks(bb) | whiteRightPawnAttacks(bb);
-    //         } else {
-    //             return blackLeftPawnAttacks(bb) | blackRightPawnAttacks(bb);
-    //         }
-    //     }
-    //
-    //     public static long pawnAttacks(long pawns, int side){
-    //         return side == Side.WHITE ? ((pawns & LEFT_PAWN_ATTACK_MASK) << 7) | ((pawns & RIGHT_PAWN_ATTACK_MASK) << 9) :
-    //                 ((pawns & LEFT_PAWN_ATTACK_MASK) >>> 9) | ((pawns & RIGHT_PAWN_ATTACK_MASK) >>> 7);
-    //     }
-    //
-    //     private static long[] generateAttacks(MoveDirection[] moveDirections) {
-    //         return IntStream.range(0, 64)
-    //                 .mapToObj(SquarePosition::fromSquareIndex)
-    //                 .mapToLong(position -> Arrays.stream(moveDirections).map(position::moveInDirection)
-    //                     .filter(SquarePosition::isOnBoard)
-    //                     .mapToLong(x -> 1L << x.toSquareIndex())
-    //                     .reduce(0, (a, b) -> a | b))
-    //                 .toArray();
-    //     }
-    //
-    //
+        pub fn getKnightAttacks(&self, sq: usize) -> u64 {
+            return self.KNIGHT_ATTACKS[sq];
+        }
+
+        pub fn getKingAttacks(&self, sq: usize) -> u64 {
+            return self.KING_ATTACKS[sq];
+        }
+
+        pub fn whiteLeftPawnAttacks(pawns: u64) -> u64 {
+            return (pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) << 7;
+        }
+
+        pub fn whiteRightPawnAttacks(pawns: u64) -> u64 {
+            return (pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) << 9;
+        }
+
+        pub fn blackLeftPawnAttacks(pawns: u64) -> u64 {
+            return (pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) >> 9;
+        }
+
+        pub fn blackRightPawnAttacks(pawns: u64) -> u64 {
+            return (pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) >> 7;
+        }
+
+        pub fn pawnAttacksFromSquare(square: u8, side: Side) -> u64 {
+            let bb = 1u64 << square;
+            match side {
+                WHITE => Bitboard::whiteLeftPawnAttacks(bb) | Bitboard::whiteRightPawnAttacks(bb),
+                _ => Bitboard::blackLeftPawnAttacks(bb) | Bitboard::blackRightPawnAttacks(bb)
+            }
+        }
+
+        pub fn pawnAttacks(pawns: u64, side: Side) -> u64 {
+            match side {
+                WHITE => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) << 7) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) << 9),
+                _ => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) >> 9) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) >> 7)
+            }
+        }
+
         pub fn castling_pieces_kingside_mask(side: Side) -> u64 {
             match side {
                 WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BIT_PATTERN,
