@@ -203,10 +203,10 @@ impl Bitboard {
     // //    BLACK_PAWN_FREEPATH = create_pawn_free_path_patterns(1);
     //
     //
-    //     public static final long[] PAWN_DOUBLE_PUSH_LINES = {
-    //             0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000L,
-    //             0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000L,
-    //     };
+    pub const PAWN_DOUBLE_PUSH_LINES: [u64; 2] = [
+            0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000,
+            0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000,
+    ];
     //     public static final long[] PAWN_RANKS = {
     //             0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000L,
     //             0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000L,
@@ -306,11 +306,14 @@ impl Bitboard {
     //
     //     private final static long[] KNIGHT_ATTACKS = generateAttacks(KNIGHT_MOVE_DIRECTIONS);
     //     private final static long[] KING_ATTACKS = generateAttacks(KING_MOVE_DIRECTIONS);
-    //
-    //     public static long push(long l, int side) {
-    //         return side == Side.WHITE ? l << 8 : l >>> 8;
-    //     }
-    //
+
+    pub fn push(l: u64, side: Side) -> u64 {
+        match side {
+            WHITE => l << 8,
+            _ => l >> 8
+        }
+    }
+
     //     public record SquarePosition(int file, int rank) {
     //         public static SquarePosition fromSquareIndex(int square) {
     //             return new SquarePosition(square % 8, square / 8);

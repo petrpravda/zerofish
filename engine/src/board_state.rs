@@ -745,33 +745,28 @@ impl BoardState {
                 moves.makeCaptures(s as u8, b2 & captureMask);
             }
 
-            // // for each pinned pawn
-            // b1 = ~notPinned & bitboard_of(us, PieceType.PAWN);
-            // while (b1 != 0){
-            //     s = Long.numberOfTrailingZeros(b1);
-            //     b1 = Bitboard.extractLsb(b1);
-            //
-            //     if (((1L << s) & PAWN_FINAL_RANKS) != 0L) {
-            //         b2 = pawnAttacks(s, us) & captureMask & line(ourKing, s);
-            //         moves.makePC(s, b2);
-            //     }
-            //     else{
-            //         b2 = pawnAttacks(s, us) & themBb & line(s, ourKing);
-            //         moves.makeC(s, b2);
-            //
-            //         if (!onlyQuiescence) {
-            //             //single pawn pushes
-            //             b2 = Bitboard.push(1L << s, us) & ~all & line(ourKing, s);
-            //             b3 = Bitboard.push(b2 & PAWN_DOUBLE_PUSH_LINES[us], us) & ~all & line(ourKing, s);
-            //
-            //             moves.makeQ(s, b2);
-            //             moves.makeDP(s, b3);
-            //         }
-            //     }
-            // }
-            // //Pinned knights cannot move anywhere, so we're done with pinned pieces.
-            // break;
+            // for each pinned pawn
+            b1 = !notPinned & self.bitboard_of(us, PAWN);
+            for s in BitIter(b1) {
+                if ((1u64 << s) & Bitboard::PAWN_FINAL_RANKS) != 0 {
+                    b2 = Bitboard::pawnAttacksFromSquare(s as u8, us) & captureMask & self.bitboard.line(our_king as u8, s as u8);
+                    moves.makePromotionCaptures(s as u8, b2);
+                } else {
+                    b2 = Bitboard::pawnAttacksFromSquare(s as u8, us) & them_bb & self.bitboard.line(s as u8, our_king as u8);
+                    moves.makeCaptures(s as u8, b2);
 
+                    if !only_quiescence {
+                        //single pawn pushes
+                        b2 = Bitboard::push(1u64 << s, us) & !all & self.bitboard.line(our_king as u8, s as u8);
+                        b3 = Bitboard::push(b2 & Bitboard::PAWN_DOUBLE_PUSH_LINES[us as usize], us) & !all & self.bitboard.line(our_king as u8, s as u8);
+
+                        moves.makeQuiets(s as u8, b2);
+                        moves.makeDoublePushes(s as u8, b3);
+                    }
+                }
+            }
+
+            // pinned knights cannot move anyway, so let them stay
         }
 
 

@@ -144,6 +144,21 @@ impl MoveList {
         }
     }
 
+    pub fn makePromotionCaptures(&mut self, from: u8, targets: u64) {
+        for to in BitIter(targets) {
+            self.moves.push(Move::newFromFlags(from, to as u8, Move::PC_QUEEN));
+            self.moves.push(Move::newFromFlags(from, to as u8, Move::PC_KNIGHT));
+            self.moves.push(Move::newFromFlags(from, to as u8, Move::PC_ROOK));
+            self.moves.push(Move::newFromFlags(from, to as u8, Move::PC_BISHOP));
+        }
+    }
+
+    pub fn makeDoublePushes(&mut self, from: u8, targets: u64) {
+        for to in BitIter(targets) {
+            self.moves.push(Move::newFromFlags(from, to as u8, Move::DOUBLE_PUSH));
+        }
+    }
+
     pub fn add(&mut self, mowe: Move) {
         self.moves.push(mowe);
     }
