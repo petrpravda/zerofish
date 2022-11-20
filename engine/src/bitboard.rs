@@ -3,6 +3,7 @@
 use std::time::Instant;
 use crate::bitboard::Direction::{AntiDiagonal, Diagonal, Horizontal, Vertical};
 use crate::side::{Side, WHITE};
+use crate::square::Square;
 
 struct dir(i8, i8);
 
@@ -126,6 +127,7 @@ pub struct Bitboard {
     KING_ATTACKS: [u64; 64],
     KNIGHT_ATTACKS: [u64; 64],
     LINE_MASKS: [LinePatterns; 64 * 4],
+    BB_SQUARES_BETWEEN: [[u64; 64]; 64],
 }
 
 impl Bitboard {
@@ -141,10 +143,11 @@ impl Bitboard {
         // let KING_DANGER_ZONE: [u64; 64]= create_king_danger_zone_patterns();
         // let LINE_MASKS: [LinePatterns; 64 * 4] = calc_line_patterns();
         //
-        let result = Self {
+        let mut result = Self {
             KING_ATTACKS: Bitboard::generateAttacks(KING_MOVE_DIRECTIONS),
             KNIGHT_ATTACKS: Bitboard::generateAttacks(KNIGHT_MOVE_DIRECTIONS),
             LINE_MASKS: calc_line_patterns(),
+            BB_SQUARES_BETWEEN: [[0; 64]; 64],
             // BLACK_PAWN_FREEPATH,
             // WHITE_PAWN_FREESIDES,
             // BLACK_PAWN_FREESIDES,
@@ -153,6 +156,7 @@ impl Bitboard {
             // KING_DANGER_ZONE,
             // LINE_MASKS
         };
+        result.BB_SQUARES_BETWEEN = result.calc_squares_between();
 
         let end = Instant::now();
 
@@ -332,9 +336,9 @@ impl Bitboard {
     //         return Long.numberOfTrailingZeros(bb);
     //     }
     //
-    //     public static long between(int sq1, int sq2){
-    //         return BB_SQUARES_BETWEEN[sq1][sq2];
-    //     }
+    pub fn between(&self, sq1: u8, sq2: u8) -> u64 {
+        return self.BB_SQUARES_BETWEEN[sq1 as usize][sq2 as usize];
+    }
     //
     //     public static long line(int sq1, int sq2){
     //         return BB_LINES[sq1][sq2];
@@ -570,4 +574,24 @@ impl Bitboard {
     //             default -> 0L;
     //         };
     //     }
+
+    fn calc_squares_between(&self) -> [[u64; 64]; 64] {
+        let mut result = [[0; 64]; 64];
+        for sq1 in Square::A1..=Square::H8 {
+            for sq2 in Square::A1..=Square::H8 {
+                let sqs = 1u64 << sq1 | 1u64 << sq2;
+                if Square::getFileIndex(sq1) == Square::getFileIndex(sq2)
+                    || Square::getRankIndex(sq1) == Square::getRankIndex(sq2) {
+                    result[sq1 as usize][sq2 as usize] =
+                        self.get_rook_attacks(sq1 as usize, sqs) & self.get_rook_attacks(sq2 as usize, sqs);
+                }
+                else if Square::getDiagonalIndex(sq1) == Square::getDiagonalIndex(sq1)
+                    || Square::getAntiDiagonalIndex(sq1) == Square::getAntiDiagonalIndex(sq2) {
+                    result[sq1 as usize][sq2 as usize] =
+                        self.get_bishop_attacks(sq1 as usize, sqs) & self.get_bishop_attacks(sq2 as usize, sqs);
+                }
+            }
+        }
+        result
+    }
 }

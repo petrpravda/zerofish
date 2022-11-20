@@ -143,6 +143,10 @@ impl MoveList {
             self.moves.push(Move::newFromFlags(from, to as u8, Move::CAPTURE));
         }
     }
+
+    pub fn add(&mut self, mowe: Move) {
+        self.moves.push(mowe);
+    }
 }
 
 impl MoveList {

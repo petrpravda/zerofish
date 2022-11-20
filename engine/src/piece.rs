@@ -67,9 +67,9 @@ pub type Piece = u8;
 //
 //     public static int flip(int piece) { return piece ^ 8; }
 //
-//     public static int typeOf(int piece){
-//         return piece & 0b111;
-//     }
+    pub fn typeOf(piece: Piece) -> PieceType {
+         piece & 0b111
+    }
 //
 //     public static int sideOf(int piece){
 //         return (piece & 0b1000) >>> 3;
