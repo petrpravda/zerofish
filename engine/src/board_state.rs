@@ -5,6 +5,7 @@ use crate::bitboard::{Bitboard, BitIter};
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, KNIGHT, make_piece, NONE, PAWN, Piece, PIECES_COUNT, PieceType, to_piece_char, typeOf, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::r#move::{Move, MoveList};
 use crate::side::{BLACK, flip, Side, WHITE};
+use crate::square::Square;
 
 //     public static int TOTAL_PHASE = 24;
 //     public static int[] PIECE_PHASES = {0, 1, 1, 2, 4, 0};
@@ -150,11 +151,11 @@ impl BoardState {
     //     public int pieceAt(int square){
     //         return items[square];
     //     }
-    //
-    //     public int pieceTypeAt(int square){
-    //         return Piece.typeOf(items[square]);
-    //     }
-    //
+
+        pub fn pieceTypeAt(&self, square: u8) -> PieceType {
+            return typeOf(self.items[square as usize]);
+        }
+
         pub fn setPieceAt(&mut self, piece: Piece, square: usize) {
 
             // //update incremental evaluation terms
@@ -634,7 +635,7 @@ impl BoardState {
                 | (Bitboard::pawnAttacksFromSquare(our_king as u8, us) & self.bitboard_of(them, PAWN));
 
         // ray candidates to our king
-        let candidates = (self.bitboard.get_rook_attacks(our_king, them_bb) & their_rooks_and_queens)
+        let mut candidates = (self.bitboard.get_rook_attacks(our_king, them_bb) & their_rooks_and_queens)
                 | (self.bitboard.get_bishop_attacks(our_king, them_bb) & their_bishops_and_queens);
 
         let mut pinned: u64 = 0;
@@ -676,114 +677,103 @@ impl BoardState {
                         moves.add(Move::newFromFlags(b1.trailing_zeros() as u8, enPassantSquare as u8, Move::EN_PASSANT));
                     }
                 }
-                // FALL THROUGH INTENTIONAL
-                // KNIGHT =>
-                //
-                for b1 in BitIter(self.attackersFrom(checkerSquare as u8, all, us) & notPinned) {
 
+                // capture the checking piece
+                for sq in BitIter(self.attackersFrom(checkerSquare as u8, all, us) & notPinned) {
+                    if self.pieceTypeAt(sq as u8) == PAWN && (1u64 << sq & Bitboard::PAWN_FINAL_RANKS) != 0u64 {
+                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::PC_QUEEN));
+                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::PC_ROOK));
+                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::PC_KNIGHT));
+                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::PC_BISHOP));
+                    }
+                    else {
+                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::CAPTURE));
+                    }
                 }
-                // while (b1 != 0){
-                //     int sq = Long.numberOfTrailingZeros(b1);
-                //     b1 = Bitboard.extractLsb(b1);
-                //     if (pieceTypeAt(sq) == PieceType.PAWN && (1L << sq & PAWN_FINAL_RANKS) != 0L) {
-                //         moves.add(new Move(sq, checkerSquare, Move.PC_QUEEN));
-                //         moves.add(new Move(sq, checkerSquare, Move.PC_ROOK));
-                //         moves.add(new Move(sq, checkerSquare, Move.PC_KNIGHT));
-                //         moves.add(new Move(sq, checkerSquare, Move.PC_BISHOP));
-                //     }
-                //     else {
-                //         moves.add(new Move(sq, checkerSquare, Move.CAPTURE));
-                //     }
-                // }
-                // return moves;
-                // _ =>
+                return moves;
             }
         // our king is not checked
         } else {
+            captureMask = them_bb;
+
+            quietMask = !all;
+
+            if self.en_passant != 0u64 {
+                let enPassantSquare = self.en_passant.trailing_zeros();
+                b2 = Bitboard::pawnAttacksFromSquare(enPassantSquare as u8, them) & self.bitboard_of(us, PAWN);
+                // b2 holds pawns that can do an ep capture
+                for s in BitIter(b2 & notPinned) {
+                    // s hold square from which pawn attack to epsq can be done
+                    // s = Long.numberOfTrailingZeros(b1);
+                    // b1 = Bitboard.extractLsb(b1);
+
+    //                        long attacks = Attacks.slidingAttacks(ourKing,
+    //                                all ^ 1L << s) ^ Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)),
+    //                                Rank.getBb(Square.getRank(ourKing)));
+
+                    // Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)) holds pawn which can be en-passant taken
+                    let qqq = them_bb ^ (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 });
+                    candidates = (self.bitboard.get_rook_attacks(our_king, qqq | us_bb) & their_rooks_and_queens)
+                            | (self.bitboard.get_bishop_attacks(our_king, qqq | us_bb) & their_bishops_and_queens);
+
+                    if candidates == 0 {
+                        moves.add(Move::newFromFlags(s as u8, enPassantSquare as u8, Move::EN_PASSANT));
+                    }
+                }
+            }
+
+            if !only_quiescence {
+                if 0 == ((self.movements & Bitboard::castling_pieces_kingside_mask(us)) | ((all | underAttack) & Bitboard::castlingBlockersKingsideMask(us))) {
+                    moves.add(if us == WHITE { Move::newFromFlags(Square::E1, Square::G1, Move::OO) }
+                              else { Move::newFromFlags(Square::E8, Square::G8, Move::OO) });
+                }
+
+                if 0 == ((self.movements & Bitboard::castling_pieces_queenside_mask(us)) |
+                        ((all | (underAttack & !Bitboard::ignoreOOODanger(us))) & Bitboard::castlingBlockersQueensideMask(us))) {
+                    moves.add(if us == WHITE { Move::newFromFlags(Square::E1, Square::C1, Move::OOO) }
+                              else { Move::newFromFlags(Square::E8, Square::C8, Move::OOO)});
+                }
+            }
+
+            // all pinned sliding pieces can only eliminate the threat or move while staying pinned
+            b1 = !(notPinned | self.bitboard_of(us, KNIGHT));
+            for s in BitIter(b1) {
+                b2 = self.bitboard.attacks(self.pieceTypeAt(s as u8), s as u8, all) & self.bitboard.line(our_king as u8, s as u8);
+                if !only_quiescence {
+                    moves.makeQuiets(s as u8, b2 & quietMask);
+                }
+                moves.makeCaptures(s as u8, b2 & captureMask);
+            }
+
+            // // for each pinned pawn
+            // b1 = ~notPinned & bitboard_of(us, PieceType.PAWN);
+            // while (b1 != 0){
+            //     s = Long.numberOfTrailingZeros(b1);
+            //     b1 = Bitboard.extractLsb(b1);
+            //
+            //     if (((1L << s) & PAWN_FINAL_RANKS) != 0L) {
+            //         b2 = pawnAttacks(s, us) & captureMask & line(ourKing, s);
+            //         moves.makePC(s, b2);
+            //     }
+            //     else{
+            //         b2 = pawnAttacks(s, us) & themBb & line(s, ourKing);
+            //         moves.makeC(s, b2);
+            //
+            //         if (!onlyQuiescence) {
+            //             //single pawn pushes
+            //             b2 = Bitboard.push(1L << s, us) & ~all & line(ourKing, s);
+            //             b3 = Bitboard.push(b2 & PAWN_DOUBLE_PUSH_LINES[us], us) & ~all & line(ourKing, s);
+            //
+            //             moves.makeQ(s, b2);
+            //             moves.makeDP(s, b3);
+            //         }
+            //     }
+            // }
+            // //Pinned knights cannot move anywhere, so we're done with pinned pieces.
+            // break;
 
         }
 
-//             case 2:
-//                 return moves;
-//             case 1: {
-//             }
-//             default:
-//                 captureMask = themBb;
-//
-//                 quietMask = ~all;
-//
-//                 if (enPassant != 0L) {
-//                     int enPassantSquare = Long.numberOfTrailingZeros(enPassant);
-//                     b2 = pawnAttacks(enPassantSquare, them) & bitboard_of(us, PieceType.PAWN);
-//                     // b2 holds pawns that can do an ep capture
-//                     b1 = b2 & notPinned;
-//                     while (b1 != 0) {
-//                         // s hold square from which pawn attack to epsq can be done
-//                         s = Long.numberOfTrailingZeros(b1);
-//                         b1 = Bitboard.extractLsb(b1);
-//
-// //                        long attacks = Attacks.slidingAttacks(ourKing,
-// //                                all ^ 1L << s) ^ Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)),
-// //                                Rank.getBb(Square.getRank(ourKing)));
-//
-//                         // Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)) holds pawn which can be en-passant taken
-//                         long qqq = themBb ^ (us == Side.WHITE ? enPassant >>> 8 : enPassant << 8);
-//                         candidates = (getRookAttacks(ourKing, qqq | usBb) & theirRooksAndQueens)
-//                                 | (getBishopAttacks(ourKing, qqq | usBb) & theirBishopsAndQueens);
-//
-//                         if (candidates == 0 /*&& (attacks & theirOrthSliders) == 0*/)
-//                             moves.add(new Move(s, enPassantSquare, Move.EN_PASSANT));
-//                     }
-//                 }
-//
-//                 if (!onlyQuiescence) {
-//                     if (0 == ((this.movements & Bitboard.castling_pieces_kingside_mask(us)) | ((all | underAttack) & Bitboard.castlingBlockersKingsideMask(us))))
-//                         moves.add(us == Side.WHITE ? new Move(E1, G1, Move.OO) : new Move(E8, G8, Move.OO));
-//
-//                     if (0 == ((this.movements & Bitboard.castling_pieces_queenside_mask(us)) |
-//                             ((all | (underAttack & ~ignoreOOODanger(us))) & Bitboard.castlingBlockersQueensideMask(us))))
-//                         moves.add(us == Side.WHITE ? new Move(E1, C1, Move.OOO) : new Move(E8, C8, Move.OOO));
-//                 }
-//
-//                 // For each pinned rook, bishop, or queen...
-//                 b1 = ~(notPinned | bitboard_of(us, PieceType.KNIGHT));
-//                 while (b1 != 0){
-//                     s = Long.numberOfTrailingZeros(b1);
-//                     b1 = Bitboard.extractLsb(b1);
-//
-//                     b2 = attacks(Piece.typeOf(items[s]), s, all) & line(ourKing, s);
-//                     if (!onlyQuiescence) {
-//                         moves.makeQ(s, b2 & quietMask);
-//                     }
-//                     moves.makeC(s, b2 & captureMask);
-//                 }
-//
-//                 // for each pinned pawn
-//                 b1 = ~notPinned & bitboard_of(us, PieceType.PAWN);
-//                 while (b1 != 0){
-//                     s = Long.numberOfTrailingZeros(b1);
-//                     b1 = Bitboard.extractLsb(b1);
-//
-//                     if (((1L << s) & PAWN_FINAL_RANKS) != 0L) {
-//                         b2 = pawnAttacks(s, us) & captureMask & line(ourKing, s);
-//                         moves.makePC(s, b2);
-//                     }
-//                     else{
-//                         b2 = pawnAttacks(s, us) & themBb & line(s, ourKing);
-//                         moves.makeC(s, b2);
-//
-//                         if (!onlyQuiescence) {
-//                             //single pawn pushes
-//                             b2 = Bitboard.push(1L << s, us) & ~all & line(ourKing, s);
-//                             b3 = Bitboard.push(b2 & PAWN_DOUBLE_PUSH_LINES[us], us) & ~all & line(ourKing, s);
-//
-//                             moves.makeQ(s, b2);
-//                             moves.makeDP(s, b3);
-//                         }
-//                     }
-//                 }
-//                 //Pinned knights cannot move anywhere, so we're done with pinned pieces.
-//                 break;
 
         moves
     }

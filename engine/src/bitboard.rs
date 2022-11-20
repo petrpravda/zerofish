@@ -2,6 +2,7 @@
 
 use std::time::Instant;
 use crate::bitboard::Direction::{AntiDiagonal, Diagonal, Horizontal, Vertical};
+use crate::piece::PieceType;
 use crate::side::{Side, WHITE};
 use crate::square::Square;
 
@@ -128,6 +129,7 @@ pub struct Bitboard {
     KNIGHT_ATTACKS: [u64; 64],
     LINE_MASKS: [LinePatterns; 64 * 4],
     BB_SQUARES_BETWEEN: [[u64; 64]; 64],
+    BB_LINES: [[u64; 64]; 64],
 }
 
 impl Bitboard {
@@ -148,6 +150,7 @@ impl Bitboard {
             KNIGHT_ATTACKS: Bitboard::generateAttacks(KNIGHT_MOVE_DIRECTIONS),
             LINE_MASKS: calc_line_patterns(),
             BB_SQUARES_BETWEEN: [[0; 64]; 64],
+            BB_LINES: [[0; 64]; 64],
             // BLACK_PAWN_FREEPATH,
             // WHITE_PAWN_FREESIDES,
             // BLACK_PAWN_FREESIDES,
@@ -156,7 +159,7 @@ impl Bitboard {
             // KING_DANGER_ZONE,
             // LINE_MASKS
         };
-        result.BB_SQUARES_BETWEEN = result.calc_squares_between();
+        (result.BB_SQUARES_BETWEEN, result.BB_LINES) = result.calc_squares_between();
 
         let end = Instant::now();
 
@@ -208,18 +211,18 @@ impl Bitboard {
     //             0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000L,
     //             0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000L,
     //     };
-    //     pub const PAWN_FINAL_RANKS = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111L;
-    //
-    //     // Patterns to check, whether the fields between king and rook are empty
-    //     pub const BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN =
-    //             0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000L;
-    //     pub const BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN =
-    //             0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000L;
-    //
-    //     pub const WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN =
-    //             0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000L;
-    //     pub const WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN =
-    //             0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110L;
+    pub const PAWN_FINAL_RANKS: u64 = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111;
+
+    // Patterns to check, whether the fields between king and rook are empty
+    pub const BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN: u64 =
+            0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+    pub const BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN: u64 =
+            0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+
+    pub const WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN: u64 =
+            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000;
+    pub const WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN: u64 =
+            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110;
 
 
     // Patterns to check, whether king and rook squares are not are empty
@@ -339,19 +342,20 @@ impl Bitboard {
     pub fn between(&self, sq1: u8, sq2: u8) -> u64 {
         return self.BB_SQUARES_BETWEEN[sq1 as usize][sq2 as usize];
     }
-    //
-    //     public static long line(int sq1, int sq2){
-    //         return BB_LINES[sq1][sq2];
-    //     }
-    //
+
+    pub fn line(&self, sq1: u8, sq2: u8) -> u64 {
+         self.BB_LINES[sq1 as usize][sq2 as usize]
+    }
+
     //     public static long extractLsb(long bb){
     //         return bb & (bb - 1);
     //     }
     //
-    //     public static long ignoreOOODanger(int side){ // TODO prozkoumat co to je
-    //         return side == Side.WHITE ? 0x2 : 0x200000000000000L;
-    //     }
-    //
+        pub fn ignoreOOODanger(side: Side) -> u64 {
+            match side { WHITE => 0x2,
+                _ => 0x200000000000000 }
+        }
+
     //     public static String bitboardToString(long bb){
     //         StringBuilder result = new StringBuilder();
     //         for (int rank = 56; rank >= 0; rank -= 8){
@@ -527,17 +531,17 @@ impl Bitboard {
             }
         }
 
-    //     public static long castlingBlockersKingsideMask(int side){
-    //         return side == Side.WHITE ? WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN :
-    //                 BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN;
-    //     }
-    //
-    //     public static long castlingBlockersQueensideMask(int side){
-    //         return side == Side.WHITE ? WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN :
-    //                 BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN;
-    //     }
-    //
-    //
+        pub fn castlingBlockersKingsideMask(side: Side) -> u64 {
+            match side { WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN,
+                    _ => Bitboard::BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN }
+        }
+
+        pub fn castlingBlockersQueensideMask(side: Side) -> u64 {
+            match side { WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN,
+                _ => Bitboard::BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN }
+        }
+
+
     //
     //     // . . X . . . . .
     //     // . . X . . . . .
@@ -563,35 +567,38 @@ impl Bitboard {
     // //
     // //        return patterns;
     // //    }
-    //
-    //     public static long attacks(int pieceType, int square, long occ){
-    //         return switch (pieceType) {
-    //             case PieceType.ROOK -> getRookAttacks(square, occ);
-    //             case PieceType.BISHOP -> getBishopAttacks(square, occ);
-    //             case PieceType.QUEEN -> getBishopAttacks(square, occ) | getRookAttacks(square, occ);
-    //             case PieceType.KING -> getKingAttacks(square);
-    //             case PieceType.KNIGHT -> getKnightAttacks(square);
-    //             default -> 0L;
-    //         };
-    //     }
 
-    fn calc_squares_between(&self) -> [[u64; 64]; 64] {
-        let mut result = [[0; 64]; 64];
+    pub fn attacks(&self, pieceType: PieceType, square: u8, occ: u64) -> u64 {
+        match pieceType {
+            ROOK => self.get_rook_attacks(square as usize, occ),
+            BISHOP => self.get_bishop_attacks(square as usize, occ),
+            QUEEN => self.get_bishop_attacks(square as usize, occ) | self.get_rook_attacks(square as usize, occ),
+            KING => self.getKingAttacks(square as usize),
+            KNIGHT => self.getKnightAttacks(square as usize),
+            _ => 0u64
+        }
+    }
+
+    fn calc_squares_between(&self) -> ([[u64; 64]; 64], [[u64; 64]; 64]) {
+        let mut result_between = [[0; 64]; 64];
+        let mut result_lines = [[0; 64]; 64];
         for sq1 in Square::A1..=Square::H8 {
             for sq2 in Square::A1..=Square::H8 {
                 let sqs = 1u64 << sq1 | 1u64 << sq2;
                 if Square::getFileIndex(sq1) == Square::getFileIndex(sq2)
                     || Square::getRankIndex(sq1) == Square::getRankIndex(sq2) {
-                    result[sq1 as usize][sq2 as usize] =
+                    result_between[sq1 as usize][sq2 as usize] =
                         self.get_rook_attacks(sq1 as usize, sqs) & self.get_rook_attacks(sq2 as usize, sqs);
+                    result_lines[sq1 as usize][sq2 as usize] = self.get_rook_attacks(sq1 as usize, 0) & self.get_rook_attacks(sq2 as usize, 0);
                 }
                 else if Square::getDiagonalIndex(sq1) == Square::getDiagonalIndex(sq1)
                     || Square::getAntiDiagonalIndex(sq1) == Square::getAntiDiagonalIndex(sq2) {
-                    result[sq1 as usize][sq2 as usize] =
+                    result_between[sq1 as usize][sq2 as usize] =
                         self.get_bishop_attacks(sq1 as usize, sqs) & self.get_bishop_attacks(sq2 as usize, sqs);
+                    result_lines[sq1 as usize][sq2 as usize] = self.get_bishop_attacks(sq1 as usize, 0) & self.get_bishop_attacks(sq2 as usize, 0);
                 }
             }
         }
-        result
+        (result_between, result_lines)
     }
 }
