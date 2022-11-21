@@ -1,3 +1,4 @@
 - reflect version number - CARGO_PKG_VERSION / uci.rs
 - perfts
 - fill in missing functionality in setPieceAt
+- ~/ChessProjects/wasmlearn/nextjs-wasm/wasm

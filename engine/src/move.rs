@@ -1,3 +1,4 @@
+use std::fmt;
 use crate::bitboard::BitIter;
 use crate::square::Square;
 
@@ -58,18 +59,29 @@ impl Move {
     // return this.bits == ((Move)other).bits();
     // return false;
     // }
-    //
-    // public String uci(){
-    // String promo = switch (this.flags()) {
-    // case Move.PC_BISHOP, Move.PR_BISHOP -> "b";
-    // case Move.PC_KNIGHT, Move.PR_KNIGHT -> "n";
-    // case Move.PC_ROOK, Move.PR_ROOK -> "r";
-    // case Move.PC_QUEEN, Move.PR_QUEEN -> "q";
-    // default -> "";
+
+    pub fn uci(&self) -> String {
+        let promo = match self.flags() {
+            Move::PC_BISHOP | Move::PR_BISHOP => "b",
+            Move::PC_KNIGHT | Move::PR_KNIGHT => "n",
+            Move::PC_ROOK | Move::PR_ROOK => "r",
+            Move::PC_QUEEN | Move::PR_QUEEN => "q",
+            _ => ""
+        };
+    //     String promo = switch (this.flags()) {
+    //     case Move.PC_BISHOP, Move.PR_BISHOP -> "b";
+    //     case Move.PC_KNIGHT, Move.PR_KNIGHT -> "n";
+    //     case Move.PC_ROOK, Move.PR_ROOK -> "r";
+    //     case Move.PC_QUEEN, Move.PR_QUEEN -> "q";
+    //     default -> "";
     // };
-    // return Square.getName(this.from()) + Square.getName(this.to()) + promo;
-    // }
-    //
+    //    Square.getName(this.from()) + Square.getName(this.to()) + promo;
+        format!("{}{}{}",
+               Square::get_name(self.from() as usize),
+               Square::get_name(self.to() as usize),
+               promo)
+    }
+
     // public void addToScore(int score){
     // sort_score += score;
     // }
@@ -126,12 +138,24 @@ impl Move {
     // }
 }
 
+impl fmt::Display for Move {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
 
 pub struct MoveList {
     pub moves: Vec<Move>,
 }
 
 impl MoveList {
+    pub fn new() -> Self {
+        MoveList {
+            moves: Vec::with_capacity(64)
+        }
+    }
+
     pub fn makeQuiets(&mut self, from: u8, targets: u64) {
         for to in BitIter(targets) {
             self.moves.push(Move::newFromFlags(from, to as u8, Move::QUIET));
@@ -162,12 +186,15 @@ impl MoveList {
     pub fn add(&mut self, mowe: Move) {
         self.moves.push(mowe);
     }
+
+    pub fn to_string(&self) -> String {
+        format!("length: {}", self.moves.len())
+    }
 }
 
-impl MoveList {
-    pub fn new() -> Self {
-        MoveList {
-            moves: Vec::with_capacity(64)
-        }
+impl fmt::Display for MoveList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ucis = self.moves.iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
+        write!(f, "Move list: {}", ucis)
     }
 }

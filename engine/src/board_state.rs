@@ -5,7 +5,7 @@ use crate::bitboard::{Bitboard, BitIter};
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, KNIGHT, make_piece, NONE, PAWN, Piece, PIECES_COUNT, PieceType, to_piece_char, typeOf, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::r#move::{Move, MoveList};
 use crate::side::{BLACK, flip, Side, WHITE};
-use crate::square::Square;
+use crate::square::{DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
 
 //     public static int TOTAL_PHASE = 24;
 //     public static int[] PIECE_PHASES = {0, 1, 1, 2, 4, 0};
@@ -769,123 +769,98 @@ impl BoardState {
             // pinned knights cannot move anyway, so let them stay
         }
 
+        //non-pinned knight moves.
+        b1 = self.bitboard_of(us, KNIGHT) & notPinned;
+        for s in BitIter(b1) {
+            b2 = self.bitboard.getKnightAttacks(s as usize);
+            moves.makeCaptures(s as u8, b2 & captureMask);
+            if !only_quiescence {
+                moves.makeQuiets(s as u8, b2 & quietMask);
+            }
+        }
+
+        b1 = our_bishops_and_queens & notPinned;
+        for s in BitIter(b1) {
+            b2 = self.bitboard.get_bishop_attacks(s as usize, all);
+            moves.makeCaptures(s as u8, b2 & captureMask);
+            if !only_quiescence {
+                moves.makeQuiets(s as u8, b2 & quietMask);
+            }
+        }
+
+        b1 = our_rooks_and_queens & notPinned;
+        for s in BitIter(b1) {
+            b2 = self.bitboard.get_rook_attacks(s as usize, all);
+            moves.makeCaptures(s as u8, b2 & captureMask);
+            if !only_quiescence {
+                moves.makeQuiets(s as u8, b2 & quietMask);
+            }
+        }
+
+        b1 = self.bitboard_of(us, PAWN) & notPinned & !Bitboard::PAWN_RANKS[us as usize];
+
+        if !only_quiescence {
+            // single pawn pushes
+            b2 = match us { WHITE => b1 << 8, _ => b1 >> 8} & !all;
+
+            //double pawn pushes
+            b3 = Bitboard::push(b2 & Bitboard::PAWN_DOUBLE_PUSH_LINES[us as usize], us) & quietMask;
+
+            b2 &= quietMask;
+
+            for s in BitIter(b2) {
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::QUIET));
+            }
+
+            for s in BitIter(b3) {
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(DOUBLE_FORWARD, us)) as u8, s as u8, Move::DOUBLE_PUSH));
+            }
+        }
+
+        b2 = (match us { WHITE => Bitboard::whiteLeftPawnAttacks(b1), _ => Bitboard::blackRightPawnAttacks(b1) }) & captureMask;
+        b3 = (match us { WHITE => Bitboard::whiteRightPawnAttacks(b1), _ => Bitboard::blackLeftPawnAttacks(b1) }) & captureMask;
+
+        for s in BitIter(b2) {
+            moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::CAPTURE));
+        }
+
+        for s in BitIter(b3) {
+            moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::CAPTURE));
+        }
+
+        b1 = self.bitboard_of(us, PAWN) & notPinned & Bitboard::PAWN_RANKS[us as usize];
+        if b1 != 0 {
+            if !only_quiescence {
+                b2 = match us { WHITE => b1 << 8, _ => b1 >> 8 } & quietMask;
+                for s in BitIter(b2) {
+                    moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_QUEEN));
+                    moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_KNIGHT));
+                    moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_ROOK));
+                    moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_BISHOP));
+                }
+            }
+
+            b2 = (match us { WHITE => Bitboard::whiteLeftPawnAttacks(b1), _ => Bitboard::blackRightPawnAttacks(b1) }) & captureMask;
+            b3 = (match us { WHITE => Bitboard::whiteRightPawnAttacks(b1), _ => Bitboard::blackLeftPawnAttacks(b1) }) & captureMask;
+
+            for s in BitIter(b2) {
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_QUEEN));
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_KNIGHT));
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_ROOK));
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_BISHOP));
+            }
+
+            for s in BitIter(b3) {
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_QUEEN));
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_KNIGHT));
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_ROOK));
+                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_BISHOP));
+            }
+        }
 
         moves
     }
 
-    //
-    //         //non-pinned knight moves.
-    //         b1 = bitboard_of(us, PieceType.KNIGHT) & notPinned;
-    //         while (b1 != 0){
-    //             s = Long.numberOfTrailingZeros(b1);
-    //             b1 = Bitboard.extractLsb(b1);
-    //             b2 = getKnightAttacks(s);
-    //             moves.makeC(s, b2 & captureMask);
-    //             if (!onlyQuiescence) {
-    //                 moves.makeQ(s, b2 & quietMask);
-    //             }
-    //         }
-    //
-    //         b1 = ourBishopsAndQueens & notPinned;
-    //         while (b1 != 0){
-    //             s = Long.numberOfTrailingZeros(b1);
-    //             b1 = Bitboard.extractLsb(b1);
-    //             b2 = getBishopAttacks(s, all);
-    //             moves.makeC(s, b2 & captureMask);
-    //             if (!onlyQuiescence) {
-    //                 moves.makeQ(s, b2 & quietMask);
-    //             }
-    //         }
-    //
-    //         b1 = ourRooksAndQueens & notPinned;
-    //         while(b1 != 0){
-    //             s = Long.numberOfTrailingZeros(b1);
-    //             b1 = Bitboard.extractLsb(b1);
-    //             b2 = getRookAttacks(s, all);
-    //             moves.makeC(s, b2 & captureMask);
-    //             if (!onlyQuiescence) {
-    //                 moves.makeQ(s, b2 & quietMask);
-    //             }
-    //         }
-    //
-    //         b1 = bitboard_of(us, PieceType.PAWN) & notPinned & ~PAWN_RANKS[us];
-    //
-    //         if (!onlyQuiescence) {
-    //             // single pawn pushes
-    //             b2 = (us == Side.WHITE ? b1 << 8 : b1 >>> 8) & ~all;
-    //
-    //             //double pawn pushes
-    //             b3 = Bitboard.push(b2 & PAWN_DOUBLE_PUSH_LINES[us], us) & quietMask;
-    //
-    //             b2 &= quietMask;
-    //
-    //             while (b2 != 0) {
-    //                 s = Long.numberOfTrailingZeros(b2);
-    //                 b2 = Bitboard.extractLsb(b2);
-    //                 moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.QUIET));
-    //             }
-    //
-    //             while (b3 != 0) {
-    //                 s = Long.numberOfTrailingZeros(b3);
-    //                 b3 = Bitboard.extractLsb(b3);
-    //                 moves.add(new Move(s - Square.direction(DOUBLE_FORWARD, us), s, Move.DOUBLE_PUSH));
-    //             }
-    //         }
-    //
-    //         b2 = (us == Side.WHITE ? whiteLeftPawnAttacks(b1) : blackRightPawnAttacks(b1)) & captureMask;
-    //         b3 = (us == Side.WHITE ? whiteRightPawnAttacks(b1) : blackLeftPawnAttacks(b1)) & captureMask;
-    //
-    //
-    //         while (b2 != 0){
-    //             s = Long.numberOfTrailingZeros(b2);
-    //             b2 = Bitboard.extractLsb(b2);
-    //             moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.CAPTURE));
-    //         }
-    //
-    //         while (b3 != 0){
-    //             s = Long.numberOfTrailingZeros(b3);
-    //             b3 = Bitboard.extractLsb(b3);
-    //             moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.CAPTURE));
-    //         }
-    //
-    //         b1 = bitboard_of(us, PieceType.PAWN) & notPinned & PAWN_RANKS[us];
-    //         if (b1 != 0){
-    //             if (!onlyQuiescence) {
-    //                 b2 = (us == Side.WHITE ? b1 << 8 : b1 >>> 8) & quietMask;
-    //                 while (b2 != 0) {
-    //                     s = Long.numberOfTrailingZeros(b2);
-    //                     b2 = Bitboard.extractLsb(b2);
-    //
-    //                     moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.PR_QUEEN));
-    //                     moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.PR_ROOK));
-    //                     moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.PR_KNIGHT));
-    //                     moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.PR_BISHOP));
-    //                 }
-    //             }
-    //
-    //             b2 = (us == Side.WHITE ? whiteLeftPawnAttacks(b1) : blackRightPawnAttacks(b1)) & captureMask;
-    //             b3 = (us == Side.WHITE ? whiteRightPawnAttacks(b1) : blackLeftPawnAttacks(b1)) & captureMask;
-    //
-    //             while (b2 != 0){
-    //                 s = Long.numberOfTrailingZeros(b2);
-    //                 b2 = Bitboard.extractLsb(b2);
-    //
-    //                 moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.PC_QUEEN));
-    //                 moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.PC_ROOK));
-    //                 moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.PC_KNIGHT));
-    //                 moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.PC_BISHOP));
-    //             }
-    //
-    //             while (b3 != 0){
-    //                 s = Long.numberOfTrailingZeros(b3);
-    //                 b3 = Bitboard.extractLsb(b3);
-    //
-    //                 moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.PC_QUEEN));
-    //                 moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.PC_ROOK));
-    //                 moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.PC_KNIGHT));
-    //                 moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.PC_BISHOP));
-    //             }
-    //         }
     //
     //         return moves;
     //     }
@@ -969,6 +944,7 @@ mod tests {
     fn from_fen_startpos() {
         let mut state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         let moves = state.generate_legal_moves(false);
+        println!("{}", moves);
         // assert_eq!(state.to_string(), );
     }
 }

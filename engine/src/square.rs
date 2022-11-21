@@ -1,5 +1,17 @@
 // const BOARD_FLIPPING: u8 = 0x38;
 
+use crate::side::Side;
+
+pub type Direction = i8;
+
+pub const FORWARD: Direction = 8;
+pub const BACK: Direction = -8;
+pub const RIGHT: Direction = 1;
+pub const LEFT: Direction = -1;
+pub const FORWARD_RIGHT: Direction = FORWARD + RIGHT;
+pub const FORWARD_LEFT: Direction = FORWARD + LEFT;
+pub const DOUBLE_FORWARD: Direction = FORWARD + FORWARD;
+
 pub struct Square {
 
 }
@@ -52,4 +64,7 @@ impl Square {
         Square::getRankIndex(square) + Square::getFileIndex(square)
     }
 
+    pub fn direction(direction: Direction, side: Side) -> Direction {
+        match side { WHITE => direction, _ => -direction }
+    }
 }
