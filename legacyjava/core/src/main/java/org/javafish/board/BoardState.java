@@ -312,40 +312,19 @@ public class BoardState implements Cloneable {
                 state.removePiece(move.to() + Square.direction(BACK, state.sideToPlay));
                 break;
             case Move.PR_KNIGHT:
-                state.removePiece(move.from());
-                state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.KNIGHT), move.to());
-                break;
             case Move.PR_BISHOP:
-                state.removePiece(move.from());
-                state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.BISHOP), move.to());
-                break;
             case Move.PR_ROOK:
-                state.removePiece(move.from());
-                state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.ROOK), move.to());
-                break;
             case Move.PR_QUEEN:
                 state.removePiece(move.from());
-                state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.QUEEN), move.to());
+                state.setPieceAt(Piece.makePiece(state.sideToPlay, move.getPieceType()), move.to());
                 break;
             case Move.PC_KNIGHT:
-                state.removePiece(move.from());
-                state.removePiece(move.to());
-                state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.KNIGHT), move.to());
-                break;
             case Move.PC_BISHOP:
-                state.removePiece(move.from());
-                state.removePiece(move.to());
-                state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.BISHOP), move.to());
-                break;
             case Move.PC_ROOK:
-                state.removePiece(move.from());
-                state.removePiece(move.to());
-                state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.ROOK), move.to());
-                break;
             case Move.PC_QUEEN:
                 state.removePiece(move.from());
                 state.removePiece(move.to());
-                state.setPieceAt(Piece.makePiece(state.sideToPlay, PieceType.QUEEN), move.to());
+                state.setPieceAt(Piece.makePiece(state.sideToPlay, move.getPieceType()), move.to());
                 break;
             case Move.CAPTURE:
                 state.halfMoveClock = 0;

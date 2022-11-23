@@ -1,6 +1,6 @@
 pub mod uci;
 mod engine;
-mod engine_thread;
+pub mod engine_thread;
 pub mod fen;
 pub mod bitboard;
 mod piece;

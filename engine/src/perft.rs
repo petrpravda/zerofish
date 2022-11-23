@@ -76,7 +76,7 @@ impl Perft {
 #[cfg(test)]
 mod tests {
     use crate::bitboard::Bitboard;
-    use crate::fen::{from_fen_default, START_POS, to_fen};
+    use crate::fen::{from_fen_default, START_POS};
     use crate::perft::Perft;
 
     #[test]

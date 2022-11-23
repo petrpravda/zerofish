@@ -1,3 +1,7 @@
+use crate::bitboard::Bitboard;
+use crate::board_state::BoardState;
+use crate::fen::{from_fen_default, START_POS};
+
 pub enum UciMessage {
     UciCommand(String),
     #[allow(dead_code)]
@@ -49,107 +53,22 @@ pub enum UciMessage {
 // }
 
 pub struct Engine {
-    // pub board: Board,
-    // pub movegen: MoveGenerator,
-    // pub hh: HistoryHeuristics,
-    // pub tt: TranspositionTable,
-    // pub search_result: String,
-    //
-    // pub starttime: Instant,
-    // pub timelimit_ms: i32,
-    //
-    // pub cancel_possible: bool,
-    // pub node_count: u64,
-    // pub log_every_second: bool,
-    // pub last_log_time: Instant,
-    // pub next_check_node_count: u64,
-    // pub current_depth: i32,
-    //
-    // pub is_stopped: bool,
-    //
-    // pub rnd: Random,
-    //
-    // options_modified: bool,
-    //
-    // test_positions: Vec<EvalBoardPos>
+    // bitboard: Bitboard,
+    // board_state: Option<BoardState>,
 }
-
-
-// fn extract_option(parts: &Vec<&str>, name: &str, default_value: i32) -> i32 {
-//     match parts.iter().position(|&item| item == name) {
-//         Some(pos) => {
-//             if pos + 1 >= parts.len() {
-//                 return default_value;
-//             }
-//
-//             match i32::from_str(parts[pos + 1]) {
-//                 Ok(value) => value,
-//                 Err(_) => default_value,
-//             }
-//         }
-//         None => default_value,
-//     }
-// }
-//
-// fn parse_position_cmd(parts: &Vec<&str>) -> String {
-//     if parts.is_empty() {
-//         eprintln!("position command: missing fen/startpos");
-//     }
-//
-//     let pos_end = parts
-//         .iter()
-//         .position(|&part| part.to_lowercase().as_str() == "moves")
-//         .unwrap_or_else(|| parts.len());
-//
-//     let pos_option = parts[1..pos_end].join(" ");
-//
-//     if pos_option.is_empty() {
-//         String::from(START_POS)
-//     } else {
-//         pos_option
-//     }
-// }
-//
-// fn parse_moves(idx: usize, parts: &Vec<&str>) -> Vec<UCIMove> {
-//     let mut moves: Vec<UCIMove> = Vec::new();
-//
-//     for i in (idx + 1)..parts.len() {
-//         match UCIMove::from_uci(parts[i]) {
-//             Some(m) => moves.push(m),
-//             None => {
-//                 eprintln!("could not parse move notation: {}", parts[i]);
-//                 return moves;
-//             }
-//         }
-//     }
-//
-//     moves
-// }
 
 impl Engine {
     #[allow(unused)]
     pub fn new_from_fen(fen: &str) -> Self {
-        Engine {
-            // board: create_from_fen(&fen),
-            // movegen: MoveGenerator::new(),
-            // hh: HistoryHeuristics::new(),
-            // tt: TranspositionTable::new(tt_size_mb),
-            // search_result: "".to_string(),
-            // starttime: Instant::now(),
-            // timelimit_ms: 0,
-            // cancel_possible: false,
-            // node_count: 0,
-            // log_every_second: false,
-            // last_log_time: Instant::now(),
-            // next_check_node_count: 0,
-            // current_depth: 0,
-            // is_stopped: false,
-            // options_modified: false,
-            // test_positions: Vec::new(),
-            // rnd: Random::new_with_seed(MySystem::current_time_millis())
-        }
-    }
+        let mut engine = Engine {
+            // bitboard: Bitboard::new(),
+            // board_state: None,
+        };
+        // let board_state = from_fen_default(fen, &engine.bitboard);
+        // engine.board_state = Some(board_state);
 
+        engine
+    }
 
     pub(crate) fn process_uci_command(&mut self, uci_command: String) -> String {
         let parts: Vec<&str> = uci_command.split_whitespace().collect();
@@ -173,7 +92,7 @@ impl Engine {
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     // output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
                     let output = "";
-                    println!("{}", output);
+                    println!("Display {}", output);
                     output.to_string()
                 }
 

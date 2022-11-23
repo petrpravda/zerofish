@@ -1,5 +1,6 @@
 use std::fmt;
 use crate::bitboard::BitIter;
+use crate::piece::PieceType;
 use crate::square::Square;
 
 pub struct Move {
@@ -58,6 +59,14 @@ impl Move {
     // if (other != null && getClass() == other.getClass())
     // return this.bits == ((Move)other).bits();
     // return false;
+    // }
+
+    pub fn getPieceType(&self) -> PieceType {
+        (self.flags() & 0b11) + 1
+    }
+
+    // public int getPieceTypeForSide(int sideToPlay) {
+    // return this.getPieceType() + sideToPlay * 8;
     // }
 
     pub fn uci(&self) -> String {
@@ -123,14 +132,6 @@ impl Move {
     // public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
     // String[] moves = movesDelimitedWithSpace.split(" ");
     // return fromUciString(moves[0]);
-    // }
-    //
-    // public int getPieceType() {
-    // return (flags() & 0b11) + 1;
-    // }
-    //
-    // public int getPieceTypeForSide(int sideToPlay) {
-    // return this.getPieceType() + sideToPlay * 8;
     // }
     //
     // public boolean isCastling() {

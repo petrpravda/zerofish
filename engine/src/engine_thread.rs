@@ -1,6 +1,7 @@
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
+use crate::bitboard::Bitboard;
 
 use crate::engine::{Engine, UciMessage};
 use crate::fen::START_POS;
@@ -10,14 +11,17 @@ use crate::fen::START_POS;
 pub struct EngineThread {
     pub rx: Receiver<UciMessage>,
     pub engine: Engine,
+    //bitboard: &'a Bitboard,
 }
 
 impl EngineThread {
     pub fn new_from_fen(rx: Receiver<UciMessage>, fen: &str) -> Self {
+        //let bitboard: &'a Bitboard = Bitboard::new();
         let engine = Engine::new_from_fen(fen);
         EngineThread {
             rx,
-            engine
+            engine,
+//            bitboard,
         }
     }
 

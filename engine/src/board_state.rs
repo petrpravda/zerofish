@@ -5,7 +5,7 @@ use crate::bitboard::{Bitboard, BitIter};
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, KNIGHT, make_piece, NONE, PAWN, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::r#move::{Move, MoveList};
 use crate::side::{BLACK, flip, Side, WHITE};
-use crate::square::{DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
+use crate::square::{BACK, DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
 
 //     public static int TOTAL_PHASE = 24;
 //     public static int[] PIECE_PHASES = {0, 1, 1, 2, 4, 0};
@@ -175,41 +175,40 @@ impl<'a> BoardState<'a> {
             // hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
         }
 
-    //     public void removePiece(int square){
-    //         int piece = items[square];
-    //         phase += PIECE_PHASES[Piece.type_of(piece)];
-    //         mg -= MGS[piece][square]; // EConstants.PIECE_TABLES[piece][square];
-    //         eg -= EGS[piece][square];
-    //
-    //         //update hash tables
-    //         hash ^= Zobrist.ZOBRIST_TABLE[items[square]][square];
-    //
-    //         //update board
-    //         piece_bb[items[square]] &= ~(1L << square);
-    //         items[square] = Piece.NONE;
-    //     }
-    //
-    //     public void movePieceQuiet(int fromSq, int toSq){
-    //         //update incremental evaluation terms
-    //         int piece = items[fromSq];
-    //         mg += MGS[piece][toSq] - MGS[piece][fromSq];
-    //         eg += EGS[piece][toSq] - EGS[piece][fromSq];
-    //
-    //         //update hashes
-    //         hash ^= Zobrist.ZOBRIST_TABLE[piece][fromSq] ^ Zobrist.ZOBRIST_TABLE[piece][toSq];
-    //         //materialHash ^= Zobrist.ZOBRIST_TABLE[piece][fromSq] ^ Zobrist.ZOBRIST_TABLE[piece][toSq];
-    //
-    //         //update board
-    //         piece_bb[piece] ^= (1L << fromSq | 1L << toSq);
-    //         items[toSq] = piece;
-    //         items[fromSq] = Piece.NONE;
-    //     }
-    //
-    //     public void movePiece(int fromSq, int toSq){
-    //         removePiece(toSq);
-    //         movePieceQuiet(fromSq, toSq);
-    //     }
-    //
+        fn removePiece(&mut self, square: u8){
+            let piece = self.items[square as usize];
+            // phase += PIECE_PHASES[Piece.type_of(piece)];
+            // mg -= MGS[piece][square]; // EConstants.PIECE_TABLES[piece][square];
+            // eg -= EGS[piece][square];
+
+            //update hash tables
+//            hash ^= Zobrist.ZOBRIST_TABLE[items[square]][square];
+
+            //update board
+            self.piece_bb[self.items[square as usize] as usize] &= !(1u64 << square);
+            self.items[square as usize] = NONE;
+        }
+
+        fn movePieceQuiet(&mut self, fromSq: u8, toSq: u8){
+            //update incremental evaluation terms
+            let piece = self.items[fromSq as usize];
+            // self.mg += MGS[piece][toSq] - MGS[piece][fromSq];
+            // self.eg += EGS[piece][toSq] - EGS[piece][fromSq];
+
+            //update hashes
+//            hash ^= Zobrist.ZOBRIST_TABLE[piece][fromSq] ^ Zobrist.ZOBRIST_TABLE[piece][toSq];
+
+            //update board
+            self.piece_bb[piece as usize] ^= 1u64 << fromSq | 1u64 << toSq;
+            self.items[toSq as usize] = piece;
+            self.items[fromSq as usize] = NONE;
+        }
+
+        pub fn movePiece(&mut self, fromSq: u8, toSq: u8){
+            self.removePiece(toSq);
+            self.movePieceQuiet(fromSq, toSq);
+        }
+
     //     public long hash(){
     //         return hash;
     //     }
@@ -299,7 +298,7 @@ impl<'a> BoardState<'a> {
     //         BoardState state = oldBoardState.clone();
     //
     //         state.halfMoveClock += 1;
-    //         state.clearEnPassant();
+    //         state.clear_en_passant();
     //         state.sideToPlay = Side.flip(state.sideToPlay);
     //         state.hash ^= Zobrist.SIDE;
     //         return state;
@@ -310,98 +309,72 @@ impl<'a> BoardState<'a> {
 
 
     pub fn do_move(&self, mowe: &Move) -> BoardState {
-        let state = self.clone();
+        let mut state = self.clone();
+
+        state.full_move_normalized += 1;
+        state.half_move_clock += 1;
+//        state.history[state.ply++] = move.bits();
+        state.movements |= 1u64 << mowe.to() | 1u64 << mowe.from();
+
+        if type_of(state.items[mowe.from() as usize]) == PAWN {
+            state.half_move_clock = 0;
+        }
+
+        state.clear_en_passant();
+
+        match mowe.flags() {
+            Move::QUIET => {
+                state.movePieceQuiet(mowe.from(), mowe.to());
+            }
+            Move::DOUBLE_PUSH => {
+                state.movePieceQuiet(mowe.from(), mowe.to());
+                state.en_passant = 1u64 << (mowe.from() as i8 + Square::direction(FORWARD, state.side_to_play));
+//                state.hash ^= Zobrist.EN_PASSANT[(int) (state.enPassant & 0b111)];
+            }
+            Move::OO => {
+                if state.side_to_play == WHITE {
+                    state.movePieceQuiet(Square::E1, Square::G1);
+                    state.movePieceQuiet(Square::H1, Square::F1);
+                }
+                else {
+                    state.movePieceQuiet(Square::E8, Square::G8);
+                    state.movePieceQuiet(Square::H8, Square::F8);
+                }
+            }
+            Move::OOO => {
+                if state.side_to_play == WHITE {
+                    state.movePieceQuiet(Square::E1, Square::C1);
+                    state.movePieceQuiet(Square::A1, Square::D1);
+                } else {
+                    state.movePieceQuiet(Square::E8, Square::C8);
+                    state.movePieceQuiet(Square::A8, Square::D8);
+                }
+            }
+            Move::EN_PASSANT => {
+                state.movePieceQuiet(mowe.from(), mowe.to());
+                state.removePiece((mowe.to() as i8 + Square::direction(BACK, state.side_to_play)) as u8);
+            }
+            Move::PR_KNIGHT | Move::PR_BISHOP | Move::PR_ROOK | Move::PR_QUEEN=> {
+                state.removePiece(mowe.from());
+                state.set_piece_at(make_piece(state.side_to_play, mowe.getPieceType()), mowe.to() as usize);
+            }
+            Move::PC_KNIGHT | Move::PC_BISHOP | Move::PC_ROOK | Move::PC_QUEEN => {
+                state.removePiece(mowe.from());
+                state.removePiece(mowe.to());
+                state.set_piece_at(make_piece(state.side_to_play, mowe.getPieceType()), mowe.to() as usize);
+            }
+            Move::CAPTURE => {
+                state.half_move_clock = 0;
+                state.movePiece(mowe.from(), mowe.to());
+            }
+            _ => {
+                panic!()
+            }
+        }
+        // state.sideToPlay = Side.flip(state.sideToPlay);
+        // state.hash ^= Zobrist.SIDE;
 
         state
-        //
-        //         state.full_move_normalized += 1;
-        //         state.halfMoveClock += 1;
-        //         state.history[state.ply++] = move.bits();
-        //         state.movements |= (1L << move.to() | 1L << move.from());
-        //
-        //         if (Piece.type_of(state.items[move.from()]) == PieceType.PAWN)
-        //             state.halfMoveClock = 0;
-        //
-        //         state.clearEnPassant();
-        //
-        //         switch (move.flags()){
-        //             case Move.QUIET:
-        //                 state.movePieceQuiet(move.from(), move.to());
-        //                 break;
-        //             case Move.DOUBLE_PUSH:
-        //                 state.movePieceQuiet(move.from(), move.to());
-        //                 state.enPassant = 1L << (move.from() + Square.direction(FORWARD, state.sideToPlay));
-        //                 state.hash ^= Zobrist.EN_PASSANT[(int) (state.enPassant & 0b111)];
-        //                 break;
-        //             case Move.OO:
-        //                 if (state.sideToPlay == Side.WHITE){
-        //                     state.movePieceQuiet(E1, G1);
-        //                     state.movePieceQuiet(H1, F1);
-        //                 }
-        //                 else {
-        //                     state.movePieceQuiet(E8, G8);
-        //                     state.movePieceQuiet(H8, F8);
-        //                 }
-        //                 break;
-        //             case Move.OOO:
-        //                 if (state.sideToPlay == Side.WHITE){
-        //                     state.movePieceQuiet(E1, C1);
-        //                     state.movePieceQuiet(A1, D1);
-        //                 }
-        //                 else {
-        //                     state.movePieceQuiet(E8, C8);
-        //                     state.movePieceQuiet(A8, D8);
-        //                 }
-        //                 break;
-        //             case Move.EN_PASSANT:
-        //                 state.movePieceQuiet(move.from(), move.to());
-        //                 state.removePiece(move.to() + Square.direction(BACK, state.sideToPlay));
-        //                 break;
-        //             case Move.PR_KNIGHT:
-        //                 state.removePiece(move.from());
-        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.KNIGHT), move.to());
-        //                 break;
-        //             case Move.PR_BISHOP:
-        //                 state.removePiece(move.from());
-        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.BISHOP), move.to());
-        //                 break;
-        //             case Move.PR_ROOK:
-        //                 state.removePiece(move.from());
-        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.ROOK), move.to());
-        //                 break;
-        //             case Move.PR_QUEEN:
-        //                 state.removePiece(move.from());
-        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.QUEEN), move.to());
-        //                 break;
-        //             case Move.PC_KNIGHT:
-        //                 state.removePiece(move.from());
-        //                 state.removePiece(move.to());
-        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.KNIGHT), move.to());
-        //                 break;
-        //             case Move.PC_BISHOP:
-        //                 state.removePiece(move.from());
-        //                 state.removePiece(move.to());
-        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.BISHOP), move.to());
-        //                 break;
-        //             case Move.PC_ROOK:
-        //                 state.removePiece(move.from());
-        //                 state.removePiece(move.to());
-        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.ROOK), move.to());
-        //                 break;
-        //             case Move.PC_QUEEN:
-        //                 state.removePiece(move.from());
-        //                 state.removePiece(move.to());
-        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.QUEEN), move.to());
-        //                 break;
-        //             case Move.CAPTURE:
-        //                 state.halfMoveClock = 0;
-        //                 state.movePiece(move.from(), move.to());
-        //                 break;
-        //         }
-        //         state.sideToPlay = Side.flip(state.sideToPlay);
-        //         state.hash ^= Zobrist.SIDE;
-        //
-        //         return state;
     }
 
     //     public int getSideToPlay(){
@@ -887,17 +860,16 @@ impl<'a> BoardState<'a> {
     //         result.append("Fen: ").append(Fen.toFen(this));
     //         return result.toString();
     //     }
-    //
-    //     private void clearEnPassant() {
-    //         // TODO zjednodusit
-    //         long previous_state = this.enPassant;
-    //
-    //         if (previous_state != 0L) {
-    //             this.enPassant = 0L;
-    //             this.hash ^= Zobrist.EN_PASSANT[(int) (previous_state & 0b111)];
-    //         }
-    //     }
-    //
+
+    fn clear_en_passant(&mut self) {
+        let previous_state = self.en_passant;
+
+        if previous_state != 0u64 {
+            self.en_passant = 0;
+            //this.hash ^= Zobrist.EN_PASSANT[(int) (previous_state & 0b111)];
+        }
+    }
+
     //     public BoardState forSearchDepth(int searchDepth) {
     //         BoardState result = this.clone();
     //         result.history = new long[searchDepth];

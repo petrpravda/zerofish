@@ -6,12 +6,12 @@ use crate::piece::PieceType;
 use crate::side::{Side, WHITE};
 use crate::square::Square;
 
-struct dir(i8, i8);
+struct Dir(i8, i8);
 
-const KNIGHT_MOVE_DIRECTIONS: [dir; 8] = [dir(-2, -1), dir(-2, 1), dir(2, -1), dir(2, 1),
-    dir(-1, -2), dir(-1, 2), dir(1, -2), dir(1, 2)];
-const KING_MOVE_DIRECTIONS: [dir; 8] = [dir(0, -1), dir(1, -1), dir(1, 0), dir(1, 1),
-    dir(0, 1), dir(-1, 1), dir(-1, 0), dir(-1, -1)];
+const KNIGHT_MOVE_DIRECTIONS: [Dir; 8] = [Dir(-2, -1), Dir(-2, 1), Dir(2, -1), Dir(2, 1),
+    Dir(-1, -2), Dir(-1, 2), Dir(1, -2), Dir(1, 2)];
+const KING_MOVE_DIRECTIONS: [Dir; 8] = [Dir(0, -1), Dir(1, -1), Dir(1, 0), Dir(1, 1),
+    Dir(0, 1), Dir(-1, 1), Dir(-1, 0), Dir(-1, -1)];
 
 struct SquarePosition {
     file: i8,
@@ -27,7 +27,7 @@ impl SquarePosition {
         (self.file + self.rank * 8) as u8
     }
 
-    fn move_in_direction(&self, direction: &dir) -> SquarePosition {
+    fn move_in_direction(&self, direction: &Dir) -> SquarePosition {
         SquarePosition{ file: self.file + direction.0, rank: self.rank + direction.1 }
     }
 
@@ -174,7 +174,7 @@ impl Bitboard {
     }
 
 
-    fn generate_attacks(move_directions: [dir; 8]) -> [u64; 64] {
+    fn generate_attacks(move_directions: [Dir; 8]) -> [u64; 64] {
         let result = (0u8..64)
             .map(|square| SquarePosition::from_square_index(square))
             .map(|sp| {

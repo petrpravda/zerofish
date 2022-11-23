@@ -1,5 +1,6 @@
 use zerofish::bitboard::Bitboard;
 use zerofish::fen::{from_fen_default, START_POS};
+use zerofish::{engine_thread, uci};
 
 // mod uci;
 // mod engine;
@@ -16,10 +17,10 @@ use zerofish::fen::{from_fen_default, START_POS};
 //use zerofish::{engine_thread, uci};
 
 fn main() {
+    uci::start_uci_loop(&engine_thread::spawn_engine_thread());
     //uci::start_uci_loop(&engine_thread::spawn_engine_thread());
-    let bitboard = Bitboard::new();
-    let mut state = from_fen_default(START_POS, &bitboard);
-    let moves = state.generate_legal_moves();
-    println!("{}", moves);
-
+    // let bitboard = Bitboard::new();
+    // let mut state = from_fen_default(START_POS, &bitboard);
+    // let moves = state.generate_legal_moves();
+    // println!("{}", moves);
 }

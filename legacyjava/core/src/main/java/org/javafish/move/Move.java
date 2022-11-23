@@ -143,4 +143,7 @@ public class Move {
     public boolean isCastling() {
         return this.flags() == Move.OO || this.flags() == Move.OOO;
     }
+
+//    public int getPromotionPieceType() {
+//    }
 }
