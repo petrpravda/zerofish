@@ -8,25 +8,26 @@ use crate::fen::START_POS;
 // use crate::fen::{configure_command_line_options, START_POS};
 // use crate::transposition_table::DEFAULT_SIZE_MB;
 
-pub struct EngineThread {
+pub struct EngineThread<'a> {
     pub rx: Receiver<UciMessage>,
-    pub engine: Engine,
-    //bitboard: &'a Bitboard,
+    pub engine: Engine<'a>,
+    pub bitboard: &'a Bitboard,
 }
 
-impl EngineThread {
-    pub fn new_from_fen(rx: Receiver<UciMessage>, fen: &str) -> Self {
-        //let bitboard: &'a Bitboard = Bitboard::new();
-        let engine = Engine::new_from_fen(fen);
+impl<'a> EngineThread<'a> {
+    pub fn new_from_fen(rx: Receiver<UciMessage>, fen: &str, bitboard: &'a Bitboard) -> Self {
+        // let b_instance = Bitboard::new();
+        // let bitboard: &'a Bitboard = &b_instance;
+        let engine = Engine::new_from_fen(fen, bitboard);
         EngineThread {
             rx,
             engine,
-//            bitboard,
+            bitboard,
         }
     }
 
-    pub fn new(rx: Receiver<UciMessage>) -> Self {
-        EngineThread::new_from_fen(rx, START_POS)
+    pub fn new(rx: Receiver<UciMessage>, bitboard: &'a Bitboard) -> Self {
+        EngineThread::new_from_fen(rx, START_POS, bitboard)
     }
 
     fn start_loop(&mut self) {
@@ -60,9 +61,10 @@ impl EngineThread {
 
 pub fn spawn_engine_thread() -> Sender<UciMessage> {
     let (tx, rx) = mpsc::channel::<UciMessage>();
+    let bitboard = Bitboard::new();
 
     thread::spawn(move || {
-        let mut engine = EngineThread::new(rx);
+        let mut engine = EngineThread::new(rx, &bitboard);
         // configure_command_line_options(&mut engine.engine.board);
         engine.start_loop();
     });
