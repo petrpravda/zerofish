@@ -1,5 +1,5 @@
 pub mod uci;
-mod engine;
+pub mod engine;
 pub mod engine_thread;
 pub mod fen;
 pub mod bitboard;
