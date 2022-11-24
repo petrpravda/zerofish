@@ -1,4 +1,5 @@
-use zerofish::fen::from_fen_default;
+use zerofish::bitboard::Bitboard;
+use zerofish::fen::{from_fen_default, START_POS};
 
 // mod uci;
 // mod engine;
@@ -16,8 +17,9 @@ use zerofish::fen::from_fen_default;
 
 fn main() {
     //uci::start_uci_loop(&engine_thread::spawn_engine_thread());
-    let mut state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    let moves = state.generate_legal_moves(false);
+    let bitboard = Bitboard::new();
+    let mut state = from_fen_default(START_POS, &bitboard);
+    let moves = state.generate_legal_moves();
     println!("{}", moves);
 
 }

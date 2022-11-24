@@ -28,9 +28,9 @@ impl Move {
     pub const NULL_MOVE: Move = Move { bits: 0, sort_score: 0 };
 
     pub fn new() -> Self { Self{bits: 0, sort_score: 0 }}
-    pub fn newFromBits(m: u32) -> Self { Self{bits: m, sort_score: 0 }}
-    pub fn newFromTo(from: u8, to: u8) -> Self { Self{bits: (from as u32) << 6 | (to as u32), sort_score: 0 }}
-    pub fn newFromFlags(from: u8, to: u8, flags: u8) -> Self {
+    pub fn new_from_bits(m: u32) -> Self { Self{bits: m, sort_score: 0 }}
+    pub fn new_from_to(from: u8, to: u8) -> Self { Self{bits: (from as u32) << 6 | (to as u32), sort_score: 0 }}
+    pub fn new_from_flags(from: u8, to: u8, flags: u8) -> Self {
         Self{bits: (flags as u32) << 12 | (from as u32) << 6 | (to as u32), sort_score: 0 }}
 
     pub fn to(&self) -> u8 {
@@ -156,35 +156,39 @@ impl MoveList {
         }
     }
 
-    pub fn makeQuiets(&mut self, from: u8, targets: u64) {
+    pub fn make_quiets(&mut self, from: u8, targets: u64) {
         for to in BitIter(targets) {
-            self.moves.push(Move::newFromFlags(from, to as u8, Move::QUIET));
+            self.moves.push(Move::new_from_flags(from, to as u8, Move::QUIET));
         }
     }
 
-    pub fn makeCaptures(&mut self, from: u8, targets: u64) {
+    pub fn make_captures(&mut self, from: u8, targets: u64) {
         for to in BitIter(targets) {
-            self.moves.push(Move::newFromFlags(from, to as u8, Move::CAPTURE));
+            self.moves.push(Move::new_from_flags(from, to as u8, Move::CAPTURE));
         }
     }
 
-    pub fn makePromotionCaptures(&mut self, from: u8, targets: u64) {
+    pub fn make_promotion_captures(&mut self, from: u8, targets: u64) {
         for to in BitIter(targets) {
-            self.moves.push(Move::newFromFlags(from, to as u8, Move::PC_QUEEN));
-            self.moves.push(Move::newFromFlags(from, to as u8, Move::PC_KNIGHT));
-            self.moves.push(Move::newFromFlags(from, to as u8, Move::PC_ROOK));
-            self.moves.push(Move::newFromFlags(from, to as u8, Move::PC_BISHOP));
+            self.moves.push(Move::new_from_flags(from, to as u8, Move::PC_QUEEN));
+            self.moves.push(Move::new_from_flags(from, to as u8, Move::PC_KNIGHT));
+            self.moves.push(Move::new_from_flags(from, to as u8, Move::PC_ROOK));
+            self.moves.push(Move::new_from_flags(from, to as u8, Move::PC_BISHOP));
         }
     }
 
-    pub fn makeDoublePushes(&mut self, from: u8, targets: u64) {
+    pub fn make_double_pushes(&mut self, from: u8, targets: u64) {
         for to in BitIter(targets) {
-            self.moves.push(Move::newFromFlags(from, to as u8, Move::DOUBLE_PUSH));
+            self.moves.push(Move::new_from_flags(from, to as u8, Move::DOUBLE_PUSH));
         }
     }
 
     pub fn add(&mut self, mowe: Move) {
         self.moves.push(mowe);
+    }
+
+    pub fn len(&self) -> usize {
+        self.moves.len()
     }
 
     pub fn to_string(&self) -> String {

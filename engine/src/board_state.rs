@@ -2,7 +2,7 @@
 
 use std::fmt;
 use crate::bitboard::{Bitboard, BitIter};
-use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, KNIGHT, make_piece, NONE, PAWN, Piece, PIECES_COUNT, PieceType, to_piece_char, typeOf, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
+use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, KNIGHT, make_piece, NONE, PAWN, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::r#move::{Move, MoveList};
 use crate::side::{BLACK, flip, Side, WHITE};
 use crate::square::{DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
@@ -12,7 +12,9 @@ use crate::square::{DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square
 
 const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
-pub struct BoardState {
+//#[derive(Copy, Clone)]
+#[derive(Clone)]
+pub struct BoardState<'a> {
     ply: usize,
     history: Vec<u64>,
     piece_bb: [u64; PIECES_COUNT],
@@ -28,16 +30,16 @@ pub struct BoardState {
     pub(crate) movements: u64,
     pub en_passant: u64,
 
-    pub(crate) bitboard: Bitboard,
+    pub(crate) bitboard: &'a Bitboard,
 }
 
-impl fmt::Display for BoardState {
+impl<'a> fmt::Display for BoardState<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_string())
     }
 }
 
-impl BoardState {
+impl<'a> BoardState<'a> {
     pub fn new(
         items: &[Piece; 64],
         side_to_play: Side,
@@ -45,7 +47,8 @@ impl BoardState {
         en_passant: u64,
         half_move_clock: usize,
         full_move_count: usize,
-        max_search_depth: usize
+        max_search_depth: usize,
+        bitboard: &'a Bitboard,
     ) -> Self {
         if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len()) }
         let mut board_state = BoardState {
@@ -63,13 +66,13 @@ impl BoardState {
             checkers: 0,
             movements,
             en_passant,
-            bitboard: Bitboard::new()
+            bitboard
         };
 
         for i in 0..64 {
             let item = items[i];
             if item != NONE {
-                board_state.setPieceAt(item, i);
+                board_state.set_piece_at(item, i);
             } else {
                 board_state.items[i] = NONE;
             }
@@ -103,7 +106,7 @@ impl BoardState {
     //         for (int i = 0; i < 64; i++) {
     //             int item = items[i];
     //             if (item != Piece.NONE) {
-    //                 setPieceAt(item, i);
+    //                 set_piece_at(item, i);
     //             } else {
     //                 this.items[i] = Piece.NONE;
     //             }
@@ -152,14 +155,14 @@ impl BoardState {
     //         return items[square];
     //     }
 
-        pub fn pieceTypeAt(&self, square: u8) -> PieceType {
-            return typeOf(self.items[square as usize]);
+        pub fn piece_type_at(&self, square: u8) -> PieceType {
+            return type_of(self.items[square as usize]);
         }
 
-        pub fn setPieceAt(&mut self, piece: Piece, square: usize) {
+        pub fn set_piece_at(&mut self, piece: Piece, square: usize) {
 
             // //update incremental evaluation terms
-            // phase -= PIECE_PHASES[Piece.typeOf(piece)];
+            // phase -= PIECE_PHASES[Piece.type_of(piece)];
             // mg += MGS[piece][square];
             // eg += EGS[piece][square];
             // // materialScore += materialValue(piece);
@@ -174,7 +177,7 @@ impl BoardState {
 
     //     public void removePiece(int square){
     //         int piece = items[square];
-    //         phase += PIECE_PHASES[Piece.typeOf(piece)];
+    //         phase += PIECE_PHASES[Piece.type_of(piece)];
     //         mg -= MGS[piece][square]; // EConstants.PIECE_TABLES[piece][square];
     //         eg -= EGS[piece][square];
     //
@@ -253,17 +256,17 @@ impl BoardState {
             self.all_pieces_for_side(WHITE) | self.all_pieces_for_side(BLACK)
         }
 
-        pub fn attackersFrom(&self, square: u8, occ: u64, side: Side) -> u64 {
+        pub fn attackers_from(&self, square: u8, occ: u64, side: Side) -> u64 {
             match side {
                 WHITE => {
-                    (Bitboard::pawnAttacks(square as u64, BLACK) & self.piece_bb[WHITE_PAWN as usize]) |
-                        (self.bitboard.getKnightAttacks(square as usize) & self.piece_bb[WHITE_KNIGHT as usize]) |
+                    (Bitboard::pawn_attacks(square as u64, BLACK) & self.piece_bb[WHITE_PAWN as usize]) |
+                        (self.bitboard.get_knight_attacks(square as usize) & self.piece_bb[WHITE_KNIGHT as usize]) |
                         (self.bitboard.get_bishop_attacks(square as usize, occ) & (self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize])) |
                         (self.bitboard.get_rook_attacks(square as usize, occ) & (self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize]))
                 }
                 _ => {
-                    (Bitboard::pawnAttacks(square as u64, WHITE) & self.piece_bb[BLACK_PAWN as usize]) |
-                        (self.bitboard.getKnightAttacks(square as usize) & self.piece_bb[BLACK_KNIGHT as usize]) |
+                    (Bitboard::pawn_attacks(square as u64, WHITE) & self.piece_bb[BLACK_PAWN as usize]) |
+                        (self.bitboard.get_knight_attacks(square as usize) & self.piece_bb[BLACK_KNIGHT as usize]) |
                         (self.bitboard.get_bishop_attacks(square as usize, occ) & (self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize])) |
                         (self.bitboard.get_rook_attacks(square as usize, occ) & (self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]))
                 }
@@ -271,24 +274,20 @@ impl BoardState {
         }
 
     //     public long attackersFromIncludingKings(int square, long occ, int side){
-    //         return side == Side.WHITE ? (pawnAttacks(square, Side.BLACK) & piece_bb[Piece.WHITE_PAWN]) |
-    //                 (getKingAttacks(square) & piece_bb[Piece.WHITE_KING]) |
-    //                 (getKnightAttacks(square) & piece_bb[Piece.WHITE_KNIGHT]) |
+    //         return side == Side.WHITE ? (pawn_attacks(square, Side.BLACK) & piece_bb[Piece.WHITE_PAWN]) |
+    //                 (get_king_attacks(square) & piece_bb[Piece.WHITE_KING]) |
+    //                 (get_knight_attacks(square) & piece_bb[Piece.WHITE_KNIGHT]) |
     //                 (getBishopAttacks(square, occ) & (piece_bb[Piece.WHITE_BISHOP] | piece_bb[Piece.WHITE_QUEEN])) |
     //                 (getRookAttacks(square, occ) & (piece_bb[Piece.WHITE_ROOK] | piece_bb[Piece.WHITE_QUEEN])) :
     //
-    //                 (pawnAttacks(square, Side.WHITE) & piece_bb[Piece.BLACK_PAWN]) |
-    //                 (getKingAttacks(square) & piece_bb[Piece.BLACK_KING]) |
-    //                 (getKnightAttacks(square) & piece_bb[Piece.BLACK_KNIGHT]) |
+    //                 (pawn_attacks(square, Side.WHITE) & piece_bb[Piece.BLACK_PAWN]) |
+    //                 (get_king_attacks(square) & piece_bb[Piece.BLACK_KING]) |
+    //                 (get_knight_attacks(square) & piece_bb[Piece.BLACK_KNIGHT]) |
     //                 (getBishopAttacks(square, occ) & (piece_bb[Piece.BLACK_BISHOP] | piece_bb[Piece.BLACK_QUEEN])) |
     //                 (getRookAttacks(square, occ) & (piece_bb[Piece.BLACK_ROOK] | piece_bb[Piece.BLACK_QUEEN]));
     //     }
     //
-    //     public BoardState doMove(Move move) {
-    //         return performMove(move, this);
-    //     }
-    //
-    //     public BoardState doMove(String uciMove) {
+    //     public BoardState do_move(String uciMove) {
     //         return performMove(this.generate_legal_moves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
     //     }
     //
@@ -306,100 +305,105 @@ impl BoardState {
     //         return state;
     //     }
     //
-    //
-    //     public static BoardState performMove(Move move, BoardState oldBoardState) {
-    //         BoardState state = oldBoardState.clone();
-    //
-    //         state.full_move_normalized += 1;
-    //         state.halfMoveClock += 1;
-    //         state.history[state.ply++] = move.bits();
-    //         state.movements |= (1L << move.to() | 1L << move.from());
-    //
-    //         if (Piece.typeOf(state.items[move.from()]) == PieceType.PAWN)
-    //             state.halfMoveClock = 0;
-    //
-    //         state.clearEnPassant();
-    //
-    //         switch (move.flags()){
-    //             case Move.QUIET:
-    //                 state.movePieceQuiet(move.from(), move.to());
-    //                 break;
-    //             case Move.DOUBLE_PUSH:
-    //                 state.movePieceQuiet(move.from(), move.to());
-    //                 state.enPassant = 1L << (move.from() + Square.direction(FORWARD, state.sideToPlay));
-    //                 state.hash ^= Zobrist.EN_PASSANT[(int) (state.enPassant & 0b111)];
-    //                 break;
-    //             case Move.OO:
-    //                 if (state.sideToPlay == Side.WHITE){
-    //                     state.movePieceQuiet(E1, G1);
-    //                     state.movePieceQuiet(H1, F1);
-    //                 }
-    //                 else {
-    //                     state.movePieceQuiet(E8, G8);
-    //                     state.movePieceQuiet(H8, F8);
-    //                 }
-    //                 break;
-    //             case Move.OOO:
-    //                 if (state.sideToPlay == Side.WHITE){
-    //                     state.movePieceQuiet(E1, C1);
-    //                     state.movePieceQuiet(A1, D1);
-    //                 }
-    //                 else {
-    //                     state.movePieceQuiet(E8, C8);
-    //                     state.movePieceQuiet(A8, D8);
-    //                 }
-    //                 break;
-    //             case Move.EN_PASSANT:
-    //                 state.movePieceQuiet(move.from(), move.to());
-    //                 state.removePiece(move.to() + Square.direction(BACK, state.sideToPlay));
-    //                 break;
-    //             case Move.PR_KNIGHT:
-    //                 state.removePiece(move.from());
-    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.KNIGHT), move.to());
-    //                 break;
-    //             case Move.PR_BISHOP:
-    //                 state.removePiece(move.from());
-    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.BISHOP), move.to());
-    //                 break;
-    //             case Move.PR_ROOK:
-    //                 state.removePiece(move.from());
-    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.ROOK), move.to());
-    //                 break;
-    //             case Move.PR_QUEEN:
-    //                 state.removePiece(move.from());
-    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.QUEEN), move.to());
-    //                 break;
-    //             case Move.PC_KNIGHT:
-    //                 state.removePiece(move.from());
-    //                 state.removePiece(move.to());
-    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.KNIGHT), move.to());
-    //                 break;
-    //             case Move.PC_BISHOP:
-    //                 state.removePiece(move.from());
-    //                 state.removePiece(move.to());
-    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.BISHOP), move.to());
-    //                 break;
-    //             case Move.PC_ROOK:
-    //                 state.removePiece(move.from());
-    //                 state.removePiece(move.to());
-    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.ROOK), move.to());
-    //                 break;
-    //             case Move.PC_QUEEN:
-    //                 state.removePiece(move.from());
-    //                 state.removePiece(move.to());
-    //                 state.setPieceAt(Piece.make_piece(state.sideToPlay, PieceType.QUEEN), move.to());
-    //                 break;
-    //             case Move.CAPTURE:
-    //                 state.halfMoveClock = 0;
-    //                 state.movePiece(move.from(), move.to());
-    //                 break;
-    //         }
-    //         state.sideToPlay = Side.flip(state.sideToPlay);
-    //         state.hash ^= Zobrist.SIDE;
-    //
-    //         return state;
-    //     }
-    //
+
+
+
+
+    pub fn do_move(&self, mowe: &Move) -> BoardState {
+        let state = self.clone();
+
+        state
+        //
+        //         state.full_move_normalized += 1;
+        //         state.halfMoveClock += 1;
+        //         state.history[state.ply++] = move.bits();
+        //         state.movements |= (1L << move.to() | 1L << move.from());
+        //
+        //         if (Piece.type_of(state.items[move.from()]) == PieceType.PAWN)
+        //             state.halfMoveClock = 0;
+        //
+        //         state.clearEnPassant();
+        //
+        //         switch (move.flags()){
+        //             case Move.QUIET:
+        //                 state.movePieceQuiet(move.from(), move.to());
+        //                 break;
+        //             case Move.DOUBLE_PUSH:
+        //                 state.movePieceQuiet(move.from(), move.to());
+        //                 state.enPassant = 1L << (move.from() + Square.direction(FORWARD, state.sideToPlay));
+        //                 state.hash ^= Zobrist.EN_PASSANT[(int) (state.enPassant & 0b111)];
+        //                 break;
+        //             case Move.OO:
+        //                 if (state.sideToPlay == Side.WHITE){
+        //                     state.movePieceQuiet(E1, G1);
+        //                     state.movePieceQuiet(H1, F1);
+        //                 }
+        //                 else {
+        //                     state.movePieceQuiet(E8, G8);
+        //                     state.movePieceQuiet(H8, F8);
+        //                 }
+        //                 break;
+        //             case Move.OOO:
+        //                 if (state.sideToPlay == Side.WHITE){
+        //                     state.movePieceQuiet(E1, C1);
+        //                     state.movePieceQuiet(A1, D1);
+        //                 }
+        //                 else {
+        //                     state.movePieceQuiet(E8, C8);
+        //                     state.movePieceQuiet(A8, D8);
+        //                 }
+        //                 break;
+        //             case Move.EN_PASSANT:
+        //                 state.movePieceQuiet(move.from(), move.to());
+        //                 state.removePiece(move.to() + Square.direction(BACK, state.sideToPlay));
+        //                 break;
+        //             case Move.PR_KNIGHT:
+        //                 state.removePiece(move.from());
+        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.KNIGHT), move.to());
+        //                 break;
+        //             case Move.PR_BISHOP:
+        //                 state.removePiece(move.from());
+        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.BISHOP), move.to());
+        //                 break;
+        //             case Move.PR_ROOK:
+        //                 state.removePiece(move.from());
+        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.ROOK), move.to());
+        //                 break;
+        //             case Move.PR_QUEEN:
+        //                 state.removePiece(move.from());
+        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.QUEEN), move.to());
+        //                 break;
+        //             case Move.PC_KNIGHT:
+        //                 state.removePiece(move.from());
+        //                 state.removePiece(move.to());
+        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.KNIGHT), move.to());
+        //                 break;
+        //             case Move.PC_BISHOP:
+        //                 state.removePiece(move.from());
+        //                 state.removePiece(move.to());
+        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.BISHOP), move.to());
+        //                 break;
+        //             case Move.PC_ROOK:
+        //                 state.removePiece(move.from());
+        //                 state.removePiece(move.to());
+        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.ROOK), move.to());
+        //                 break;
+        //             case Move.PC_QUEEN:
+        //                 state.removePiece(move.from());
+        //                 state.removePiece(move.to());
+        //                 state.set_piece_at(Piece.make_piece(state.sideToPlay, PieceType.QUEEN), move.to());
+        //                 break;
+        //             case Move.CAPTURE:
+        //                 state.halfMoveClock = 0;
+        //                 state.movePiece(move.from(), move.to());
+        //                 break;
+        //         }
+        //         state.sideToPlay = Side.flip(state.sideToPlay);
+        //         state.hash ^= Zobrist.SIDE;
+        //
+        //         return state;
+    }
+
     //     public int getSideToPlay(){
     //         return sideToPlay;
     //     }
@@ -409,10 +413,10 @@ impl BoardState {
     //         final int them = Side.flip(sideToPlay);
     //         final int ourKing = Long.numberOfTrailingZeros(bitboard_of(us, PieceType.KING));
     //
-    //         if ((pawnAttacks(ourKing, us) & bitboard_of(them, PieceType.PAWN)) != 0)
+    //         if ((pawn_attacks(ourKing, us) & bitboard_of(them, PieceType.PAWN)) != 0)
     //             return true;
     //
-    //         if ((getKnightAttacks(ourKing) & bitboard_of(them, PieceType.KNIGHT)) != 0)
+    //         if ((get_knight_attacks(ourKing) & bitboard_of(them, PieceType.KNIGHT)) != 0)
     //             return true;
     //
     //         let usBb = all_pieces(us);
@@ -489,11 +493,11 @@ impl BoardState {
     //         final int us = Side.flip(side);
     //         final int them = side;
     //
-    //         long pawns = pawnAttacks(square, us) & bitboard_of(them, PieceType.PAWN);
+    //         long pawns = pawn_attacks(square, us) & bitboard_of(them, PieceType.PAWN);
     //         if (pawns != 0)
     //             return Long.numberOfTrailingZeros(pawns);
     //
-    //         long knights = getKnightAttacks(square) & bitboard_of(them, PieceType.KNIGHT);
+    //         long knights = get_knight_attacks(square) & bitboard_of(them, PieceType.KNIGHT);
     //         if (knights != 0)
     //             return Long.numberOfTrailingZeros(knights);
     //
@@ -517,7 +521,7 @@ impl BoardState {
     //             return Long.numberOfTrailingZeros(queens);
     //
     //         if (withAttackingKing) {
-    //             long kings = getKingAttacks(square) & bitboard_of(them, PieceType.KING);
+    //             long kings = get_king_attacks(square) & bitboard_of(them, PieceType.KING);
     //             if (kings != 0) {
     //                 return Long.numberOfTrailingZeros(kings);
     //             }
@@ -580,7 +584,11 @@ impl BoardState {
     //         return generate_legal_moves(true);
     //     }
 
-    pub fn generate_legal_moves(&mut self, only_quiescence: bool) -> MoveList {
+    pub fn generate_legal_moves(&mut self) -> MoveList {
+        self.generate_legal_moves_wo(false)
+    }
+
+    pub fn generate_legal_moves_wo(&mut self, only_quiescence: bool) -> MoveList {
         let mut moves = MoveList::new();
         let us = self.side_to_play;
         let them = flip(self.side_to_play);
@@ -604,35 +612,35 @@ impl BoardState {
         let mut b3: u64 = 0;
 
         // Squares that the king can't move to
-        let mut underAttack: u64 = 0;
-        underAttack |= Bitboard::pawnAttacks(self.bitboard_of(them, PAWN), them) | self.bitboard.getKingAttacks(their_king);
+        let mut under_attack: u64 = 0;
+        under_attack |= Bitboard::pawn_attacks(self.bitboard_of(them, PAWN), them) | self.bitboard.get_king_attacks(their_king);
 
         for b1 in BitIter(self.bitboard_of(them, KNIGHT)) {
-            underAttack |= self.bitboard.getKnightAttacks(b1 as usize);
+            under_attack |= self.bitboard.get_knight_attacks(b1 as usize);
         }
 
         for b1 in BitIter(their_bishops_and_queens) {
-            underAttack |= self.bitboard.get_bishop_attacks(b1.trailing_zeros() as usize, all ^ (1u64 << our_king as u8));
+            under_attack |= self.bitboard.get_bishop_attacks(b1.trailing_zeros() as usize, all ^ (1u64 << our_king as u8));
         }
 
         for b1 in BitIter(their_rooks_and_queens) {
-            underAttack |= self.bitboard.get_rook_attacks(b1.trailing_zeros() as usize, all ^ (1u64 << our_king as u8));
+            under_attack |= self.bitboard.get_rook_attacks(b1.trailing_zeros() as usize, all ^ (1u64 << our_king as u8));
         }
 
-        b1 = self.bitboard.getKingAttacks(our_king) & !(us_bb | underAttack);
+        b1 = self.bitboard.get_king_attacks(our_king) & !(us_bb | under_attack);
 
-        moves.makeQuiets(our_king as u8, b1 & !them_bb);
-        moves.makeCaptures(our_king as u8, b1 & them_bb);
+        moves.make_quiets(our_king as u8, b1 & !them_bb);
+        moves.make_captures(our_king as u8, b1 & them_bb);
 
-        //captureMask contains destinations where there is an enemy piece that is checking the king and must be captured
-        //quietMask contains squares where pieces must be moved to block an incoming attack on the king
-        let mut captureMask: u64;
-        let mut quietMask: u64;
+        //capture_mask contains destinations where there is an enemy piece that is checking the king and must be captured
+        //quiet_mask contains squares where pieces must be moved to block an incoming attack on the king
+        let capture_mask: u64;
+        let quiet_mask: u64;
         //let mut s: u8;
 
         // checker moves from opposite knights and pawns
-        self.checkers = (self.bitboard.getKnightAttacks(our_king) & self.bitboard_of(them, KNIGHT))
-                | (Bitboard::pawnAttacksFromSquare(our_king as u8, us) & self.bitboard_of(them, PAWN));
+        self.checkers = (self.bitboard.get_knight_attacks(our_king) & self.bitboard_of(them, KNIGHT))
+                | (Bitboard::pawn_attacks_from_square(our_king as u8, us) & self.bitboard_of(them, PAWN));
 
         // ray candidates to our king
         let mut candidates = (self.bitboard.get_rook_attacks(our_king, them_bb) & their_rooks_and_queens)
@@ -654,55 +662,55 @@ impl BoardState {
         }
 
 
-        let notPinned = !pinned;
+        let not_pinned = !pinned;
         if self.checkers.count_ones() == 2 {
             // our king is in check mate
             return moves;
         } else if self.checkers.count_ones() == 1 {
             // our king is checked
-            let checkerSquare: usize = self.checkers.trailing_zeros() as usize;
-            let checker_piece_type = typeOf(self.items[checkerSquare] as Piece);
+            let checker_square: usize = self.checkers.trailing_zeros() as usize;
+            let checker_piece_type = type_of(self.items[checker_square] as Piece);
             // for checking sliding pieces
             if checker_piece_type != PAWN && checker_piece_type != KNIGHT {
                 // we have to capture them
-                captureMask = self.checkers;
+                capture_mask = self.checkers;
                 // ...or block 'em
-                quietMask = self.bitboard.between(our_king as u8, checkerSquare as u8);
+                quiet_mask = self.bitboard.between(our_king as u8, checker_square as u8);
             } else {
                 // for checking en-passants
                 if checker_piece_type == PAWN && self.checkers == (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 }) {
                     // we have to consider taking the pawn en passant
-                    let enPassantSquare = self.en_passant.trailing_zeros();
-                    for b1 in BitIter(Bitboard::pawnAttacksFromSquare(enPassantSquare as u8, them) & self.bitboard_of(us, PAWN) & notPinned) {
-                        moves.add(Move::newFromFlags(b1.trailing_zeros() as u8, enPassantSquare as u8, Move::EN_PASSANT));
+                    let en_passant_square = self.en_passant.trailing_zeros();
+                    for b1 in BitIter(Bitboard::pawn_attacks_from_square(en_passant_square as u8, them) & self.bitboard_of(us, PAWN) & not_pinned) {
+                        moves.add(Move::new_from_flags(b1.trailing_zeros() as u8, en_passant_square as u8, Move::EN_PASSANT));
                     }
                 }
 
                 // capture the checking piece
-                for sq in BitIter(self.attackersFrom(checkerSquare as u8, all, us) & notPinned) {
-                    if self.pieceTypeAt(sq as u8) == PAWN && (1u64 << sq & Bitboard::PAWN_FINAL_RANKS) != 0u64 {
-                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::PC_QUEEN));
-                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::PC_ROOK));
-                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::PC_KNIGHT));
-                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::PC_BISHOP));
+                for sq in BitIter(self.attackers_from(checker_square as u8, all, us) & not_pinned) {
+                    if self.piece_type_at(sq as u8) == PAWN && (1u64 << sq & Bitboard::PAWN_FINAL_RANKS) != 0u64 {
+                        moves.add(Move::new_from_flags(sq as u8, checker_square as u8, Move::PC_QUEEN));
+                        moves.add(Move::new_from_flags(sq as u8, checker_square as u8, Move::PC_ROOK));
+                        moves.add(Move::new_from_flags(sq as u8, checker_square as u8, Move::PC_KNIGHT));
+                        moves.add(Move::new_from_flags(sq as u8, checker_square as u8, Move::PC_BISHOP));
                     }
                     else {
-                        moves.add(Move::newFromFlags(sq as u8, checkerSquare as u8, Move::CAPTURE));
+                        moves.add(Move::new_from_flags(sq as u8, checker_square as u8, Move::CAPTURE));
                     }
                 }
                 return moves;
             }
         // our king is not checked
         } else {
-            captureMask = them_bb;
+            capture_mask = them_bb;
 
-            quietMask = !all;
+            quiet_mask = !all;
 
             if self.en_passant != 0u64 {
-                let enPassantSquare = self.en_passant.trailing_zeros();
-                b2 = Bitboard::pawnAttacksFromSquare(enPassantSquare as u8, them) & self.bitboard_of(us, PAWN);
+                let en_passant_square = self.en_passant.trailing_zeros();
+                b2 = Bitboard::pawn_attacks_from_square(en_passant_square as u8, them) & self.bitboard_of(us, PAWN);
                 // b2 holds pawns that can do an ep capture
-                for s in BitIter(b2 & notPinned) {
+                for s in BitIter(b2 & not_pinned) {
                     // s hold square from which pawn attack to epsq can be done
                     // s = Long.numberOfTrailingZeros(b1);
                     // b1 = Bitboard.extractLsb(b1);
@@ -717,51 +725,51 @@ impl BoardState {
                             | (self.bitboard.get_bishop_attacks(our_king, qqq | us_bb) & their_bishops_and_queens);
 
                     if candidates == 0 {
-                        moves.add(Move::newFromFlags(s as u8, enPassantSquare as u8, Move::EN_PASSANT));
+                        moves.add(Move::new_from_flags(s as u8, en_passant_square as u8, Move::EN_PASSANT));
                     }
                 }
             }
 
             if !only_quiescence {
-                if 0 == ((self.movements & Bitboard::castling_pieces_kingside_mask(us)) | ((all | underAttack) & Bitboard::castlingBlockersKingsideMask(us))) {
-                    moves.add(if us == WHITE { Move::newFromFlags(Square::E1, Square::G1, Move::OO) }
-                              else { Move::newFromFlags(Square::E8, Square::G8, Move::OO) });
+                if 0 == ((self.movements & Bitboard::castling_pieces_kingside_mask(us)) | ((all | under_attack) & Bitboard::castling_blockers_kingside_mask(us))) {
+                    moves.add(if us == WHITE { Move::new_from_flags(Square::E1, Square::G1, Move::OO) }
+                              else { Move::new_from_flags(Square::E8, Square::G8, Move::OO) });
                 }
 
                 if 0 == ((self.movements & Bitboard::castling_pieces_queenside_mask(us)) |
-                        ((all | (underAttack & !Bitboard::ignoreOOODanger(us))) & Bitboard::castlingBlockersQueensideMask(us))) {
-                    moves.add(if us == WHITE { Move::newFromFlags(Square::E1, Square::C1, Move::OOO) }
-                              else { Move::newFromFlags(Square::E8, Square::C8, Move::OOO)});
+                        ((all | (under_attack & !Bitboard::ignore_ooo_danger(us))) & Bitboard::castling_blockers_queenside_mask(us))) {
+                    moves.add(if us == WHITE { Move::new_from_flags(Square::E1, Square::C1, Move::OOO) }
+                              else { Move::new_from_flags(Square::E8, Square::C8, Move::OOO)});
                 }
             }
 
             // all pinned sliding pieces can only eliminate the threat or move while staying pinned
-            b1 = !(notPinned | self.bitboard_of(us, KNIGHT));
+            b1 = !(not_pinned | self.bitboard_of(us, KNIGHT));
             for s in BitIter(b1) {
-                b2 = self.bitboard.attacks(self.pieceTypeAt(s as u8), s as u8, all) & self.bitboard.line(our_king as u8, s as u8);
+                b2 = self.bitboard.attacks(self.piece_type_at(s as u8), s as u8, all) & self.bitboard.line(our_king as u8, s as u8);
                 if !only_quiescence {
-                    moves.makeQuiets(s as u8, b2 & quietMask);
+                    moves.make_quiets(s as u8, b2 & quiet_mask);
                 }
-                moves.makeCaptures(s as u8, b2 & captureMask);
+                moves.make_captures(s as u8, b2 & capture_mask);
             }
 
             // for each pinned pawn
-            b1 = !notPinned & self.bitboard_of(us, PAWN);
+            b1 = !not_pinned & self.bitboard_of(us, PAWN);
             for s in BitIter(b1) {
                 if ((1u64 << s) & Bitboard::PAWN_FINAL_RANKS) != 0 {
-                    b2 = Bitboard::pawnAttacksFromSquare(s as u8, us) & captureMask & self.bitboard.line(our_king as u8, s as u8);
-                    moves.makePromotionCaptures(s as u8, b2);
+                    b2 = Bitboard::pawn_attacks_from_square(s as u8, us) & capture_mask & self.bitboard.line(our_king as u8, s as u8);
+                    moves.make_promotion_captures(s as u8, b2);
                 } else {
-                    b2 = Bitboard::pawnAttacksFromSquare(s as u8, us) & them_bb & self.bitboard.line(s as u8, our_king as u8);
-                    moves.makeCaptures(s as u8, b2);
+                    b2 = Bitboard::pawn_attacks_from_square(s as u8, us) & them_bb & self.bitboard.line(s as u8, our_king as u8);
+                    moves.make_captures(s as u8, b2);
 
                     if !only_quiescence {
                         //single pawn pushes
                         b2 = Bitboard::push(1u64 << s, us) & !all & self.bitboard.line(our_king as u8, s as u8);
                         b3 = Bitboard::push(b2 & Bitboard::PAWN_DOUBLE_PUSH_LINES[us as usize], us) & !all & self.bitboard.line(our_king as u8, s as u8);
 
-                        moves.makeQuiets(s as u8, b2);
-                        moves.makeDoublePushes(s as u8, b3);
+                        moves.make_quiets(s as u8, b2);
+                        moves.make_double_pushes(s as u8, b3);
                     }
                 }
             }
@@ -770,91 +778,91 @@ impl BoardState {
         }
 
         //non-pinned knight moves.
-        b1 = self.bitboard_of(us, KNIGHT) & notPinned;
+        b1 = self.bitboard_of(us, KNIGHT) & not_pinned;
         for s in BitIter(b1) {
-            b2 = self.bitboard.getKnightAttacks(s as usize);
-            moves.makeCaptures(s as u8, b2 & captureMask);
+            b2 = self.bitboard.get_knight_attacks(s as usize);
+            moves.make_captures(s as u8, b2 & capture_mask);
             if !only_quiescence {
-                moves.makeQuiets(s as u8, b2 & quietMask);
+                moves.make_quiets(s as u8, b2 & quiet_mask);
             }
         }
 
-        b1 = our_bishops_and_queens & notPinned;
+        b1 = our_bishops_and_queens & not_pinned;
         for s in BitIter(b1) {
             b2 = self.bitboard.get_bishop_attacks(s as usize, all);
-            moves.makeCaptures(s as u8, b2 & captureMask);
+            moves.make_captures(s as u8, b2 & capture_mask);
             if !only_quiescence {
-                moves.makeQuiets(s as u8, b2 & quietMask);
+                moves.make_quiets(s as u8, b2 & quiet_mask);
             }
         }
 
-        b1 = our_rooks_and_queens & notPinned;
+        b1 = our_rooks_and_queens & not_pinned;
         for s in BitIter(b1) {
             b2 = self.bitboard.get_rook_attacks(s as usize, all);
-            moves.makeCaptures(s as u8, b2 & captureMask);
+            moves.make_captures(s as u8, b2 & capture_mask);
             if !only_quiescence {
-                moves.makeQuiets(s as u8, b2 & quietMask);
+                moves.make_quiets(s as u8, b2 & quiet_mask);
             }
         }
 
-        b1 = self.bitboard_of(us, PAWN) & notPinned & !Bitboard::PAWN_RANKS[us as usize];
+        b1 = self.bitboard_of(us, PAWN) & not_pinned & !Bitboard::PAWN_RANKS[us as usize];
 
         if !only_quiescence {
             // single pawn pushes
             b2 = match us { WHITE => b1 << 8, _ => b1 >> 8} & !all;
 
             //double pawn pushes
-            b3 = Bitboard::push(b2 & Bitboard::PAWN_DOUBLE_PUSH_LINES[us as usize], us) & quietMask;
+            b3 = Bitboard::push(b2 & Bitboard::PAWN_DOUBLE_PUSH_LINES[us as usize], us) & quiet_mask;
 
-            b2 &= quietMask;
+            b2 &= quiet_mask;
 
             for s in BitIter(b2) {
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::QUIET));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::QUIET));
             }
 
             for s in BitIter(b3) {
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(DOUBLE_FORWARD, us)) as u8, s as u8, Move::DOUBLE_PUSH));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(DOUBLE_FORWARD, us)) as u8, s as u8, Move::DOUBLE_PUSH));
             }
         }
 
-        b2 = (match us { WHITE => Bitboard::whiteLeftPawnAttacks(b1), _ => Bitboard::blackRightPawnAttacks(b1) }) & captureMask;
-        b3 = (match us { WHITE => Bitboard::whiteRightPawnAttacks(b1), _ => Bitboard::blackLeftPawnAttacks(b1) }) & captureMask;
+        b2 = (match us { WHITE => Bitboard::white_left_pawn_attacks(b1), _ => Bitboard::black_right_pawn_attacks(b1) }) & capture_mask;
+        b3 = (match us { WHITE => Bitboard::white_right_pawn_attacks(b1), _ => Bitboard::black_left_pawn_attacks(b1) }) & capture_mask;
 
         for s in BitIter(b2) {
-            moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::CAPTURE));
+            moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::CAPTURE));
         }
 
         for s in BitIter(b3) {
-            moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::CAPTURE));
+            moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::CAPTURE));
         }
 
-        b1 = self.bitboard_of(us, PAWN) & notPinned & Bitboard::PAWN_RANKS[us as usize];
+        b1 = self.bitboard_of(us, PAWN) & not_pinned & Bitboard::PAWN_RANKS[us as usize];
         if b1 != 0 {
             if !only_quiescence {
-                b2 = match us { WHITE => b1 << 8, _ => b1 >> 8 } & quietMask;
+                b2 = match us { WHITE => b1 << 8, _ => b1 >> 8 } & quiet_mask;
                 for s in BitIter(b2) {
-                    moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_QUEEN));
-                    moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_KNIGHT));
-                    moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_ROOK));
-                    moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_BISHOP));
+                    moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_QUEEN));
+                    moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_KNIGHT));
+                    moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_ROOK));
+                    moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_BISHOP));
                 }
             }
 
-            b2 = (match us { WHITE => Bitboard::whiteLeftPawnAttacks(b1), _ => Bitboard::blackRightPawnAttacks(b1) }) & captureMask;
-            b3 = (match us { WHITE => Bitboard::whiteRightPawnAttacks(b1), _ => Bitboard::blackLeftPawnAttacks(b1) }) & captureMask;
+            b2 = (match us { WHITE => Bitboard::white_left_pawn_attacks(b1), _ => Bitboard::black_right_pawn_attacks(b1) }) & capture_mask;
+            b3 = (match us { WHITE => Bitboard::white_right_pawn_attacks(b1), _ => Bitboard::black_left_pawn_attacks(b1) }) & capture_mask;
 
             for s in BitIter(b2) {
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_QUEEN));
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_KNIGHT));
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_ROOK));
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_BISHOP));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_QUEEN));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_KNIGHT));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_ROOK));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_BISHOP));
             }
 
             for s in BitIter(b3) {
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_QUEEN));
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_KNIGHT));
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_ROOK));
-                moves.add(Move::newFromFlags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_BISHOP));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_QUEEN));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_KNIGHT));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_ROOK));
+                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_BISHOP));
             }
         }
 
@@ -938,12 +946,14 @@ impl BoardState {
 
 #[cfg(test)]
 mod tests {
-    use crate::fen::{from_fen_default, to_fen};
+    use crate::bitboard::Bitboard;
+    use crate::fen::{from_fen_default, START_POS};
 
     #[test]
     fn from_fen_startpos() {
-        let mut state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        let moves = state.generate_legal_moves(false);
+        let bitboard = Bitboard::new();
+        let mut state = from_fen_default(START_POS, &bitboard);
+        let moves = state.generate_legal_moves();
         println!("{}", moves);
         // assert_eq!(state.to_string(), );
     }

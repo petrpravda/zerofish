@@ -2,12 +2,13 @@ pub mod uci;
 mod engine;
 mod engine_thread;
 pub mod fen;
-mod bitboard;
+pub mod bitboard;
 mod piece;
 mod side;
 mod square;
 mod r#move;
 pub mod board_state;
+mod perft;
 
 
 pub fn add(left: usize, right: usize) -> usize {

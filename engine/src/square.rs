@@ -1,3 +1,4 @@
+#[allow(non_camel_case_types)]
 // const BOARD_FLIPPING: u8 = 0x38;
 
 use crate::side::Side;
@@ -48,22 +49,23 @@ impl Square {
         chars.iter().collect::<String>()
     }
 
-    pub fn getFileIndex(square: u8) -> u8 {
+    pub fn get_file_index(square: u8) -> u8 {
         square & 7
     }
 
-    pub fn getRankIndex(square: u8) -> u8 {
+    pub fn get_rank_index(square: u8) -> u8 {
         square >> 3
     }
 
-    pub fn getDiagonalIndex(square: u8) -> u8 {
-        7 + Square::getRankIndex(square) - Square::getFileIndex(square)
+    pub fn get_diagonal_index(square: u8) -> u8 {
+        7 + Square::get_rank_index(square) - Square::get_file_index(square)
     }
 
-    pub fn getAntiDiagonalIndex(square: u8) -> u8 {
-        Square::getRankIndex(square) + Square::getFileIndex(square)
+    pub fn get_anti_diagonal_index(square: u8) -> u8 {
+        Square::get_rank_index(square) + Square::get_file_index(square)
     }
 
+    #[allow(non_camel_case_types)]
     pub fn direction(direction: Direction, side: Side) -> Direction {
         match side { WHITE => direction, _ => -direction }
     }

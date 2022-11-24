@@ -1,4 +1,4 @@
-#![allow(unused)]
+// #![allow(unused)]
 
 pub type Side = u8;
 

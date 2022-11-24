@@ -67,7 +67,7 @@ pub type Piece = u8;
 //
 //     public static int flip(int piece) { return piece ^ 8; }
 //
-    pub fn typeOf(piece: Piece) -> PieceType {
+    pub fn type_of(piece: Piece) -> PieceType {
          piece & 0b111
     }
 //
