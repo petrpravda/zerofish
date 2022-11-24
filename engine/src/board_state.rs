@@ -1,11 +1,13 @@
 #![allow(unused_variables, dead_code)]
 
 use std::fmt;
-use crate::piece::{Piece, PIECES_COUNT};
+use crate::piece::{Piece, PIECES_COUNT, to_piece_char};
 use crate::side::Side;
 
 //     public static int TOTAL_PHASE = 24;
 //     public static int[] PIECE_PHASES = {0, 1, 1, 2, 4, 0};
+
+const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
 pub struct BoardState {
     ply: usize,
@@ -26,16 +28,13 @@ pub struct BoardState {
 
 impl fmt::Display for BoardState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // let prom: String = if self.is_promotion() {String::from(get_piece_string(self.piece_id())).to_lowercase()} else {"".to_string()};
-        write!(f, "{}",
-               "blablable",
-               )
+        write!(f, "{}", self.to_string())
     }
 }
 
 impl BoardState {
     pub fn new(
-        items: &[Piece],
+        items: &[Piece; 64],
         side_to_play: Side,
         movements: u64,
         en_passant: u64,
@@ -44,12 +43,11 @@ impl BoardState {
         max_search_depth: usize
     ) -> Self {
         if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len()) }
-
         let board_state = BoardState {
             ply: 0,
             history: vec![],
             piece_bb: [0; PIECES_COUNT],
-            items: [0; 64],
+            items: (*items).clone(),
             side_to_play,
             hash: 0,
             full_move_normalized: 0,
@@ -63,6 +61,25 @@ impl BoardState {
         };
 
         board_state
+    }
+
+    pub fn to_string(&self) -> String  {
+        let mut result = String::new();
+        result.push_str(CHESSBOARD_LINE);
+
+        for i in (0..=56).step_by(8).collect::<Vec<usize>>().into_iter().rev().collect::<Vec<usize>>() {
+            for j in 0..8 {
+                let piece: u8 = self.items[i + j];
+                result.push_str("| ");
+                result.push(to_piece_char(piece));
+                result.push(' ');
+            }
+
+            result.push_str("|\n");
+            result.push_str(&CHESSBOARD_LINE);
+        }
+
+        result
     }
 
 

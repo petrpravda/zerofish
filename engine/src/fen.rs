@@ -1,4 +1,4 @@
-#![allow(unused_variables)]
+#![allow(unused_variables, unused_imports)]
 
 use crate::bitboard::Bitboard;
 use crate::board_state::BoardState;
@@ -143,9 +143,47 @@ mod tests {
     use crate::fen::{from_fen_default};
 
     #[test]
+    fn from_fen_startpos() {
+        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        assert_eq!(state.to_string(), "+---+---+---+---+---+---+---+---+\n\
+                                       | r | n | b | q | k | b | n | r |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       | p | p | p | p | p | p | p | p |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       |   |   |   |   |   |   |   |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       |   |   |   |   |   |   |   |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       |   |   |   |   |   |   |   |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       |   |   |   |   |   |   |   |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       | P | P | P | P | P | P | P | P |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       | R | N | B | Q | K | B | N | R |\n\
+                                       +---+---+---+---+---+---+---+---+\n");
+    }
+
+    #[test]
     fn from_fen_developed() {
         let state = from_fen_default("r2q1rk1/pbp2ppp/1pnp1n2/8/2PPp3/2P1P3/P1N2PPP/R1BQKB1R w kq - 0 10");
-        println!("{}", state);
+        assert_eq!(state.to_string(), "+---+---+---+---+---+---+---+---+\n\
+                                       | r |   |   | q |   | r | k |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       | p | b | p |   |   | p | p | p |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       |   | p | n | p |   | n |   |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       |   |   |   |   |   |   |   |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       |   |   | P | P | p |   |   |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       |   |   | P |   | P |   |   |   |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       | P |   | N |   |   | P | P | P |\n\
+                                       +---+---+---+---+---+---+---+---+\n\
+                                       | R |   | B | Q | K | B |   | R |\n\
+                                       +---+---+---+---+---+---+---+---+\n");
     }
 }
 

@@ -47,9 +47,11 @@ This project is licensed under the GPL License
 ## Acknowledgments
 
 I got inspiration from many GPL chess engines. Most notably from
+* [weiawagaJ](https://github.com/Heiaha/WeiawagaJ)
 * [velvet](https://github.com/mhonert/velvet-chess)
 
 
 Inspiration, code snippets, etc.
 * [Square mapping](https://www.chessprogramming.org/Square_Mapping_Considerations)
 * [Obstruction Difference algorithm](https://www.chessprogramming.org/Obstruction_Difference)
+* [Tricky Perft positions](http://www.talkchess.com/forum3/viewtopic.php?t=47318)
