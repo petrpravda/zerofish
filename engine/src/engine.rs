@@ -1,6 +1,6 @@
 use crate::bitboard::Bitboard;
 use crate::board_state::BoardState;
-use crate::fen::{from_fen_default, START_POS};
+use crate::fen::{from_fen_default, to_fen};
 
 pub enum UciMessage {
     UciCommand(String),
@@ -71,26 +71,33 @@ impl<'a> Engine<'a> {
     pub(crate) fn process_uci_command(&mut self, uci_command: String) -> String {
         let parts: Vec<&str> = uci_command.split_whitespace().collect();
         let part = parts.get(0);
+        let sub_part = parts.get(1);
         if part.is_some() {
             let result: String = match part.unwrap().to_lowercase().as_str() {
                 //"fen" => fen(tx),
 
-                // "go" => {
-                //     let depth = extract_option(&parts, "depth", 3);
-                //
-                //     self.go(depth, 0, 0, 0, 0, 0, 0)
-                // },
+                "go" => {
+                    let depth = parts.get(2).map(|d| d.parse::<u16>()).map(|e| e.unwrap());
+                    if parts.len() == 3 && sub_part.unwrap().eq(&"perft") {
+                        println!("PERFT, depth {}", depth.unwrap());
+                    } else {
+
+                    }
+                    String::from("go")
+                    // let depth = extract_option(&parts, "depth", 3);
+                    //
+                    // self.go(depth, 0, 0, 0, 0, 0, 0)
+                },
 
                 "d" => {
                     // let (legal_moves_string, checker_moves_string) = generateMoves(&mut self.board);
                     // //String checkers = checkerMoves.stream().map(m -> Square.getName(m.start())).collect(Collectors.joining(" "));
                     //
-                    // let mut output = self.board.to_string();
-                    // output.push_str(format!("Fen: {}\n", write_fen(&self.board)).as_str());
+                    let mut output = self.board_state.to_string();
+                    output.push_str(format!("Fen: {}\n", to_fen(&self.board_state)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
-                    // output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
-                    let output = "";
-                    println!("Display {}", output);
+                    //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
+                    println!("{}", output);
                     output.to_string()
                 }
 

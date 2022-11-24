@@ -61,12 +61,12 @@ impl Move {
     // return false;
     // }
 
-    pub fn getPieceType(&self) -> PieceType {
-        (self.flags() & 0b11) + 1
+    pub fn get_piece_type(&self) -> PieceType {
+        PieceType::from((self.flags() & 0b11) + 1)
     }
 
     // public int getPieceTypeForSide(int sideToPlay) {
-    // return this.getPieceType() + sideToPlay * 8;
+    // return this.get_piece_type() + sideToPlay * 8;
     // }
 
     pub fn uci(&self) -> String {

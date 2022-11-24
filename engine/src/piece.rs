@@ -55,20 +55,40 @@ pub type Piece = u8;
     }
   }
 
-  pub type PieceType = u8;
+#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Debug)]
+pub enum PieceType {
+  PAWN,
+  KNIGHT,
+  BISHOP,
+  ROOK,
+  QUEEN,
+  KING,
+}
 
-  pub const PAWN: PieceType = 0;
-  pub const KNIGHT: PieceType = 1;
-  pub const BISHOP: PieceType = 2;
-  pub const ROOK: PieceType = 3;
-  pub const QUEEN: PieceType = 4;
-  pub const KING: PieceType = 5;
+impl PieceType {
+  #[inline(always)]
+  pub fn index(self) -> usize {
+    self as usize
+  }
+
+  #[inline(always)]
+  pub fn iter(start: Self, end: Self) -> impl Iterator<Item = Self> {
+    (start as u8..=end as u8).map(Self::from)
+  }
+}
+
+impl From<u8> for PieceType {
+  #[inline(always)]
+  fn from(n: u8) -> PieceType {
+    unsafe { std::mem::transmute::<u8, Self>(n) }
+  }
+}
 
 //
 //     public static int flip(int piece) { return piece ^ 8; }
 //
     pub fn type_of(piece: Piece) -> PieceType {
-         piece & 0b111
+        PieceType::from(piece & 0b111)
     }
 //
 //     public static int sideOf(int piece){
@@ -76,7 +96,7 @@ pub type Piece = u8;
 //     }
 //
     pub fn make_piece(side: Side, piece_type: PieceType) -> Piece {
-        return (side << 3) + piece_type;
+        return (side << 3) + piece_type.index() as u8;
     }
 
 //     public static String getNotation(int piece){

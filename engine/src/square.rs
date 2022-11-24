@@ -1,4 +1,4 @@
-#[allow(non_camel_case_types)]
+#![allow(non_camel_case_types,unused)]
 // const BOARD_FLIPPING: u8 = 0x38;
 
 use crate::side::Side;
@@ -67,6 +67,13 @@ impl Square {
 
     #[allow(non_camel_case_types)]
     pub fn direction(direction: Direction, side: Side) -> Direction {
-        match side { WHITE => direction, _ => -direction }
+        return match side {
+            WHITE => {
+                return direction;
+            },
+            _ => {
+                return -direction;
+            }
+        }
     }
 }

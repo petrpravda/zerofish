@@ -1,8 +1,10 @@
 #![allow(unused_variables, dead_code)]
 
 use std::fmt;
+
 use crate::bitboard::{Bitboard, BitIter};
-use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, KING, KNIGHT, make_piece, NONE, PAWN, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
+use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
+use crate::piece::PieceType::{KING, KNIGHT, PAWN};
 use crate::r#move::{Move, MoveList};
 use crate::side::{BLACK, flip, Side, WHITE};
 use crate::square::{BACK, DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
@@ -26,7 +28,7 @@ pub struct BoardState<'a> {
     phase: u32,
     mg: i32,
     eg: i32,
-    checkers: u64,
+//    checkers: u64,
     pub(crate) movements: u64,
     pub en_passant: u64,
 
@@ -50,7 +52,7 @@ impl<'a> BoardState<'a> {
         max_search_depth: usize,
         bitboard: &'a Bitboard,
     ) -> Self {
-        if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len()) }
+        if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len() as u64) }
         let mut board_state = BoardState {
             ply: 0,
             history: vec![],
@@ -63,7 +65,7 @@ impl<'a> BoardState<'a> {
             phase: 0,
             mg: 0,
             eg: 0,
-            checkers: 0,
+//            checkers: 0,
             movements,
             en_passant,
             bitboard
@@ -175,7 +177,7 @@ impl<'a> BoardState<'a> {
             // hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
         }
 
-        fn removePiece(&mut self, square: u8){
+        fn remove_piece(&mut self, square: u8){
             let piece = self.items[square as usize];
             // phase += PIECE_PHASES[Piece.type_of(piece)];
             // mg -= MGS[piece][square]; // EConstants.PIECE_TABLES[piece][square];
@@ -189,24 +191,24 @@ impl<'a> BoardState<'a> {
             self.items[square as usize] = NONE;
         }
 
-        fn movePieceQuiet(&mut self, fromSq: u8, toSq: u8){
+        fn move_piece_quiet(&mut self, from_sq: u8, to_sq: u8){
             //update incremental evaluation terms
-            let piece = self.items[fromSq as usize];
-            // self.mg += MGS[piece][toSq] - MGS[piece][fromSq];
-            // self.eg += EGS[piece][toSq] - EGS[piece][fromSq];
+            let piece = self.items[from_sq as usize];
+            // self.mg += MGS[piece][to_sq] - MGS[piece][from_sq];
+            // self.eg += EGS[piece][to_sq] - EGS[piece][from_sq];
 
             //update hashes
-//            hash ^= Zobrist.ZOBRIST_TABLE[piece][fromSq] ^ Zobrist.ZOBRIST_TABLE[piece][toSq];
+//            hash ^= Zobrist.ZOBRIST_TABLE[piece][from_sq] ^ Zobrist.ZOBRIST_TABLE[piece][to_sq];
 
             //update board
-            self.piece_bb[piece as usize] ^= 1u64 << fromSq | 1u64 << toSq;
-            self.items[toSq as usize] = piece;
-            self.items[fromSq as usize] = NONE;
+            self.piece_bb[piece as usize] ^= 1u64 << from_sq | 1u64 << to_sq;
+            self.items[to_sq as usize] = piece;
+            self.items[from_sq as usize] = NONE;
         }
 
-        pub fn movePiece(&mut self, fromSq: u8, toSq: u8){
-            self.removePiece(toSq);
-            self.movePieceQuiet(fromSq, toSq);
+        pub fn move_piece(&mut self, from_sq: u8, to_sq: u8){
+            self.remove_piece(to_sq);
+            self.move_piece_quiet(from_sq, to_sq);
         }
 
     //     public long hash(){
@@ -324,48 +326,48 @@ impl<'a> BoardState<'a> {
 
         match mowe.flags() {
             Move::QUIET => {
-                state.movePieceQuiet(mowe.from(), mowe.to());
+                state.move_piece_quiet(mowe.from(), mowe.to());
             }
             Move::DOUBLE_PUSH => {
-                state.movePieceQuiet(mowe.from(), mowe.to());
+                state.move_piece_quiet(mowe.from(), mowe.to());
                 state.en_passant = 1u64 << (mowe.from() as i8 + Square::direction(FORWARD, state.side_to_play));
 //                state.hash ^= Zobrist.EN_PASSANT[(int) (state.enPassant & 0b111)];
             }
             Move::OO => {
                 if state.side_to_play == WHITE {
-                    state.movePieceQuiet(Square::E1, Square::G1);
-                    state.movePieceQuiet(Square::H1, Square::F1);
+                    state.move_piece_quiet(Square::E1, Square::G1);
+                    state.move_piece_quiet(Square::H1, Square::F1);
                 }
                 else {
-                    state.movePieceQuiet(Square::E8, Square::G8);
-                    state.movePieceQuiet(Square::H8, Square::F8);
+                    state.move_piece_quiet(Square::E8, Square::G8);
+                    state.move_piece_quiet(Square::H8, Square::F8);
                 }
             }
             Move::OOO => {
                 if state.side_to_play == WHITE {
-                    state.movePieceQuiet(Square::E1, Square::C1);
-                    state.movePieceQuiet(Square::A1, Square::D1);
+                    state.move_piece_quiet(Square::E1, Square::C1);
+                    state.move_piece_quiet(Square::A1, Square::D1);
                 } else {
-                    state.movePieceQuiet(Square::E8, Square::C8);
-                    state.movePieceQuiet(Square::A8, Square::D8);
+                    state.move_piece_quiet(Square::E8, Square::C8);
+                    state.move_piece_quiet(Square::A8, Square::D8);
                 }
             }
             Move::EN_PASSANT => {
-                state.movePieceQuiet(mowe.from(), mowe.to());
-                state.removePiece((mowe.to() as i8 + Square::direction(BACK, state.side_to_play)) as u8);
+                state.move_piece_quiet(mowe.from(), mowe.to());
+                state.remove_piece((mowe.to() as i8 + Square::direction(BACK, state.side_to_play)) as u8);
             }
             Move::PR_KNIGHT | Move::PR_BISHOP | Move::PR_ROOK | Move::PR_QUEEN=> {
-                state.removePiece(mowe.from());
-                state.set_piece_at(make_piece(state.side_to_play, mowe.getPieceType()), mowe.to() as usize);
+                state.remove_piece(mowe.from());
+                state.set_piece_at(make_piece(state.side_to_play, mowe.get_piece_type()), mowe.to() as usize);
             }
             Move::PC_KNIGHT | Move::PC_BISHOP | Move::PC_ROOK | Move::PC_QUEEN => {
-                state.removePiece(mowe.from());
-                state.removePiece(mowe.to());
-                state.set_piece_at(make_piece(state.side_to_play, mowe.getPieceType()), mowe.to() as usize);
+                state.remove_piece(mowe.from());
+                state.remove_piece(mowe.to());
+                state.set_piece_at(make_piece(state.side_to_play, mowe.get_piece_type()), mowe.to() as usize);
             }
             Move::CAPTURE => {
                 state.half_move_clock = 0;
-                state.movePiece(mowe.from(), mowe.to());
+                state.move_piece(mowe.from(), mowe.to());
             }
             _ => {
                 panic!()
@@ -557,11 +559,11 @@ impl<'a> BoardState<'a> {
     //         return generate_legal_moves(true);
     //     }
 
-    pub fn generate_legal_moves(&mut self) -> MoveList {
+    pub fn generate_legal_moves(&self) -> MoveList {
         self.generate_legal_moves_wo(false)
     }
 
-    pub fn generate_legal_moves_wo(&mut self, only_quiescence: bool) -> MoveList {
+    pub fn generate_legal_moves_wo(&self, only_quiescence: bool) -> MoveList {
         let mut moves = MoveList::new();
         let us = self.side_to_play;
         let them = flip(self.side_to_play);
@@ -612,7 +614,7 @@ impl<'a> BoardState<'a> {
         //let mut s: u8;
 
         // checker moves from opposite knights and pawns
-        self.checkers = (self.bitboard.get_knight_attacks(our_king) & self.bitboard_of(them, KNIGHT))
+        let mut checkers = (self.bitboard.get_knight_attacks(our_king) & self.bitboard_of(them, KNIGHT))
                 | (Bitboard::pawn_attacks_from_square(our_king as u8, us) & self.bitboard_of(them, PAWN));
 
         // ray candidates to our king
@@ -627,7 +629,7 @@ impl<'a> BoardState<'a> {
 
             // king is not guarded by any of our pieces
             if squares_between == 0 {
-                self.checkers ^= 1u64 << ray_candidate;
+                checkers ^= 1u64 << ray_candidate;
             // when there's only one piece between king and a sliding piece, the piece is pinned
             } else if squares_between.count_ones() == 1 {
                 pinned ^= squares_between;
@@ -636,22 +638,22 @@ impl<'a> BoardState<'a> {
 
 
         let not_pinned = !pinned;
-        if self.checkers.count_ones() == 2 {
+        if checkers.count_ones() == 2 {
             // our king is in check mate
             return moves;
-        } else if self.checkers.count_ones() == 1 {
+        } else if checkers.count_ones() == 1 {
             // our king is checked
-            let checker_square: usize = self.checkers.trailing_zeros() as usize;
+            let checker_square: usize = checkers.trailing_zeros() as usize;
             let checker_piece_type = type_of(self.items[checker_square] as Piece);
             // for checking sliding pieces
             if checker_piece_type != PAWN && checker_piece_type != KNIGHT {
                 // we have to capture them
-                capture_mask = self.checkers;
+                capture_mask = checkers;
                 // ...or block 'em
                 quiet_mask = self.bitboard.between(our_king as u8, checker_square as u8);
             } else {
                 // for checking en-passants
-                if checker_piece_type == PAWN && self.checkers == (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 }) {
+                if checker_piece_type == PAWN && checkers == (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 }) {
                     // we have to consider taking the pawn en passant
                     let en_passant_square = self.en_passant.trailing_zeros();
                     for b1 in BitIter(Bitboard::pawn_attacks_from_square(en_passant_square as u8, them) & self.bitboard_of(us, PAWN) & not_pinned) {
@@ -790,7 +792,8 @@ impl<'a> BoardState<'a> {
             b2 &= quiet_mask;
 
             for s in BitIter(b2) {
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::QUIET));
+                let direct = Square::direction(FORWARD, us);
+                moves.add(Move::new_from_flags((s as i8 - direct) as u8, s as u8, Move::QUIET));
             }
 
             for s in BitIter(b3) {

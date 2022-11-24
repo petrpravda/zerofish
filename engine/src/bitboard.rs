@@ -165,7 +165,7 @@ impl Bitboard {
 
         let duration = end.duration_since(start);
         let msg = format!("Bitboard initialized in {} μs", duration.as_micros());
-        let _msgRef = msg.as_str();
+        //let _msgRef = msg.as_str();
         eprintln!("{}", msg);
 
         // let elapsed_time = start.elapsed();
@@ -573,11 +573,11 @@ impl Bitboard {
 
     pub fn attacks(&self, piece_type: PieceType, square: u8, occ: u64) -> u64 {
         match piece_type {
-            ROOK => self.get_rook_attacks(square as usize, occ),
-            BISHOP => self.get_bishop_attacks(square as usize, occ),
-            QUEEN => self.get_bishop_attacks(square as usize, occ) | self.get_rook_attacks(square as usize, occ),
-            KING => self.get_king_attacks(square as usize),
-            KNIGHT => self.get_knight_attacks(square as usize),
+            PieceType::ROOK => self.get_rook_attacks(square as usize, occ),
+            PieceType::BISHOP => self.get_bishop_attacks(square as usize, occ),
+            PieceType::QUEEN => self.get_bishop_attacks(square as usize, occ) | self.get_rook_attacks(square as usize, occ),
+            PieceType::KING => self.get_king_attacks(square as usize),
+            PieceType::KNIGHT => self.get_knight_attacks(square as usize),
             _ => 0u64
         }
     }

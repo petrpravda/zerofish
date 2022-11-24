@@ -1,5 +1,5 @@
-use zerofish::bitboard::Bitboard;
-use zerofish::fen::{from_fen_default, START_POS};
+// use zerofish::bitboard::Bitboard;
+// use zerofish::fen::{from_fen_default, START_POS};
 use zerofish::{engine_thread, uci};
 
 // mod uci;

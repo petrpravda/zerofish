@@ -9,9 +9,9 @@ pub fn flip(side: Side) -> Side {
     BLACK ^ side
 }
 
-pub fn multiplicator(side: Side) -> i32 {
-    if side == WHITE { 1 } else { -1 }
-}
+// pub fn multiplicator(side: Side) -> i32 {
+//     if side == WHITE { 1 } else { -1 }
+// }
 
 pub fn parse(side: char) -> Side {
     match side {

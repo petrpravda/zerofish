@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn from_fen_startpos() {
-        let mut bitboard = Bitboard::new();
+        let bitboard = Bitboard::new();
         let state = from_fen_default(START_POS, &bitboard);
         assert_eq!(state.to_string(), "+---+---+---+---+---+---+---+---+\n\
                                        | r | n | b | q | k | b | n | r |\n\
