@@ -96,7 +96,7 @@ impl From<u8> for PieceType {
 //     }
 //
     pub fn make_piece(side: Side, piece_type: PieceType) -> Piece {
-        return (side << 3) + piece_type.index() as u8;
+        return ((side.index() as u8) << 3) + piece_type.index() as u8;
     }
 
 //     public static String getNotation(int piece){

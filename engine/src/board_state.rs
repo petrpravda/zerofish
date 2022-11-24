@@ -6,7 +6,8 @@ use crate::bitboard::{Bitboard, BitIter};
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
 use crate::r#move::{Move, MoveList};
-use crate::side::{BLACK, flip, Side, WHITE};
+use crate::side::Side;
+use crate::side::Side::{BLACK, WHITE};
 use crate::square::{BACK, DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
 
 //     public static int TOTAL_PHASE = 24;
@@ -566,7 +567,7 @@ impl<'a> BoardState<'a> {
     pub fn generate_legal_moves_wo(&self, only_quiescence: bool) -> MoveList {
         let mut moves = MoveList::new();
         let us = self.side_to_play;
-        let them = flip(self.side_to_play);
+        let them = !self.side_to_play;
 
         let us_bb = self.all_pieces_for_side(us);
         let them_bb = self.all_pieces_for_side(them);

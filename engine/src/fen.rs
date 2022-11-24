@@ -4,7 +4,8 @@ use std::iter::Scan;
 use crate::bitboard::Bitboard;
 use crate::board_state::BoardState;
 use crate::piece::{BLACK_KING, BLACK_ROOK, parse_piece, Piece, to_piece_char, WHITE_KING, WHITE_ROOK};
-use crate::side::{BLACK, parse, Side, WHITE};
+use crate::side::Side;
+use crate::side::Side::{BLACK, WHITE};
 use crate::square::Square;
 
 pub const START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -27,7 +28,7 @@ pub fn from_fen<'a>(fen: &str, max_search_depth: usize, bitboard: &'a Bitboard) 
     let items: [Piece; 64] = pieces.try_into().unwrap();
 
     let side_part = fen_parts.next().unwrap();
-    let side = parse(side_part.chars().next().unwrap());
+    let side: Side = Side::try_from(side_part.chars().next().unwrap()).unwrap();
 
     let castling_part = fen_parts.next().unwrap();
     let mut movements: u64 = 0;
@@ -73,7 +74,7 @@ pub fn to_fen(state: &BoardState) -> String {
                 .replace("11", "2")
         }).collect::<Vec<String>>().join("/");
 
-    let side = crate::side::to_string(state.side_to_play);
+    let side = state.side_to_play;
 
     let mut castling = String::new();
     if (Bitboard::castling_pieces_kingside_mask(WHITE) & state.movements) == 0 {

@@ -3,7 +3,7 @@
 use std::time::Instant;
 use crate::bitboard::Direction::{AntiDiagonal, Diagonal, Horizontal, Vertical};
 use crate::piece::PieceType;
-use crate::side::{Side, WHITE};
+use crate::side::{Side};
 use crate::square::Square;
 
 struct Dir(i8, i8);
@@ -84,7 +84,7 @@ const fn calc_line_patterns() -> [LinePatterns; 64 * 4] {
     let mut index = 0;
     let mut dir_index = 0;
     while dir_index < DIRECTIONS.len() {
-        let diri = DIRECTIONS[dir_index];
+        let diri = DIRECTIONS[dir_index]; // TODO make simpler
         let mut pos = 0;
         while pos < 64 {
             let lower = calc_pattern(pos, DIRECTION_COL_OFFSET[diri], DIRECTION_ROW_OFFSET[diri]);
@@ -309,7 +309,7 @@ impl Bitboard {
 
     pub fn push(l: u64, side: Side) -> u64 {
         match side {
-            WHITE => l << 8,
+            Side::WHITE => l << 8,
             _ => l >> 8
         }
     }
@@ -355,7 +355,7 @@ impl Bitboard {
     //     }
     //
         pub fn ignore_ooo_danger(side: Side) -> u64 {
-            match side { WHITE => 0x2,
+            match side { Side::WHITE => 0x2,
                 _ => 0x200000000000000 }
         }
 
@@ -508,39 +508,39 @@ impl Bitboard {
         pub fn pawn_attacks_from_square(square: u8, side: Side) -> u64 {
             let bb = 1u64 << square;
             match side {
-                WHITE => Bitboard::white_left_pawn_attacks(bb) | Bitboard::white_right_pawn_attacks(bb),
+                Side::WHITE => Bitboard::white_left_pawn_attacks(bb) | Bitboard::white_right_pawn_attacks(bb),
                 _ => Bitboard::black_left_pawn_attacks(bb) | Bitboard::black_right_pawn_attacks(bb)
             }
         }
 
         pub fn pawn_attacks(pawns: u64, side: Side) -> u64 {
             match side {
-                WHITE => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) << 7) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) << 9),
+                Side::WHITE => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) << 7) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) << 9),
                 _ => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) >> 9) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) >> 7)
             }
         }
 
         pub fn castling_pieces_kingside_mask(side: Side) -> u64 {
             match side {
-                WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BIT_PATTERN,
+                Side::WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BIT_PATTERN,
                 _ => Bitboard::BLACK_KING_SIDE_CASTLING_BIT_PATTERN
             }
         }
 
         pub fn castling_pieces_queenside_mask(side: Side) -> u64 {
             match side {
-                WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN,
+                Side::WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN,
                 _ => Bitboard::BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN
             }
         }
 
         pub fn castling_blockers_kingside_mask(side: Side) -> u64 {
-            match side { WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN,
+            match side { Side::WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN,
                     _ => Bitboard::BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN }
         }
 
         pub fn castling_blockers_queenside_mask(side: Side) -> u64 {
-            match side { WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN,
+            match side { Side::WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN,
                 _ => Bitboard::BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN }
         }
 
