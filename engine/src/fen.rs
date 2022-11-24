@@ -1,8 +1,10 @@
 #![allow(unused_variables)]
 
+use crate::bitboard::Bitboard;
 use crate::board_state::BoardState;
-use crate::piece::{parse_piece, Piece};
-use crate::side::{WHITE};
+use crate::piece::{BLACK_KING, BLACK_ROOK, parse_piece, Piece, WHITE_KING, WHITE_ROOK};
+use crate::side::{parse, Side, WHITE};
+use crate::square::Square;
 
 pub const START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -21,14 +23,37 @@ pub fn from_fen(fen: &str, max_search_depth: usize) -> BoardState {
         .map(|x| parse_piece(x))
         .collect();
         //.for_each(|x| { println!("{}", x) });
-
-
-        // .flat_map(|x| x)
-        // .for_each(|x| { println!("{}", x)});
-    //println!("{}", pieces_part);
-
     let items: [Piece; 64] = pieces.try_into().unwrap();
-    BoardState::new(&items, WHITE, 0, 0, 0, 0, 100)
+
+    let side_part = fen_parts.next().unwrap();
+    let side = parse(side_part.chars().next().unwrap());
+
+    let castling_part = fen_parts.next().unwrap();
+    let mut movements: u64 = 0;
+    if !castling_part.contains("K") || items[Bitboard::WHITE_KING_INITIAL_SQUARE] != WHITE_KING
+        || items[Bitboard::WHITE_KINGS_ROOK_MASK.trailing_zeros() as usize] != WHITE_ROOK
+    { movements |= Bitboard::WHITE_KINGS_ROOK_MASK }
+    if !castling_part.contains("Q") || items[Bitboard::WHITE_KING_INITIAL_SQUARE] != WHITE_KING
+        || items[Bitboard::WHITE_QUEENS_ROOK_MASK.trailing_zeros() as usize] != WHITE_ROOK
+    { movements |= Bitboard::WHITE_QUEENS_ROOK_MASK };
+    if !castling_part.contains("k") || items[Bitboard::BLACK_KING_INITIAL_SQUARE] != BLACK_KING
+        || items[Bitboard::BLACK_KINGS_ROOK_MASK.trailing_zeros() as usize] != BLACK_ROOK
+    { movements |= Bitboard::BLACK_KINGS_ROOK_MASK };
+    if !castling_part.contains("q") || items[Bitboard::BLACK_KING_INITIAL_SQUARE] != BLACK_KING
+        || items[Bitboard::BLACK_QUEENS_ROOK_MASK.trailing_zeros() as usize] != BLACK_ROOK
+    { movements |= Bitboard::BLACK_QUEENS_ROOK_MASK };
+
+
+    let en_passant_part = fen_parts.next().unwrap();
+    let en_passant_parsed = if en_passant_part.eq("-") { None } else { Some(Square::get_square_from_name(en_passant_part)) };
+    let en_passant_mask = en_passant_parsed.map(|s| 1u64 << s).unwrap_or(0u64);
+
+    let halfmove_clock_part = fen_parts.next().unwrap();
+    let halfmove_clock = halfmove_clock_part.parse::<usize>().unwrap();
+    let fullmove_part = fen_parts.next().unwrap();
+    let fullmove = fullmove_part.parse::<usize>().unwrap();
+
+    BoardState::new(&items, side, movements, en_passant_mask, halfmove_clock, fullmove, 100)
     // BoardState::new(&[0; 64], WHITE, 0, 0, 0, 0, 100)
 }
 // public static BoardState fromFen(String fen, Integer maxSearchDepth) {
@@ -98,8 +123,8 @@ pub fn from_fen(fen: &str, max_search_depth: usize) -> BoardState {
 //
 //
 //         String enpassant = fenParts.get(3);
-//         long enPassantMask = enpassant.length() < 2 ? 0 : 1L << Square.getSquareFromName(enpassant);
-// //        Integer enpassantSquare = Optional.ofNullable(enpassant.length() < 2 ? null : enpassant).map(Square::getSquareFromName).orElse(null);
+//         long enPassantMask = enpassant.length() < 2 ? 0 : 1L << Square.get_square_from_name(enpassant);
+// //        Integer enpassantSquare = Optional.ofNullable(enpassant.length() < 2 ? null : enpassant).map(Square::get_square_from_name).orElse(null);
 //         String halfMoveClock = fenParts.get(4);
 //         String fullMoveCount = fenParts.get(5);
 //
