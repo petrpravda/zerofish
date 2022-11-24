@@ -26,16 +26,19 @@ impl Perft {
             .unwrap();
     }
 
-    pub fn perft_sf_string(mut state: BoardState, depth: u16) -> String {
+    pub fn perft_sf_string(mut state: BoardState, depth: u16) -> (String, u64) {
         let mut result = String::new();
         let moves = state.generate_legal_moves();
+        let mut total: u64 = 0;
 
         for mowe in moves.moves {
             let mut moved_state = state.do_move(&mowe);
-            result.push_str(&format!("{}: {}\n", &mowe.uci(), Perft::perft(&mut moved_state, depth - 1)));
+            let count = Perft::perft(&mut moved_state, depth - 1);
+            result.push_str(&format!("{}: {}\n", &mowe.uci(), count));
+            total += count;
         }
 
-        result
+        (result, total)
     }
 
 
@@ -104,7 +107,7 @@ mod tests {
         let state = from_fen_default(START_POS, &bitboard);
         let count = Perft::perft(&state, 1);
         let result = Perft::perft_sf_string(state, 1);
-        println!("{}", result);
+        println!("{}", result.0);
         let expected = r#"a2a3: 1
 b2b3: 1
 c2c3: 1
@@ -126,7 +129,7 @@ b1c3: 1
 g1f3: 1
 g1h3: 1
 "#;
-        assert_eq!(Perft::normalize_perft_res(&result), Perft::normalize_perft_res(expected));
+        assert_eq!(Perft::normalize_perft_res(&result.0), Perft::normalize_perft_res(expected));
         assert_eq!(count, 20);
     }
 
@@ -136,7 +139,7 @@ g1h3: 1
         let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq - 1 1", &bitboard);
         let count = Perft::perft(&state, 1);
         let result = Perft::perft_sf_string(state, 1);
-        println!("{}", result);
+        println!("{}", result.0);
         let expected = r#"a7a6: 1
 b7b6: 1
 c7c6: 1
@@ -158,16 +161,16 @@ b8c6: 1
 g8f6: 1
 g8h6: 1
 "#;
-        assert_eq!(Perft::normalize_perft_res(&result), Perft::normalize_perft_res(expected));
+        assert_eq!(Perft::normalize_perft_res(&result.0), Perft::normalize_perft_res(expected));
         assert_eq!(count, 20);
     }
 
     #[test]
     fn from_fen_startpos_depth_2() {
         let bitboard = Bitboard::new();
-        let mut state = from_fen_default(START_POS, &bitboard);
-        let count = Perft::perft(&state, 2);
-        println!("{}", Perft::perft_sf_string(state, 2));
+        let state = from_fen_default(START_POS, &bitboard);
+        let (result, count) = Perft::perft_sf_string(state, 2);
+        println!("{}", result);
         assert_eq!(400, count);
     }
 
@@ -175,8 +178,8 @@ g8h6: 1
     fn from_fen_startpos_depth_2_n() {
         let bitboard = Bitboard::new();
         let mut state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/N7/PPPPPPPP/R1BQKBNR b KQkq - 1 1", &bitboard);
-        let count = Perft::perft(&state, 2);
-        println!("{}", Perft::perft_sf_string(state, 2));
+        let (result, count) = Perft::perft_sf_string(state, 2);
+        println!("{}", result);
         assert_eq!(400, count);
     }
 
@@ -184,9 +187,9 @@ g8h6: 1
     fn from_fen_startpos_depth_3() {
         let bitboard = Bitboard::new();
         let state = from_fen_default(START_POS, &bitboard);
-        let perft_sf = Perft::perft_sf_string(state, 3);
+        let (perft_sf, count) = Perft::perft_sf_string(state, 3);
         println!("{}", perft_sf);
-        //assert_eq!(8902, count);
+        assert_eq!(8902, count);
     }
 
 
