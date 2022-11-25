@@ -1,6 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board_state::BoardState;
 use crate::fen::{from_fen_default, to_fen};
+use crate::perft::Perft;
 
 pub enum UciMessage {
     UciCommand(String),
@@ -79,7 +80,9 @@ impl<'a> Engine<'a> {
                 "go" => {
                     let depth = parts.get(2).map(|d| d.parse::<u16>()).map(|e| e.unwrap());
                     if parts.len() == 3 && sub_part.unwrap().eq(&"perft") {
-                        println!("PERFT, depth {}", depth.unwrap());
+                        // println!("PERFT, depth {}", depth.unwrap());
+                        let (result, _count) = Perft::perft_sf_string(&self.board_state, depth.unwrap());
+                        println!("{}", result);
                     } else {
 
                     }

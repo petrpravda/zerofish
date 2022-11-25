@@ -1,5 +1,4 @@
 - reflect version number - CARGO_PKG_VERSION / uci.rs
-- perfts
 - fill in missing functionality in set_piece_at
 - ~/ChessProjects/wasmlearn/nextjs-wasm/wasm
-- BoardState - make immutable
+- tricky_perfts - use multithreading

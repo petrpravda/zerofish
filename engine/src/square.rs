@@ -68,7 +68,7 @@ impl Square {
     #[allow(non_camel_case_types)]
     pub fn direction(direction: Direction, side: Side) -> Direction {
         return match side {
-            WHITE => {
+            Side::WHITE => {
                 return direction;
             },
             _ => {

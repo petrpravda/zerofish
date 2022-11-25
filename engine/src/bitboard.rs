@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use std::time::Instant;
 use crate::bitboard::Direction::{AntiDiagonal, Diagonal, Horizontal, Vertical};
 use crate::piece::PieceType;
 use crate::side::{Side};
@@ -134,7 +133,7 @@ pub struct Bitboard {
 
 impl Bitboard {
     pub fn new() -> Self {
-        let start = Instant::now();
+        // let start = Instant::now();
         // let WHITE_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(-1);
         // let WHITE_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(-1);
         // let BLACK_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(1);
@@ -161,12 +160,12 @@ impl Bitboard {
         };
         (result.bb_squares_between, result.bb_lines) = result.calc_squares_between();
 
-        let end = Instant::now();
+        // let end = Instant::now();
 
-        let duration = end.duration_since(start);
-        let msg = format!("Bitboard initialized in {} μs", duration.as_micros());
+        // let duration = end.duration_since(start);
+        // let msg = format!("Bitboard initialized in {} μs", duration.as_micros());
         //let _msgRef = msg.as_str();
-        eprintln!("{}", msg);
+        // eprintln!("{}", msg);
 
         // let elapsed_time = start.elapsed();
         // eprintln!("Bitboard initialized in {} μs", elapsed_time.unwrap().as_micros());

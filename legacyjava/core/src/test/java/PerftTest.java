@@ -90,6 +90,18 @@ class PerftTest {
     }
 
     @Test
+    void kingIsNotMovingInRust() {
+        BoardState board = fromFen("rnbqkbnr/1ppppppp/8/p7/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2");
+        assertEquals(28, perft(board, 1));
+    }
+
+    @Test
+    void pawnIsNotTakingInRust() {
+        BoardState board = fromFen("rnbqkb1r/pppppppp/8/8/4n3/3P4/PPPKPPPP/RNBQ1BNR w kq - 3 3");
+        assertEquals(3, perft(board, 1));
+    }
+
+    @Test
     void simpleEnPassant() {
         BoardState state = fromFen("rnbqkbnr/p2ppppp/2p5/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq b6 0 3");
         assertEquals(23, perft(state, 1));
