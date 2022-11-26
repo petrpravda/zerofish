@@ -85,7 +85,7 @@ public class BoardState implements Cloneable {
 
         this.enPassant = enPassantMask;
         if (this.enPassant != 0) {
-            this.hash ^= Zobrist.EN_PASSANT[(int) (this.enPassant & 0b111)];
+            this.hash ^= Zobrist.EN_PASSANT[(Bitboard.lsb(this.enPassant) & 0b111)];
         }
 
         this.movements = movements;
@@ -285,7 +285,7 @@ public class BoardState implements Cloneable {
             case Move.DOUBLE_PUSH:
                 state.movePieceQuiet(move.from(), move.to());
                 state.enPassant = 1L << (move.from() + Square.direction(FORWARD, state.sideToPlay));
-                state.hash ^= Zobrist.EN_PASSANT[(int) (state.enPassant & 0b111)];
+                state.hash ^= Zobrist.EN_PASSANT[(Bitboard.lsb(state.enPassant) & 0b111)];
                 break;
             case Move.OO:
                 if (state.sideToPlay == Side.WHITE){
@@ -852,7 +852,7 @@ public class BoardState implements Cloneable {
 
         if (previous_state != 0L) {
             this.enPassant = 0L;
-            this.hash ^= Zobrist.EN_PASSANT[(int) (previous_state & 0b111)];
+            this.hash ^= Zobrist.EN_PASSANT[(Bitboard.lsb(previous_state) & 0b111)];
         }
     }
 
