@@ -4,6 +4,7 @@ use crate::bitboard::Direction::{AntiDiagonal, Diagonal, Horizontal, Vertical};
 use crate::piece::PieceType;
 use crate::side::{Side};
 use crate::square::Square;
+use crate::zobrist::Zobrist;
 
 struct Dir(i8, i8);
 
@@ -129,34 +130,18 @@ pub struct Bitboard {
     line_masks: [LinePatterns; 64 * 4],
     bb_squares_between: [[u64; 64]; 64],
     bb_lines: [[u64; 64]; 64],
+    pub zobrist: Zobrist,
 }
 
 impl Bitboard {
     pub fn new() -> Self {
-        // let start = Instant::now();
-        // let WHITE_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(-1);
-        // let WHITE_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(-1);
-        // let BLACK_PAWN_FREEPATH: [u64; 64] = create_pawn_free_path_patterns(1);
-        // let WHITE_PAWN_FREESIDES: [u64; 64] = create_pawn_free_sides_patterns(-1);
-        // let BLACK_PAWN_FREESIDES: [u64; 64]= create_pawn_free_sides_patterns(1);
-        // let WHITE_KING_SHIELD: [u64; 64]= create_king_shield_patterns(-1);
-        // let BLACK_KING_SHIELD: [u64; 64]= create_king_shield_patterns(1);
-        // let KING_DANGER_ZONE: [u64; 64]= create_king_danger_zone_patterns();
-        // let line_masks: [LinePatterns; 64 * 4] = calc_line_patterns();
-        //
         let mut result = Self {
             king_attacks: Bitboard::generate_attacks(KING_MOVE_DIRECTIONS),
             knight_attacks: Bitboard::generate_attacks(KNIGHT_MOVE_DIRECTIONS),
             line_masks: calc_line_patterns(),
             bb_squares_between: [[0; 64]; 64],
             bb_lines: [[0; 64]; 64],
-            // BLACK_PAWN_FREEPATH,
-            // WHITE_PAWN_FREESIDES,
-            // BLACK_PAWN_FREESIDES,
-            // WHITE_KING_SHIELD,
-            // BLACK_KING_SHIELD,
-            // KING_DANGER_ZONE,
-            // line_masks
+            zobrist: Zobrist::new(),
         };
         (result.bb_squares_between, result.bb_lines) = result.calc_squares_between();
 
@@ -262,49 +247,6 @@ impl Bitboard {
     //     pub const BACK_ROWS = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111L;
     //     pub const FILE_A = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001L;
     //
-    //     public static final LineAttackMask[] line_masks = calculateLinePatterns();
-    //
-    //     public final static long[][] bb_squares_between = new long[64][64];
-    //     static {
-    //         long sqs;
-    //         for (int sq1 = A1; sq1 <= H8; sq1++){
-    //             for (int sq2 = A1; sq2 <= H8; sq2++){
-    //                 sqs = 1L << sq1 | 1L << sq2;
-    //                 if (Square.get_file_index(sq1) == Square.get_file_index(sq2) || Square.get_rank_index(sq1) == Square.get_rank_index(sq2)) {
-    //                     bb_squares_between[sq1][sq2] =
-    //                             getRookAttacks(sq1, sqs) & getRookAttacks(sq2, sqs);
-    //                 }
-    //                 else if (Square.get_diagonal_index(sq1) == Square.get_diagonal_index(sq1) || Square.get_anti_diagonal_index(sq1) == Square.get_anti_diagonal_index(sq2)) {
-    //                     bb_squares_between[sq1][sq2] =
-    //                             getBishopAttacks(sq1, sqs) & getBishopAttacks(sq2, sqs);
-    //                 }
-    //             }
-    //         }
-    //     }
-    //
-    //     public final static long[][] bb_lines = new long[64][64];
-    //     static {
-    //         for (int sq1 = A1; sq1 <= H8; sq1++){
-    //             for (int sq2 = A1; sq2 <= H8; sq2++){
-    //                 if (Square.get_file_index(sq1) == Square.get_file_index(sq2) || Square.get_rank_index(sq1) == Square.get_rank_index(sq2))
-    //                     bb_lines[sq1][sq2] =
-    //                             getRookAttacks(sq1, 0) & getRookAttacks(sq2, 0);
-    //                 else if (Square.get_diagonal_index(sq1) == Square.get_diagonal_index(sq2) || Square.get_anti_diagonal_index(sq1) == Square.get_anti_diagonal_index(sq2))
-    //                     bb_lines[sq1][sq2] =
-    //                             getBishopAttacks(sq1, 0) & getBishopAttacks(sq2, 0);
-    //             }
-    //         }
-    //     }
-    //
-    //
-    //     private static final MoveDirection[] KNIGHT_MOVE_DIRECTIONS = new MoveDirection[] {dir(-2, -1), dir(-2, 1), dir(2, -1), dir(2, 1),
-    //             dir(-1, -2), dir(-1, 2), dir(1, -2), dir(1, 2)};
-    //     private static final MoveDirection[] KING_MOVE_DIRECTIONS = new MoveDirection[] {dir(0, -1), dir(1, -1), dir(1, 0), dir(1, 1),
-    //             dir(0, 1), dir(-1, 1), dir(-1, 0), dir(-1, -1)};
-    //     // public static final MoveDirection[] BISHOP_MOVE_DIRECTIONS = new MoveDirection[] {dir(-1, -1), dir(1, -1), dir(1, 1), dir(-1, 1)};
-    //
-    //     private final static long[] knight_attacks = generate_attacks(KNIGHT_MOVE_DIRECTIONS);
-    //     private final static long[] king_attacks = generate_attacks(KING_MOVE_DIRECTIONS);
 
     pub fn push(l: u64, side: Side) -> u64 {
         match side {
@@ -313,34 +255,6 @@ impl Bitboard {
         }
     }
 
-    //     public record SquarePosition(int file, int rank) {
-    //         public static SquarePosition from_square_index(int square) {
-    //             return new SquarePosition(square % 8, square / 8);
-    //         }
-    //
-    //         public int to_square_index() {
-    //             return this.file + this.rank * 8;
-    //         }
-    //
-    //         public SquarePosition move_in_direction(MoveDirection direction) {
-    //             return new SquarePosition(this.file + direction.x, this.rank + direction.y);
-    //         }
-    //
-    //         public boolean is_on_board() {
-    //             return this.file >= 0 && this.file < 8 && this.rank >= 0 && this.rank < 8;
-    //         }
-    //     }
-    //
-    //     public record MoveDirection(int x, int y) {
-    //         public static MoveDirection dir(int x, int y) {
-    //             return new MoveDirection(x, y);
-    //         }
-    //     }
-    //
-    //     public static int lsb(long bb){
-    //         return Long.numberOfTrailingZeros(bb);
-    //     }
-    //
     pub fn between(&self, sq1: u8, sq2: u8) -> u64 {
         return self.bb_squares_between[sq1 as usize][sq2 as usize];
     }
@@ -385,77 +299,6 @@ impl Bitboard {
         // return pMask->lineEx & odiff; // (pMask->lower | pMask->upper) & odiff;
     }
 
-    //     public static long getLineAttacks(long occupied, LineAttackMask patterns) {
-    //         //  https://www.chessprogramming.org/Obstruction_Difference
-    //         long lower = patterns.lower & occupied;
-    //         long upper = patterns.upper & occupied;
-    //         long mMs1b = 0x8000000000000000L >> Long.numberOfLeadingZeros (lower | 1);
-    //         long ls1b  = upper & -upper;
-    //         long diff = 2*ls1b + mMs1b;
-    //         return patterns.combined & diff;
-    //     }
-    //
-    //     public static long getLineAttacks(long occupied, long lower, long upper) {
-    //         long combined = lower | upper;
-    //         lower &= occupied;
-    //         upper &= occupied;
-    //         long mMs1b = 0x8000000000000000L >> Long.numberOfLeadingZeros (lower | 1);
-    //         long ls1b  = upper & -upper;
-    //         long diff = 2*ls1b + mMs1b;
-    //         return combined & diff;
-    //     }
-    //
-
-
-    //     public record LineAttackMask(long lower, long upper, long combined) {
-    //     }
-    //
-    //     public enum Directions {
-    //         Horizontal(-1, 0),
-    //         Vertical(0, -1),
-    //         Diagonal(1, -1),
-    //         AntiDiagonal(-1, -1);
-    //
-    //         private final int col;
-    //         private final int row;
-    //
-    //         Directions(int col, int row) {
-    //             this.col = col;
-    //             this.row = row;
-    //         }
-    //
-    //         public int maskIndex(int square) {
-    //             return this.ordinal() * 64 + square;
-    //         }
-    //     }
-    //
-    //     private static LineAttackMask[] calculateLinePatterns() {
-    //         return Arrays.stream(Directions.values())
-    //             .flatMap(dir -> IntStream.range(0, 64)
-    //                     .mapToObj(square -> {
-    //                         long lower = generateRay(square, dir.col, dir.row);
-    //                         long upper = generateRay(square, -dir.col, -dir.row);
-    //                         return new LineAttackMask(lower, upper, upper | lower);
-    //                     })).toArray(LineAttackMask[]::new);
-    //     }
-    //
-    //     private static long generateRay(int pos, int directionHorizontal, int directionVertical) {
-    //         int file = pos % 8;
-    //         int rank = pos / 8;
-    //         long pattern = 0;
-    //         for (int i = 0; i < 7; i++) { // max steps
-    //             file += directionHorizontal;
-    //             rank += directionVertical;
-    //             if (file < 0 || file > 7 || rank < 0 || rank > 7) {
-    //                 break;
-    //             }
-    //             pattern |= 1L << (rank * 8 | file);
-    //         }
-    //
-    //         return pattern;
-    //     }
-    //
-
     pub fn get_bishop_attacks(&self, sq: usize, occupied: u64) -> u64 {
         Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq + (Diagonal as usize * 64)) })
             | Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq as usize + (AntiDiagonal as usize * 64)) })
@@ -466,82 +309,68 @@ impl Bitboard {
             | Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq as usize + (Vertical as usize * 64)) })
     }
 
+    pub fn get_knight_attacks(&self, sq: usize) -> u64 {
+        return self.knight_attacks[sq];
+    }
 
-    //     public static long getRookAttacks(int sq, long occ) {
-    //         return getLineAttacks(occ, line_masks[Directions.Horizontal.maskIndex(sq)])
-    //                 | getLineAttacks(occ, line_masks[Directions.Vertical.maskIndex(sq)]);
-    //     }
-    //
-    //     public static long getRookFileAttacks(int sq, long occ) {
-    //         return getLineAttacks(occ, line_masks[Directions.Vertical.maskIndex(sq)]);
-    //     }
-    //
-    //     public static long getQueenAttacks(int sq, long occ) {
-    //         return getBishopAttacks(sq, occ) | getRookAttacks(sq, occ);
-    //     }
-    //
-        pub fn get_knight_attacks(&self, sq: usize) -> u64 {
-            return self.knight_attacks[sq];
-        }
+    pub fn get_king_attacks(&self, sq: usize) -> u64 {
+        return self.king_attacks[sq];
+    }
 
-        pub fn get_king_attacks(&self, sq: usize) -> u64 {
-            return self.king_attacks[sq];
-        }
+    pub fn white_left_pawn_attacks(pawns: u64) -> u64 {
+        return (pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) << 7;
+    }
 
-        pub fn white_left_pawn_attacks(pawns: u64) -> u64 {
-            return (pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) << 7;
-        }
+    pub fn white_right_pawn_attacks(pawns: u64) -> u64 {
+        return (pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) << 9;
+    }
 
-        pub fn white_right_pawn_attacks(pawns: u64) -> u64 {
-            return (pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) << 9;
-        }
+    pub fn black_left_pawn_attacks(pawns: u64) -> u64 {
+        return (pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) >> 9;
+    }
 
-        pub fn black_left_pawn_attacks(pawns: u64) -> u64 {
-            return (pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) >> 9;
-        }
+    pub fn black_right_pawn_attacks(pawns: u64) -> u64 {
+        return (pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) >> 7;
+    }
 
-        pub fn black_right_pawn_attacks(pawns: u64) -> u64 {
-            return (pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) >> 7;
+    pub fn pawn_attacks_from_square(square: u8, side: Side) -> u64 {
+        let bb = 1u64 << square;
+        match side {
+            Side::WHITE => Bitboard::white_left_pawn_attacks(bb) | Bitboard::white_right_pawn_attacks(bb),
+            _ => Bitboard::black_left_pawn_attacks(bb) | Bitboard::black_right_pawn_attacks(bb)
         }
+    }
 
-        pub fn pawn_attacks_from_square(square: u8, side: Side) -> u64 {
-            let bb = 1u64 << square;
-            match side {
-                Side::WHITE => Bitboard::white_left_pawn_attacks(bb) | Bitboard::white_right_pawn_attacks(bb),
-                _ => Bitboard::black_left_pawn_attacks(bb) | Bitboard::black_right_pawn_attacks(bb)
-            }
+    pub fn pawn_attacks(pawns: u64, side: Side) -> u64 {
+        match side {
+            Side::WHITE => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) << 7) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) << 9),
+            _ => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) >> 9) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) >> 7)
         }
+    }
 
-        pub fn pawn_attacks(pawns: u64, side: Side) -> u64 {
-            match side {
-                Side::WHITE => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) << 7) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) << 9),
-                _ => ((pawns & Bitboard::LEFT_PAWN_ATTACK_MASK) >> 9) | ((pawns & Bitboard::RIGHT_PAWN_ATTACK_MASK) >> 7)
-            }
+    pub fn castling_pieces_kingside_mask(side: Side) -> u64 {
+        match side {
+            Side::WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BIT_PATTERN,
+            _ => Bitboard::BLACK_KING_SIDE_CASTLING_BIT_PATTERN
         }
+    }
 
-        pub fn castling_pieces_kingside_mask(side: Side) -> u64 {
-            match side {
-                Side::WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BIT_PATTERN,
-                _ => Bitboard::BLACK_KING_SIDE_CASTLING_BIT_PATTERN
-            }
+    pub fn castling_pieces_queenside_mask(side: Side) -> u64 {
+        match side {
+            Side::WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN,
+            _ => Bitboard::BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN
         }
+    }
 
-        pub fn castling_pieces_queenside_mask(side: Side) -> u64 {
-            match side {
-                Side::WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN,
-                _ => Bitboard::BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN
-            }
-        }
+    pub fn castling_blockers_kingside_mask(side: Side) -> u64 {
+        match side { Side::WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN,
+                _ => Bitboard::BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN }
+    }
 
-        pub fn castling_blockers_kingside_mask(side: Side) -> u64 {
-            match side { Side::WHITE => Bitboard::WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN,
-                    _ => Bitboard::BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN }
-        }
-
-        pub fn castling_blockers_queenside_mask(side: Side) -> u64 {
-            match side { Side::WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN,
-                _ => Bitboard::BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN }
-        }
+    pub fn castling_blockers_queenside_mask(side: Side) -> u64 {
+        match side { Side::WHITE => Bitboard::WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN,
+            _ => Bitboard::BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN }
+    }
 
 
     //

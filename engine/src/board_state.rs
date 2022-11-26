@@ -19,7 +19,7 @@ const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 #[derive(Clone)]
 pub struct BoardState<'a> {
     ply: usize,
-    history: Vec<u64>,
+    history: Vec<u32>, // TODO array will be maybe faster
     piece_bb: [u64; PIECES_COUNT],
     pub items: [Piece; 64],
     pub side_to_play: Side,
@@ -56,7 +56,7 @@ impl<'a> BoardState<'a> {
         if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len() as u64) }
         let mut board_state = BoardState {
             ply: 0,
-            history: vec![],
+            history: vec![0; 60], // TODO handle depth capacity properly
             piece_bb: [0; PIECES_COUNT],
             items: [0; 64], //(*items).clone(),
             side_to_play,
@@ -79,6 +79,15 @@ impl<'a> BoardState<'a> {
             } else {
                 board_state.items[i] = NONE;
             }
+        }
+
+        if side_to_play == Side::BLACK {
+            board_state.hash ^= bitboard.zobrist.side;
+        }
+
+        board_state.en_passant = en_passant;
+        if board_state.en_passant != 0 {
+            board_state.hash ^= bitboard.zobrist.en_passant[(en_passant.trailing_zeros() & 0b111) as usize];
         }
 
         board_state
@@ -176,6 +185,7 @@ impl<'a> BoardState<'a> {
 
             // //update hashes
             // hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
+            self.hash ^= self.bitboard.zobrist.pieces[piece as usize][square as usize];
         }
 
         fn remove_piece(&mut self, square: u8){
@@ -185,7 +195,7 @@ impl<'a> BoardState<'a> {
             // eg -= EGS[piece][square];
 
             //update hash tables
-//            hash ^= Zobrist.ZOBRIST_TABLE[items[square]][square];
+            self.hash ^= self.bitboard.zobrist.pieces[piece as usize][square as usize];
 
             //update board
             self.piece_bb[self.items[square as usize] as usize] &= !(1u64 << square);
@@ -199,7 +209,9 @@ impl<'a> BoardState<'a> {
             // self.eg += EGS[piece][to_sq] - EGS[piece][from_sq];
 
             //update hashes
-//            hash ^= Zobrist.ZOBRIST_TABLE[piece][from_sq] ^ Zobrist.ZOBRIST_TABLE[piece][to_sq];
+            let zobrist = &self.bitboard.zobrist;
+            self.hash ^= zobrist.pieces[piece as usize][from_sq as usize]
+                ^ zobrist.pieces[piece as usize][to_sq as usize];
 
             //update board
             self.piece_bb[piece as usize] ^= 1u64 << from_sq | 1u64 << to_sq;
@@ -313,10 +325,12 @@ impl<'a> BoardState<'a> {
 
     pub fn do_move(&self, mowe: &Move) -> BoardState {
         let mut state = self.clone();
+        let zobrist = &self.bitboard.zobrist;
 
         state.full_move_normalized += 1;
         state.half_move_clock += 1;
-//        state.history[state.ply++] = move.bits();
+        state.history[state.ply] = mowe.bits;
+        state.ply += 1;
         state.movements |= 1u64 << mowe.to() | 1u64 << mowe.from();
 
         if type_of(state.items[mowe.from() as usize]) == PAWN {
@@ -332,7 +346,7 @@ impl<'a> BoardState<'a> {
             Move::DOUBLE_PUSH => {
                 state.move_piece_quiet(mowe.from(), mowe.to());
                 state.en_passant = 1u64 << (mowe.from() as i8 + Square::direction(FORWARD, state.side_to_play));
-//                state.hash ^= Zobrist.EN_PASSANT[(int) (state.enPassant & 0b111)];
+                state.hash ^= zobrist.en_passant[(state.en_passant.trailing_zeros() & 0b111) as usize];
             }
             Move::OO => {
                 if state.side_to_play == WHITE {
@@ -375,7 +389,7 @@ impl<'a> BoardState<'a> {
             }
         }
         state.side_to_play = !state.side_to_play;
-        // state.hash ^= Zobrist.SIDE;
+        state.hash ^= zobrist.side;
 
         state
     }
@@ -868,6 +882,7 @@ impl<'a> BoardState<'a> {
 
         if previous_state != 0u64 {
             self.en_passant = 0;
+            self.hash ^= self.bitboard.zobrist.en_passant[(previous_state.trailing_zeros() & 0b111) as usize];
             //this.hash ^= Zobrist.EN_PASSANT[(int) (previous_state & 0b111)];
         }
     }

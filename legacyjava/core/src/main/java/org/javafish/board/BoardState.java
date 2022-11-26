@@ -52,7 +52,7 @@ public class BoardState implements Cloneable {
     public static int[] PIECE_PHASES = {0, 1, 1, 2, 4, 0};
 
     public int ply;
-    private long[] history;
+    private int[] history;
     private long[] piece_bb = new long[Piece.PIECES_COUNT];
     public int[] items = new int[64];
     private int sideToPlay;
@@ -92,7 +92,7 @@ public class BoardState implements Cloneable {
 
         this.halfMoveClock = halfMoveClock;
         this.fullMoveNormalized = (fullMoveCount - 1) * 2 + (sideToPlay == Side.WHITE ? 0 : 1);
-        this.history = new long[maxSearchDepth];
+        this.history = new int[maxSearchDepth];
         this.ply = 0;
     }
 
@@ -858,7 +858,7 @@ public class BoardState implements Cloneable {
 
     public BoardState forSearchDepth(int searchDepth) {
         BoardState result = this.clone();
-        result.history = new long[searchDepth];
+        result.history = new int[searchDepth];
         result.ply = 0;
         return result;
     }

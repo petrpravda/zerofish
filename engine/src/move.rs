@@ -4,7 +4,7 @@ use crate::piece::PieceType;
 use crate::square::Square;
 
 pub struct Move {
-    bits: u32,
+    pub(crate) bits: u32,
     sort_score: u32
 }
 

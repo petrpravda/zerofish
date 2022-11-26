@@ -3,6 +3,7 @@ use crate::board_state::BoardState;
 pub struct Perft {}
 
 impl Perft {
+    #[allow(dead_code)]
     pub fn normalize_perft_res(perft_stats: &str) -> String {
         let mut sorted = perft_stats.lines().collect::<Vec<&str>>();
         sorted.sort();
@@ -21,7 +22,7 @@ impl Perft {
 
         match moves.moves.len() {
             0 => 0,
-            1 => {
+            1 => {  // TODO use reduce in a more compact way
                 let new_state = state.do_move(moves.moves.get(0).unwrap());
                 Perft::perft(&new_state, depth - 1)
             },
