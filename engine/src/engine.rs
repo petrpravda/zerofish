@@ -1,4 +1,3 @@
-use crate::bitboard::Bitboard;
 use crate::board_state::BoardState;
 use crate::fen::{from_fen_default, to_fen};
 use crate::perft::Perft;

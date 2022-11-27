@@ -1,4 +1,9 @@
+use lazy_static::lazy_static;
 use crate::square::Square;
+
+lazy_static! {
+    pub static ref ZOBRIST: Zobrist = Zobrist::new();
+}
 
 pub struct Zobrist {
     pub pieces: [[u64; 64]; 14],   // TODO compare access performance with flat structure

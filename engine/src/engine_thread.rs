@@ -1,7 +1,6 @@
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
-use crate::bitboard::Bitboard;
 
 use crate::engine::{Engine, UciMessage};
 use crate::fen::START_POS;
@@ -59,7 +58,6 @@ impl EngineThread {
 
 pub fn spawn_engine_thread() -> Sender<UciMessage> {
     let (tx, rx) = mpsc::channel::<UciMessage>();
-    let bitboard = Bitboard::new();
 
     thread::spawn(move || {
         let mut engine = EngineThread::new(rx);

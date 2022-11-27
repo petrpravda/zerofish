@@ -5,7 +5,6 @@ use crate::bitboard::Direction::{AntiDiagonal, Diagonal, Horizontal, Vertical};
 use crate::piece::PieceType;
 use crate::side::{Side};
 use crate::square::Square;
-use crate::zobrist::Zobrist;
 
 lazy_static! {
     pub static ref BITBOARD: Bitboard = Bitboard::new();
@@ -135,7 +134,6 @@ pub struct Bitboard {
     line_masks: [LinePatterns; 64 * 4],
     bb_squares_between: [[u64; 64]; 64],
     bb_lines: [[u64; 64]; 64],
-    pub zobrist: Zobrist,
 }
 
 impl Bitboard {
@@ -146,7 +144,6 @@ impl Bitboard {
             line_masks: calc_line_patterns(),
             bb_squares_between: [[0; 64]; 64],
             bb_lines: [[0; 64]; 64],
-            zobrist: Zobrist::new(),
         };
         (result.bb_squares_between, result.bb_lines) = result.calc_squares_between();
 

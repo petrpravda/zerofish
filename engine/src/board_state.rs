@@ -10,6 +10,7 @@ use crate::r#move::{Move, MoveList};
 use crate::side::Side;
 use crate::side::Side::{BLACK, WHITE};
 use crate::square::{BACK, DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
+use crate::zobrist::ZOBRIST;
 
 const TOTAL_PHASE: u32 = 24u32;
 const PIECE_PHASES: [u32; 6] = [0, 1, 1, 2, 4, 0];
@@ -83,12 +84,12 @@ impl BoardState {
         }
 
         if side_to_play == Side::BLACK {
-            board_state.hash ^= BITBOARD.zobrist.side;
+            board_state.hash ^= ZOBRIST.side;
         }
 
         board_state.en_passant = en_passant;
         if board_state.en_passant != 0 {
-            board_state.hash ^= BITBOARD.zobrist.en_passant[(en_passant.trailing_zeros() & 0b111) as usize];
+            board_state.hash ^= ZOBRIST.en_passant[(en_passant.trailing_zeros() & 0b111) as usize];
         }
 
         board_state
@@ -185,7 +186,7 @@ impl BoardState {
 
             // //update hashes
             // hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
-            self.hash ^= BITBOARD.zobrist.pieces[piece as usize][square as usize];
+            self.hash ^= ZOBRIST.pieces[piece as usize][square as usize];
         }
 
         fn remove_piece(&mut self, square: u8){
@@ -195,7 +196,7 @@ impl BoardState {
             self.eg -= EGS[piece as usize][square as usize] as i32;
 
             //update hash tables
-            self.hash ^= BITBOARD.zobrist.pieces[piece as usize][square as usize];
+            self.hash ^= ZOBRIST.pieces[piece as usize][square as usize];
 
             //update board
             self.piece_bb[self.items[square as usize] as usize] &= !(1u64 << square);
@@ -209,7 +210,7 @@ impl BoardState {
             self.eg += EGS[piece as usize][to_sq as usize] - EGS[piece as usize][from_sq as usize];
 
             //update hashes
-            let zobrist = &BITBOARD.zobrist;
+            let zobrist = &ZOBRIST;
             self.hash ^= zobrist.pieces[piece as usize][from_sq as usize]
                 ^ zobrist.pieces[piece as usize][to_sq as usize];
 
@@ -325,7 +326,7 @@ impl BoardState {
 
     pub fn do_move(&self, mowe: &Move) -> BoardState {
         let mut state = self.clone();
-        let zobrist = &BITBOARD.zobrist;
+        let zobrist = &ZOBRIST;
 
         state.full_move_normalized += 1;
         state.half_move_clock += 1;
@@ -882,7 +883,7 @@ impl BoardState {
 
         if previous_state != 0u64 {
             self.en_passant = 0;
-            self.hash ^= BITBOARD.zobrist.en_passant[(previous_state.trailing_zeros() & 0b111) as usize];
+            self.hash ^= ZOBRIST.en_passant[(previous_state.trailing_zeros() & 0b111) as usize];
             //this.hash ^= Zobrist.EN_PASSANT[(int) (previous_state & 0b111)];
         }
     }
