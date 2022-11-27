@@ -1,4 +1,5 @@
 - reflect version number - CARGO_PKG_VERSION / uci.rs
 - fill in missing functionality in set_piece_at
 - ~/ChessProjects/wasmlearn/nextjs-wasm/wasm
+- tests for zobrist hashing (with ep coverage ?)
 - tricky_perfts - use multithreading

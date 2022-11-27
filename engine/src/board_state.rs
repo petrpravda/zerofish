@@ -5,13 +5,14 @@ use std::fmt;
 use crate::bitboard::{Bitboard, BitIter};
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
+use crate::piece_square_table::{EGS, MGS};
 use crate::r#move::{Move, MoveList};
 use crate::side::Side;
 use crate::side::Side::{BLACK, WHITE};
 use crate::square::{BACK, DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
 
-//     public static int TOTAL_PHASE = 24;
-//     public static int[] PIECE_PHASES = {0, 1, 1, 2, 4, 0};
+const TOTAL_PHASE: u32 = 24u32;
+const PIECE_PHASES: [u32; 6] = [0, 1, 1, 2, 4, 0];
 
 const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
@@ -63,7 +64,7 @@ impl<'a> BoardState<'a> {
             hash: 0,
             full_move_normalized: 0,
             half_move_clock,
-            phase: 0,
+            phase: TOTAL_PHASE,
             mg: 0,
             eg: 0,
 //            checkers: 0,
@@ -174,10 +175,9 @@ impl<'a> BoardState<'a> {
         pub fn set_piece_at(&mut self, piece: Piece, square: usize) {
 
             // //update incremental evaluation terms
-            // phase -= PIECE_PHASES[Piece.type_of(piece)];
-            // mg += MGS[piece][square];
-            // eg += EGS[piece][square];
-            // // materialScore += materialValue(piece);
+            self.phase -= PIECE_PHASES[type_of(piece).index()];
+            self.mg += MGS[piece as usize][square] as i32;
+            self.eg += EGS[piece as usize][square] as i32;
 
             //set piece on board
             self.items[square] = piece;

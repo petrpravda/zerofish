@@ -10,6 +10,7 @@ mod r#move;
 pub mod board_state;
 mod perft;
 mod zobrist;
+pub mod piece_square_table;
 
 
 pub fn add(left: usize, right: usize) -> usize {
