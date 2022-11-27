@@ -99,11 +99,11 @@ pub const EGS_SRC: [[u16; 64]; 6] = [
         1456, 1472, 1490, 1490, 1486, 1488, 1466, 1449,
         1423, 1449, 1461, 1457, 1458, 1459, 1449, 1429, ]];
 
-pub const MGS: [[u16; 64]; 14] = prepare_value_tables(&MGS_SRC);
-pub const EGS: [[u16; 64]; 14] = prepare_value_tables(&EGS_SRC);
+pub const MGS: [[i32; 64]; 14] = prepare_value_tables(&MGS_SRC);
+pub const EGS: [[i32; 64]; 14] = prepare_value_tables(&EGS_SRC);
 
-const fn prepare_value_tables(source: &[[u16; 64]; 6]) -> [[u16; 64]; 14] {
-    let mut result = [[0u16; 64]; 14];
+const fn prepare_value_tables(source: &[[u16; 64]; 6]) -> [[i32; 64]; 14] {
+    let mut result = [[0i32; 64]; 14];
 
     let mut piece: usize = 0;
     loop {
@@ -112,8 +112,8 @@ const fn prepare_value_tables(source: &[[u16; 64]; 6]) -> [[u16; 64]; 14] {
             let square_white = square ^ 0b111111;
             let square_black = square ^ 0b000111;
 
-            result[piece][square_white] = source[piece][square];
-            result[piece+8][square_black] = source[piece][square];
+            result[piece][square_white] = source[piece][square] as i32;
+            result[piece+8][square_black] = source[piece][square] as i32;
 
             square += 1;
             if square == 64 {

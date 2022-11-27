@@ -190,9 +190,9 @@ impl<'a> BoardState<'a> {
 
         fn remove_piece(&mut self, square: u8){
             let piece = self.items[square as usize];
-            // phase += PIECE_PHASES[Piece.type_of(piece)];
-            // mg -= MGS[piece][square]; // EConstants.PIECE_TABLES[piece][square];
-            // eg -= EGS[piece][square];
+            self.phase += PIECE_PHASES[type_of(piece).index()];
+            self.mg -= MGS[piece as usize][square as usize] as i32;
+            self.eg -= EGS[piece as usize][square as usize] as i32;
 
             //update hash tables
             self.hash ^= self.bitboard.zobrist.pieces[piece as usize][square as usize];
@@ -205,8 +205,8 @@ impl<'a> BoardState<'a> {
         fn move_piece_quiet(&mut self, from_sq: u8, to_sq: u8){
             //update incremental evaluation terms
             let piece = self.items[from_sq as usize];
-            // self.mg += MGS[piece][to_sq] - MGS[piece][from_sq];
-            // self.eg += EGS[piece][to_sq] - EGS[piece][from_sq];
+            self.mg += MGS[piece as usize][to_sq as usize] - MGS[piece as usize][from_sq as usize];
+            self.eg += EGS[piece as usize][to_sq as usize] - EGS[piece as usize][from_sq as usize];
 
             //update hashes
             let zobrist = &self.bitboard.zobrist;
