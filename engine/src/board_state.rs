@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::bitboard::{Bitboard, BitIter};
+use crate::bitboard::{Bitboard, BITBOARD, BitIter};
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
 use crate::piece_square_table::{EGS, MGS};
@@ -18,7 +18,7 @@ const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
 //#[derive(Copy, Clone)]
 #[derive(Clone)]
-pub struct BoardState<'a> {
+pub struct BoardState {
     ply: usize,
     history: Vec<u32>, // TODO array will be maybe faster
     piece_bb: [u64; PIECES_COUNT],
@@ -34,16 +34,16 @@ pub struct BoardState<'a> {
     pub(crate) movements: u64,
     pub en_passant: u64,
 
-    pub(crate) bitboard: &'a Bitboard,
+//    pub(crate) bitboard: &'a Bitboard,
 }
 
-impl<'a> fmt::Display for BoardState<'a> {
+impl fmt::Display for BoardState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_string())
     }
 }
 
-impl<'a> BoardState<'a> {
+impl BoardState {
     pub fn new(
         items: &[Piece; 64],
         side_to_play: Side,
@@ -52,7 +52,7 @@ impl<'a> BoardState<'a> {
         half_move_clock: usize,
         full_move_count: usize,
         max_search_depth: usize,
-        bitboard: &'a Bitboard,
+        //bitboard: &'a Bitboard,
     ) -> Self {
         if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len() as u64) }
         let mut board_state = BoardState {
@@ -70,7 +70,7 @@ impl<'a> BoardState<'a> {
 //            checkers: 0,
             movements,
             en_passant,
-            bitboard
+//            bitboard
         };
 
         for i in 0..64 {
@@ -83,12 +83,12 @@ impl<'a> BoardState<'a> {
         }
 
         if side_to_play == Side::BLACK {
-            board_state.hash ^= bitboard.zobrist.side;
+            board_state.hash ^= BITBOARD.zobrist.side;
         }
 
         board_state.en_passant = en_passant;
         if board_state.en_passant != 0 {
-            board_state.hash ^= bitboard.zobrist.en_passant[(en_passant.trailing_zeros() & 0b111) as usize];
+            board_state.hash ^= BITBOARD.zobrist.en_passant[(en_passant.trailing_zeros() & 0b111) as usize];
         }
 
         board_state
@@ -185,7 +185,7 @@ impl<'a> BoardState<'a> {
 
             // //update hashes
             // hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
-            self.hash ^= self.bitboard.zobrist.pieces[piece as usize][square as usize];
+            self.hash ^= BITBOARD.zobrist.pieces[piece as usize][square as usize];
         }
 
         fn remove_piece(&mut self, square: u8){
@@ -195,7 +195,7 @@ impl<'a> BoardState<'a> {
             self.eg -= EGS[piece as usize][square as usize] as i32;
 
             //update hash tables
-            self.hash ^= self.bitboard.zobrist.pieces[piece as usize][square as usize];
+            self.hash ^= BITBOARD.zobrist.pieces[piece as usize][square as usize];
 
             //update board
             self.piece_bb[self.items[square as usize] as usize] &= !(1u64 << square);
@@ -209,7 +209,7 @@ impl<'a> BoardState<'a> {
             self.eg += EGS[piece as usize][to_sq as usize] - EGS[piece as usize][from_sq as usize];
 
             //update hashes
-            let zobrist = &self.bitboard.zobrist;
+            let zobrist = &BITBOARD.zobrist;
             self.hash ^= zobrist.pieces[piece as usize][from_sq as usize]
                 ^ zobrist.pieces[piece as usize][to_sq as usize];
 
@@ -274,15 +274,15 @@ impl<'a> BoardState<'a> {
             match side {
                 WHITE => {
                     (Bitboard::pawn_attacks_from_square(square as u8, BLACK) & self.piece_bb[WHITE_PAWN as usize]) |
-                        (self.bitboard.get_knight_attacks(square as usize) & self.piece_bb[WHITE_KNIGHT as usize]) |
-                        (self.bitboard.get_bishop_attacks(square as usize, occ) & (self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize])) |
-                        (self.bitboard.get_rook_attacks(square as usize, occ) & (self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize]))
+                        (BITBOARD.get_knight_attacks(square as usize) & self.piece_bb[WHITE_KNIGHT as usize]) |
+                        (BITBOARD.get_bishop_attacks(square as usize, occ) & (self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize])) |
+                        (BITBOARD.get_rook_attacks(square as usize, occ) & (self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize]))
                 }
                 _ => {
                     (Bitboard::pawn_attacks_from_square(square as u8, WHITE) & self.piece_bb[BLACK_PAWN as usize]) |
-                        (self.bitboard.get_knight_attacks(square as usize) & self.piece_bb[BLACK_KNIGHT as usize]) |
-                        (self.bitboard.get_bishop_attacks(square as usize, occ) & (self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize])) |
-                        (self.bitboard.get_rook_attacks(square as usize, occ) & (self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]))
+                        (BITBOARD.get_knight_attacks(square as usize) & self.piece_bb[BLACK_KNIGHT as usize]) |
+                        (BITBOARD.get_bishop_attacks(square as usize, occ) & (self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize])) |
+                        (BITBOARD.get_rook_attacks(square as usize, occ) & (self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]))
                 }
             }
         }
@@ -325,7 +325,7 @@ impl<'a> BoardState<'a> {
 
     pub fn do_move(&self, mowe: &Move) -> BoardState {
         let mut state = self.clone();
-        let zobrist = &self.bitboard.zobrist;
+        let zobrist = &BITBOARD.zobrist;
 
         state.full_move_normalized += 1;
         state.half_move_clock += 1;
@@ -598,21 +598,21 @@ impl<'a> BoardState<'a> {
 
         // Squares that the king can't move to
         let mut under_attack: u64 = 0;
-        under_attack |= Bitboard::pawn_attacks(self.bitboard_of(them, PAWN), them) | self.bitboard.get_king_attacks(their_king);
+        under_attack |= Bitboard::pawn_attacks(self.bitboard_of(them, PAWN), them) | BITBOARD.get_king_attacks(their_king);
 
         for b1 in BitIter(self.bitboard_of(them, KNIGHT)) {
-            under_attack |= self.bitboard.get_knight_attacks(b1 as usize);
+            under_attack |= BITBOARD.get_knight_attacks(b1 as usize);
         }
 
         for b1 in BitIter(their_bishops_and_queens) {
-            under_attack |= self.bitboard.get_bishop_attacks(b1 as usize, all ^ (1u64 << our_king as u8));
+            under_attack |= BITBOARD.get_bishop_attacks(b1 as usize, all ^ (1u64 << our_king as u8));
         }
 
         for b1 in BitIter(their_rooks_and_queens) {
-            under_attack |= self.bitboard.get_rook_attacks(b1 as usize, all ^ (1u64 << our_king as u8));
+            under_attack |= BITBOARD.get_rook_attacks(b1 as usize, all ^ (1u64 << our_king as u8));
         }
 
-        let b1 = self.bitboard.get_king_attacks(our_king) & !(us_bb | under_attack);
+        let b1 = BITBOARD.get_king_attacks(our_king) & !(us_bb | under_attack);
 
         moves.make_quiets(our_king as u8, b1 & !them_bb);
         moves.make_captures(our_king as u8, b1 & them_bb);
@@ -624,18 +624,18 @@ impl<'a> BoardState<'a> {
         //let mut s: u8;
 
         // checker moves from opposite knights and pawns
-        let mut checkers = (self.bitboard.get_knight_attacks(our_king) & self.bitboard_of(them, KNIGHT))
+        let mut checkers = (BITBOARD.get_knight_attacks(our_king) & self.bitboard_of(them, KNIGHT))
                 | (Bitboard::pawn_attacks_from_square(our_king as u8, us) & self.bitboard_of(them, PAWN));
 
         // ray candidates to our king
-        let mut candidates = (self.bitboard.get_rook_attacks(our_king, them_bb) & their_rooks_and_queens)
-                | (self.bitboard.get_bishop_attacks(our_king, them_bb) & their_bishops_and_queens);
+        let mut candidates = (BITBOARD.get_rook_attacks(our_king, them_bb) & their_rooks_and_queens)
+                | (BITBOARD.get_bishop_attacks(our_king, them_bb) & their_bishops_and_queens);
 
         let mut pinned: u64 = 0;
 
         for ray_candidate in BitIter(candidates) {
             // squares obstructed by our pieces
-            let squares_between = self.bitboard.between(our_king as u8, ray_candidate as u8) & us_bb;
+            let squares_between = BITBOARD.between(our_king as u8, ray_candidate as u8) & us_bb;
 
             // king is not guarded by any of our pieces
             if squares_between == 0 {
@@ -660,7 +660,7 @@ impl<'a> BoardState<'a> {
                 // we have to capture them
                 capture_mask = checkers;
                 // ...or block 'em
-                quiet_mask = self.bitboard.between(our_king as u8, checker_square as u8);
+                quiet_mask = BITBOARD.between(our_king as u8, checker_square as u8);
             } else {
                 // for checking en-passants
                 if checker_piece_type == PAWN && checkers == (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 }) {
@@ -709,8 +709,8 @@ impl<'a> BoardState<'a> {
 
                     // Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)) holds pawn which can be en-passant taken
                     let qqq = them_bb ^ (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 });
-                    candidates = (self.bitboard.get_rook_attacks(our_king, qqq | us_bb) & their_rooks_and_queens)
-                            | (self.bitboard.get_bishop_attacks(our_king, qqq | us_bb) & their_bishops_and_queens);
+                    candidates = (BITBOARD.get_rook_attacks(our_king, qqq | us_bb) & their_rooks_and_queens)
+                            | (BITBOARD.get_bishop_attacks(our_king, qqq | us_bb) & their_bishops_and_queens);
 
                     if candidates == 0 {
                         moves.add(Move::new_from_flags(s as u8, en_passant_square as u8, Move::EN_PASSANT));
@@ -734,7 +734,7 @@ impl<'a> BoardState<'a> {
             // all pinned sliding pieces can only eliminate the threat or move while staying pinned
             let b1 = !(not_pinned | self.bitboard_of(us, KNIGHT));
             for s in BitIter(b1) {
-                let b2 = self.bitboard.attacks(self.piece_type_at(s as u8), s as u8, all) & self.bitboard.line(our_king as u8, s as u8);
+                let b2 = BITBOARD.attacks(self.piece_type_at(s as u8), s as u8, all) & BITBOARD.line(our_king as u8, s as u8);
                 if !only_quiescence {
                     moves.make_quiets(s as u8, b2 & quiet_mask);
                 }
@@ -745,16 +745,16 @@ impl<'a> BoardState<'a> {
             let b1 = !not_pinned & self.bitboard_of(us, PAWN);
             for s in BitIter(b1) {
                 if ((1u64 << s) & Bitboard::PAWN_FINAL_RANKS) != 0 {
-                    let b2 = Bitboard::pawn_attacks_from_square(s as u8, us) & capture_mask & self.bitboard.line(our_king as u8, s as u8);
+                    let b2 = Bitboard::pawn_attacks_from_square(s as u8, us) & capture_mask & BITBOARD.line(our_king as u8, s as u8);
                     moves.make_promotion_captures(s as u8, b2);
                 } else {
-                    let b2 = Bitboard::pawn_attacks_from_square(s as u8, us) & them_bb & self.bitboard.line(s as u8, our_king as u8);
+                    let b2 = Bitboard::pawn_attacks_from_square(s as u8, us) & them_bb & BITBOARD.line(s as u8, our_king as u8);
                     moves.make_captures(s as u8, b2);
 
                     if !only_quiescence {
                         //single pawn pushes
-                        let b2 = Bitboard::push(1u64 << s, us) & !all & self.bitboard.line(our_king as u8, s as u8);
-                        let b3 = Bitboard::push(b2 & Bitboard::PAWN_DOUBLE_PUSH_LINES[us as usize], us) & !all & self.bitboard.line(our_king as u8, s as u8);
+                        let b2 = Bitboard::push(1u64 << s, us) & !all & BITBOARD.line(our_king as u8, s as u8);
+                        let b3 = Bitboard::push(b2 & Bitboard::PAWN_DOUBLE_PUSH_LINES[us as usize], us) & !all & BITBOARD.line(our_king as u8, s as u8);
 
                         moves.make_quiets(s as u8, b2);
                         moves.make_double_pushes(s as u8, b3);
@@ -768,7 +768,7 @@ impl<'a> BoardState<'a> {
         //non-pinned knight moves.
         let b1 = self.bitboard_of(us, KNIGHT) & not_pinned;
         for s in BitIter(b1) {
-            let b2 = self.bitboard.get_knight_attacks(s as usize);
+            let b2 = BITBOARD.get_knight_attacks(s as usize);
             moves.make_captures(s as u8, b2 & capture_mask);
             if !only_quiescence {
                 moves.make_quiets(s as u8, b2 & quiet_mask);
@@ -777,7 +777,7 @@ impl<'a> BoardState<'a> {
 
         let b1 = our_bishops_and_queens & not_pinned;
         for s in BitIter(b1) {
-            let b2 = self.bitboard.get_bishop_attacks(s as usize, all);
+            let b2 = BITBOARD.get_bishop_attacks(s as usize, all);
             moves.make_captures(s as u8, b2 & capture_mask);
             if !only_quiescence {
                 moves.make_quiets(s as u8, b2 & quiet_mask);
@@ -786,7 +786,7 @@ impl<'a> BoardState<'a> {
 
         let b1 = our_rooks_and_queens & not_pinned;
         for s in BitIter(b1) {
-            let b2 = self.bitboard.get_rook_attacks(s as usize, all);
+            let b2 = BITBOARD.get_rook_attacks(s as usize, all);
             moves.make_captures(s as u8, b2 & capture_mask);
             if !only_quiescence {
                 moves.make_quiets(s as u8, b2 & quiet_mask);
@@ -882,7 +882,7 @@ impl<'a> BoardState<'a> {
 
         if previous_state != 0u64 {
             self.en_passant = 0;
-            self.hash ^= self.bitboard.zobrist.en_passant[(previous_state.trailing_zeros() & 0b111) as usize];
+            self.hash ^= BITBOARD.zobrist.en_passant[(previous_state.trailing_zeros() & 0b111) as usize];
             //this.hash ^= Zobrist.EN_PASSANT[(int) (previous_state & 0b111)];
         }
     }

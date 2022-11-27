@@ -10,11 +10,11 @@ use crate::square::Square;
 
 pub const START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-pub fn from_fen_default<'a>(fen: &str, bitboard: &'a Bitboard) -> BoardState<'a> { // TODO remove
-    from_fen(fen, 100, bitboard)
+pub fn from_fen_default(fen: &str) -> BoardState { // TODO remove
+    from_fen(fen, 100)
 }
 
-pub fn from_fen<'a>(fen: &str, max_search_depth: usize, bitboard: &'a Bitboard) -> BoardState<'a> {
+pub fn from_fen(fen: &str, max_search_depth: usize) -> BoardState {
     let mut fen_parts = fen.split(' ');
     let pieces_part = fen_parts.next().unwrap();
 
@@ -55,7 +55,7 @@ pub fn from_fen<'a>(fen: &str, max_search_depth: usize, bitboard: &'a Bitboard) 
     let fullmove_part = fen_parts.next().unwrap();
     let fullmove = fullmove_part.parse::<usize>().unwrap();
 
-    BoardState::new(&items, side, movements, en_passant_mask, halfmove_clock, fullmove, 100,  &bitboard)
+    BoardState::new(&items, side, movements, en_passant_mask, halfmove_clock, fullmove, 100)
     // BoardState::new(&[0; 64], WHITE, 0, 0, 0, 0, 100)
 }
 
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn from_fen_startpos() {
         let bitboard = Bitboard::new();
-        let state = from_fen_default(START_POS, &bitboard);
+        let state = from_fen_default(START_POS);
         assert_eq!(state.to_string(), "+---+---+---+---+---+---+---+---+\n\
                                        | r | n | b | q | k | b | n | r |\n\
                                        +---+---+---+---+---+---+---+---+\n\
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn from_fen_developed() {
         let bitboard = Bitboard::new();
-        let state = from_fen_default("r2q1rk1/pbp2ppp/1pnp1n2/8/2PPp3/2P1P3/P1N2PPP/R1BQKB1R w kq - 0 10", &bitboard);
+        let state = from_fen_default("r2q1rk1/pbp2ppp/1pnp1n2/8/2PPp3/2P1P3/P1N2PPP/R1BQKB1R w kq - 0 10");
         assert_eq!(state.to_string(), "+---+---+---+---+---+---+---+---+\n\
                                        | r |   |   | q |   | r | k |   |\n\
                                        +---+---+---+---+---+---+---+---+\n\
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn to_fen_startpos() {
         let bitboard = Bitboard::new();
-        let state = from_fen_default(START_POS, &bitboard);
+        let state = from_fen_default(START_POS);
         let fen = to_fen(&state);
         assert_eq!(fen, START_POS);
     }
@@ -163,7 +163,7 @@ mod tests {
     fn to_fen_no_castling() {
         let bitboard = Bitboard::new();
         let fen_without_castling = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
-        let state = from_fen_default(fen_without_castling, &bitboard);
+        let state = from_fen_default(fen_without_castling);
         let fen = to_fen(&state);
         assert_eq!(fen, fen_without_castling);
     }
@@ -172,7 +172,7 @@ mod tests {
     fn to_fen_with_en_passant() {
         let bitboard = Bitboard::new();
         let fen_with_en_passant = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
-        let state = from_fen_default(fen_with_en_passant, &bitboard);
+        let state = from_fen_default(fen_with_en_passant);
         let fen = to_fen(&state);
         println!("{}", fen);
         assert_eq!(fen, fen_with_en_passant);

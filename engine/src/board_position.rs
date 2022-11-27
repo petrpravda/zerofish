@@ -6,7 +6,7 @@
 // use crate::fen::from_fen_default;
 // use crate::r#move::Move;
 
-// pub struct BoardPosition<'a> {
+// pub struct BoardPosition {
 //     state: <&'a>,
 //     historyIndex: usize,
 //     history: Vec<u32>,
@@ -14,7 +14,7 @@
 //
 // }
 //
-// impl<'a> BoardPosition<'a> {
+// impl BoardPosition {
 //
 //     pub fn from_fen<'b>(fen: &str, bitboard: &'b Bitboard) -> BoardPosition<'b> {
 //         let result = BoardPosition {

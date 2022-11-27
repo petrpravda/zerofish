@@ -53,17 +53,17 @@ pub enum UciMessage {
 //     }
 // }
 
-pub struct Engine<'a> {
+pub struct Engine {
     // bitboard: &'a Bitboard,
-    board_state: BoardState<'a>,
+    board_state: BoardState,
 }
 
-impl<'a> Engine<'a> {
+impl Engine {
     #[allow(unused)]
-    pub fn new_from_fen(fen: &str, bitboard: &'a Bitboard) -> Self {
+    pub fn new_from_fen(fen: &str) -> Self {
         let mut engine = Engine {
 //            bitboard,
-            board_state: from_fen_default(fen, bitboard),
+            board_state: from_fen_default(fen),
         };
 
         engine
