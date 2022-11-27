@@ -20,7 +20,7 @@ const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 //#[derive(Copy, Clone)]
 #[derive(Clone)]
 pub struct BoardState {
-    ply: usize,
+    pub(crate) ply: usize,
     history: Vec<u32>, // TODO array will be maybe faster
     piece_bb: [u64; PIECES_COUNT],
     pub items: [Piece; 64],
