@@ -3,3 +3,4 @@
 - ~/ChessProjects/wasmlearn/nextjs-wasm/wasm
 - tests for zobrist hashing (with ep coverage ?)
 - tricky_perfts - use multithreading
+- Fen as trait

@@ -11,6 +11,8 @@ pub mod board_state;
 mod perft;
 mod zobrist;
 pub mod piece_square_table;
+mod search;
+mod board_position;
 
 
 pub fn add(left: usize, right: usize) -> usize {
