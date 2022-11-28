@@ -13,6 +13,8 @@ pub mod zobrist;
 pub mod piece_square_table;
 mod search;
 mod board_position;
+mod time;
+mod transposition;
 
 
 pub fn add(left: usize, right: usize) -> usize {

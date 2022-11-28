@@ -2,11 +2,22 @@ use std::fmt;
 use crate::bitboard::BitIter;
 use crate::piece::PieceType;
 use crate::square::Square;
+use crate::transposition::BaseMove;
 
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Move {
     pub(crate) bits: u32,
     sort_score: u32
 }
+
+//
+// +---------------+----+-------+
+// | To            |  6 | 5-0   |
+// | From          |  6 | 11-6  |
+// | Flags         |  4 | 15-12 |
+// | Score         | 32 | 63-32 |
+// +---------------+----+-------+
+//
 
 impl Move {
     pub const QUIET: u8 = 0b0000;
@@ -27,6 +38,7 @@ impl Move {
     pub const NULL: u8 = 0b0111;
 
     pub const NULL_MOVE: Move = Move { bits: 0, sort_score: 0 };
+    pub const BM_NULL: BaseMove = 0;
 
     pub fn new() -> Self { Self{bits: 0, sort_score: 0 }}
     pub fn new_from_bits(m: u32) -> Self { Self{bits: m, sort_score: 0 }}

@@ -17,15 +17,17 @@ const PIECE_PHASES: [u32; 6] = [0, 1, 1, 2, 4, 0];
 
 const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
+const BOARD_STATE_HISTORY_CAPACITY: usize = 30;
+
 //#[derive(Copy, Clone)]
 #[derive(Clone)]
 pub struct BoardState {
     pub(crate) ply: usize,
-    history: Vec<u32>, // TODO array will be maybe faster
+    history: [u32;BOARD_STATE_HISTORY_CAPACITY],
     piece_bb: [u64; PIECES_COUNT],
     pub items: [Piece; 64],
     pub side_to_play: Side,
-    hash: u64,
+    pub hash: u64,
     pub full_move_normalized: usize,
     pub half_move_clock: usize,
     phase: u32,
@@ -58,7 +60,7 @@ impl BoardState {
         if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len() as u64) }
         let mut board_state = BoardState {
             ply: 0,
-            history: vec![0; 60], // TODO handle depth capacity properly
+            history: [0u32;BOARD_STATE_HISTORY_CAPACITY],
             piece_bb: [0; PIECES_COUNT],
             items: [0; 64], //(*items).clone(),
             side_to_play,
@@ -888,13 +890,13 @@ impl BoardState {
         }
     }
 
-    //     public BoardState forSearchDepth(int searchDepth) {
-    //         BoardState result = this.clone();
-    //         result.history = new long[searchDepth];
-    //         result.ply = 0;
-    //         return result;
-    //     }
-    //
+    pub fn for_search_depth(&self, searchDepth: u16) -> BoardState {
+        let mut result = self.clone();
+        //result.history = new long[searchDepth];
+        result.ply = 0;
+        return result;
+    }
+
     //     public String toFen() {
     //         return Fen.toFen(this);
     //     }

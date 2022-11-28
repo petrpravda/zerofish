@@ -4,3 +4,6 @@
 - tests for zobrist hashing (with ep coverage ?)
 - tricky_perfts - use multithreading
 - Fen as trait
+- retrofit TT to Java
+- Elo tests
+- NNUE inspiration (links) - https://github.com/analog-hors/tantabus

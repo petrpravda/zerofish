@@ -23,8 +23,8 @@ public class Search {
     private final static int ASPIRATION_WINDOW = 25;
 
 
-    private static boolean stop;
-    private static int selDepth;
+    private boolean stop;
+    private int selDepth;
     private static final int[][] LMR_TABLE = new int[64][64];
     static {
         // Ethereal LMR formula with depth and number of performed moves
@@ -323,12 +323,11 @@ public class Search {
     }
 
     public static String getPv(BoardState state, int depth){
-        Move bestMove;
-        if (TranspTable.probe(state.hash()) == null || depth == 0)
+        TTEntry bestEntry = TranspTable.probe(state.hash());
+        if (bestEntry == null || depth == 0) {
             return "";
-        else
-            bestMove = TranspTable.probe(state.hash()).move();
-        //board.push(bestMove);
+        }
+        Move bestMove = bestEntry.move();
         BoardState newBoardState = state.doMove(bestMove);
         String pV = bestMove.uci() + " " + getPv(newBoardState, depth - 1);
         return pV;
@@ -342,7 +341,7 @@ public class Search {
 //        return IDScore;
 //    }
 
-    public static void stop(){
+    public void stop(){
         stop = true;
     }
 
