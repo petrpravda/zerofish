@@ -29,7 +29,11 @@ public class PgnMoves {
     }
 
     public String asUci() {
-        BoardPosition position = BoardPosition.fromFen(START_POS);
+        return asUciFromPosition(START_POS);
+    }
+
+    public String asUciFromPosition(String fen) {
+        BoardPosition position = BoardPosition.fromFen(fen);
         String result = moveStrings.stream()
                 .map(move -> oneSanToUci(move, position))
                 .collect(Collectors.joining(" "));
@@ -119,7 +123,7 @@ public class PgnMoves {
         return matchingMove;
     }
 
-    private static String oneSanToUci(String san, BoardPosition position) {
+    public static String oneSanToUci(String san, BoardPosition position) {
         BoardState state = position.getState();
         Optional<Move> matchingMove = parseOneSan(san, state);
 
