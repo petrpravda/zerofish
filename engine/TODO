@@ -7,3 +7,56 @@
 - retrofit TT to Java
 - Elo tests
 - NNUE inspiration (links) - https://github.com/analog-hors/tantabus
+
+
+
+STS Rating v14.0
+Number of cores: 8
+
+Engine: Javafish 1.0
+Hash: 128, Threads: 1, time/pos: 0.200s
+
+Number of positions in STS1-STS15_LAN_v3.epd: 1500
+Max score = 1500 x 10 = 15000
+Test duration: 00h:01m:30s
+Expected time to finish: 00h:05m:45s
+STS rating: 1977
+
+  STS ID   STS1   STS2   STS3   STS4   STS5   STS6   STS7   STS8   STS9  STS10  STS11  STS12  STS13  STS14  STS15    ALL
+  NumPos    100    100    100    100    100    100    100    100    100    100    100    100    100    100    100   1500
+ BestCnt     37     20     39     40     49     42     32     19     31     57     33     42     48     48     17    554
+   Score    482    345    534    519    591    678    422    311    403    667    447    536    579    618    348   7480
+Score(%)   48.2   34.5   53.4   51.9   59.1   67.8   42.2   31.1   40.3   66.7   44.7   53.6   57.9   61.8   34.8   49.9
+  Rating   1903   1293   2135   2068   2388   2776   1636   1142   1551   2727   1747   2144   2335   2509   1307   1977
+
+:: STS ID and Titles ::
+STS 01: Undermining
+STS 02: Open Files and Diagonals
+STS 03: Knight Outposts
+STS 04: Square Vacancy
+STS 05: Bishop vs Knight
+STS 06: Re-Capturing
+STS 07: Offer of Simplification
+STS 08: Advancement of f/g/h Pawns
+STS 09: Advancement of a/b/c Pawns
+STS 10: Simplification
+STS 11: Activity of the King
+STS 12: Center Control
+STS 13: Pawn Play in the Center
+STS 14: Queens and Rooks to the 7th rank
+STS 15: Avoid Pointless Exchange
+
+:: Top 5 STS with high result ::
+1. STS 06, 67.8%, "Re-Capturing"
+2. STS 10, 66.7%, "Simplification"
+3. STS 14, 61.8%, "Queens and Rooks to the 7th rank"
+4. STS 05, 59.1%, "Bishop vs Knight"
+5. STS 13, 57.9%, "Pawn Play in the Center"
+
+:: Top 5 STS with low result ::
+1. STS 08, 31.1%, "Advancement of f/g/h Pawns"
+2. STS 02, 34.5%, "Open Files and Diagonals"
+3. STS 15, 34.8%, "Avoid Pointless Exchange"
+4. STS 09, 40.3%, "Advancement of a/b/c Pawns"
+5. STS 07, 42.2%, "Offer of Simplification"
+
