@@ -2,6 +2,7 @@ package search;
 
 import evaluation.Evaluation;
 import org.javafish.board.BoardState;
+import org.javafish.board.Side;
 import org.javafish.move.Move;
 import org.javafish.move.MoveList;
 import org.javafish.board.BoardPosition;
@@ -13,6 +14,7 @@ import java.util.Optional;
 import static org.javafish.app.Benchmark.GIGA;
 import static org.javafish.app.Benchmark.MEGA;
 import static org.javafish.board.Fen.START_POS;
+import static org.javafish.eval.PieceSquareTable.MGS;
 
 public class Search {
     public final static int INF = 999999;
@@ -21,10 +23,13 @@ public class Search {
     private final static int LMR_MIN_DEPTH = 2;
     private final static int LMR_MOVES_WO_REDUCTION = 1;
     private final static int ASPIRATION_WINDOW = 25;
+    private final TranspTable transpositionTable;
+    private final Statistics statistics;
 
 
     private boolean stop;
     private int selDepth;
+
     private static final int[][] LMR_TABLE = new int[64][64];
     static {
         // Ethereal LMR formula with depth and number of performed moves
@@ -39,14 +44,74 @@ public class Search {
 
     private BoardPosition searchPosition;
 
-    public Search() {
-        // sort of null stream
-        this.streamOut = new PrintStream(new ByteArrayOutputStream());
+    public Search(TranspTable transpositionTable) {
+//        this.transpositionTable = transpositionTable;
+//        // sort of null stream
+//        this.streamOut = new PrintStream(new ByteArrayOutputStream());
+        this(transpositionTable, new PrintStream(new ByteArrayOutputStream()));
     }
 
-    public Search(PrintStream out) {
-        // sort of null stream
+    public Search(TranspTable transpositionTable, PrintStream out) {
+        this.transpositionTable = transpositionTable;
+        this.statistics = new Statistics();
         this.streamOut = out;
+    }
+
+    public void scoreMoves(final BoardState state, final MoveList moves, int ply) {
+
+        if (moves.size() == 0)
+            return;
+
+        Move hashMove = null;
+        TTEntry ttEntry = transpositionTable.probe(state.hash());
+        if (ttEntry != null) {
+            hashMove = ttEntry.move();
+        }
+
+        for (Move move : moves) {
+            if (move.equals(hashMove)) {
+                move.addToScore(MoveOrder.HashMoveScore);
+            }
+            if (MoveOrder.isKiller(state, move, ply)) {
+                move.addToScore(MoveOrder.KillerMoveScore);
+            }
+            int piece = state.items[move.from()];
+
+            switch (move.flags()) {
+                case Move.PC_BISHOP:
+                case Move.PC_KNIGHT:
+                case Move.PC_ROOK:
+                case Move.PC_QUEEN:
+                    int score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()]
+                            - MGS[state.items[move.to()]][move.to()];
+                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+                    move.addToScore(score);
+                    break;
+
+                case Move.PR_BISHOP:
+                case Move.PR_KNIGHT:
+                case Move.PR_ROOK:
+                case Move.PR_QUEEN:
+                    score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()];
+                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+                    move.addToScore(score);
+                    break;
+                case Move.CAPTURE:
+                    score = MGS[piece][move.to()] - MGS[piece][move.from()] - MGS[state.items[move.to()]][move.to()];
+                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+                    move.addToScore(score);
+                    break;
+                case Move.QUIET:
+                case Move.EN_PASSANT:
+                case Move.DOUBLE_PUSH:
+                case Move.OO:
+                case Move.OOO:
+                    score = MGS[piece][move.to()] - MGS[piece][move.from()];
+                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+                    move.addToScore(score);
+                    break;
+            }
+        }
     }
 
     public record SearchResult(Optional<Move> move, int score) {
@@ -100,7 +165,7 @@ public class Search {
                 alpha = result.score - ASPIRATION_WINDOW;
                 beta = result.score + ASPIRATION_WINDOW;
                 depth++;
-                Statistics.reset();
+                statistics.reset();
             }
         }
 
@@ -108,15 +173,15 @@ public class Search {
     }
 
     public SearchResult negaMaxRoot(BoardState state, int depth, int alpha, int beta){
-        int value = -INF;
+        int value;
         MoveList moves = state.generateLegalMoves();
-        boolean inCheck = state.checkers() != 0;
-        if (inCheck) ++depth;
+//        boolean inCheck = state.checkers() != 0;
+//        if (inCheck) ++depth;
         if (moves.size() == 1) {
             return new SearchResult(Optional.of(moves.get(0)), 0);
         }
 
-        MoveOrder.scoreMoves(state, moves, 0);
+        scoreMoves(state, moves, 0);
         Move bestMove = null;
         for (int i = 0; i < moves.size(); i++){
             MoveOrder.sortNextBestMove(moves, i);
@@ -132,16 +197,16 @@ public class Search {
             if (value > alpha){
                 bestMove = move;
                 if (value >= beta){
-                    TranspTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
+                    transpositionTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
                     return new SearchResult(Optional.of(bestMove), beta);
                 }
                 alpha = value;
-                TranspTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
+                transpositionTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
             }
         }
         if (bestMove == null && moves.size() >= 1) {
             bestMove = moves.get(0);
-            TranspTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
+            transpositionTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
         }
 
         return new SearchResult(Optional.ofNullable(bestMove), alpha);
@@ -162,36 +227,33 @@ public class Search {
         if (alpha < -mateValue) alpha = -mateValue;
         if (beta > mateValue - 1) beta = mateValue - 1;
         if (alpha >= beta) {
-            Statistics.leafs++;
+            statistics.leafs++;
             return alpha;
         }
 
         inCheck = state.kingAttacked();
         if (depth <= 0 && !inCheck) return qSearch(state, depth, ply, alpha, beta);
-        Statistics.nodes++;
+        statistics.nodes++;
 
         if (state.isRepetitionOrFifty(this.searchPosition)) {
-            Statistics.leafs++;
+            statistics.leafs++;
             return 0;
         }
 
         // PROBE TTABLE
-        final TTEntry ttEntry = TranspTable.probe(state.hash());
+        final TTEntry ttEntry = transpositionTable.probe(state.hash());
         if (ttEntry != null && ttEntry.depth() >= depth) {
-            Statistics.ttHits++;
+            statistics.ttHits++;
             switch (ttEntry.flag()) {
-                case TTEntry.EXACT:
-                    Statistics.leafs++;
+                case TTEntry.EXACT -> {
+                    statistics.leafs++;
                     return ttEntry.score();
-                case TTEntry.LOWER_BOUND:
-                    alpha = Math.max(alpha, ttEntry.score());
-                    break;
-                case TTEntry.UPPER_BOUND:
-                    beta = Math.min(beta, ttEntry.score());
-                    break;
+                }
+                case TTEntry.LOWER_BOUND -> alpha = Math.max(alpha, ttEntry.score());
+                case TTEntry.UPPER_BOUND -> beta = Math.min(beta, ttEntry.score());
             }
             if (alpha >= beta) {
-                Statistics.leafs++;
+                statistics.leafs++;
                 return ttEntry.score();
             }
         }
@@ -203,7 +265,7 @@ public class Search {
             int value = -negaMax(newBoardState, depth - R - 1, ply, -beta, -beta + 1, false);
             if (stop) return 0;
             if (value >= beta){
-                Statistics.betaCutoffs++;
+                statistics.betaCutoffs++;
                 return beta;
             }
         }
@@ -211,7 +273,7 @@ public class Search {
         MoveList moves = state.generateLegalMoves();
         int value;
         Move bestMove = Move.NULL_MOVE;
-        MoveOrder.scoreMoves(state, moves, ply);
+        scoreMoves(state, moves, ply);
         for (int i = 0; i < moves.size(); i++){
             MoveOrder.sortNextBestMove(moves, i);
             Move move = moves.get(i);
@@ -236,7 +298,7 @@ public class Search {
                         MoveOrder.addKiller(state, move, ply);
                         //MoveOrder.addHistory(move, depth);
                     }
-                    Statistics.betaCutoffs++;
+                    statistics.betaCutoffs++;
                     ttFlag = TTEntry.LOWER_BOUND;
                     alpha = beta;
                     break;
@@ -254,7 +316,7 @@ public class Search {
                 alpha = 0;
         }
 
-        if (!bestMove.equals(Move.NULL_MOVE) && !stop) TranspTable.set(state.hash(), alpha, depth, ttFlag, bestMove);
+        if (!bestMove.equals(Move.NULL_MOVE) && !stop) transpositionTable.set(state.hash(), alpha, depth, ttFlag, bestMove);
 
         return alpha;
     }
@@ -265,12 +327,12 @@ public class Search {
             return 0;
         }
         selDepth = Math.max(ply, selDepth);
-        Statistics.qnodes++;
+        statistics.qnodes++;
 
         int value = Evaluation.evaluateState(state);
 
         if (value >= beta){
-            Statistics.qleafs++;
+            statistics.qleafs++;
             return beta;
         }
 
@@ -278,7 +340,7 @@ public class Search {
             alpha = value;
 
         MoveList moves = state.generateLegalQuiescence();
-        MoveOrder.scoreMoves(state, moves, ply);
+        scoreMoves(state, moves, ply);
         for (int i = 0; i < moves.size(); i++) {
             MoveOrder.sortNextBestMove(moves, i);
             Move move = moves.get(i);
@@ -295,7 +357,7 @@ public class Search {
 
             if (value > alpha) {
                 if (value >= beta) {
-                    Statistics.qbetaCutoffs++;
+                    statistics.qbetaCutoffs++;
                     return beta;
                 }
                 alpha = value;
@@ -322,15 +384,14 @@ public class Search {
                 move.flags() == Move.QUIET;
     }
 
-    public static String getPv(BoardState state, int depth){
-        TTEntry bestEntry = TranspTable.probe(state.hash());
+    public String getPv(BoardState state, int depth){
+        TTEntry bestEntry = transpositionTable.probe(state.hash());
         if (bestEntry == null || depth == 0) {
             return "";
         }
         Move bestMove = bestEntry.move();
         BoardState newBoardState = state.doMove(bestMove);
-        String pV = bestMove.uci() + " " + getPv(newBoardState, depth - 1);
-        return pV;
+        return bestMove.uci() + " " + getPv(newBoardState, depth - 1);
     }
 
 //    public static Move getMove(){
@@ -352,14 +413,14 @@ public class Search {
         streamOut.print(" seldepth " + selDepth);
         streamOut.print(" time " + (int)(Limits.timeElapsed() / MEGA));
         streamOut.print(" score cp " + result.score);
-        streamOut.print(" nodes " + Statistics.totalNodes());
-        streamOut.printf(" nps %.0f", Statistics.totalNodes()/((double)Limits.timeElapsed()/GIGA));
+        streamOut.print(" nodes " + statistics.totalNodes());
+        streamOut.printf(" nps %.0f", statistics.totalNodes()/((double)Limits.timeElapsed()/GIGA));
         streamOut.println(" pv " + getPv(state, depth));
     }
 
     public static void main(String[] args) {
         BoardPosition position = BoardPosition.fromFen(START_POS);
-        new Search(System.out).itDeep(position, 9);
+        new Search(new TranspTable(), System.out).itDeep(position, 9);
     }
 
     //         Search.stop();

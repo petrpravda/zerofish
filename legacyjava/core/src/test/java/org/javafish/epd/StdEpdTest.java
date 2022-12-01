@@ -5,6 +5,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.javafish.board.BoardPosition;
 import org.javafish.uci.UciTestingDriver;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -25,6 +26,7 @@ class StdEpdTest {
     public record StsResult(String section, Integer number, Integer outcome) {}
 
     @Test
+    @Disabled
     public void parseEpds() throws Exception {
         String workingDir = System.getProperty("user.dir");
 

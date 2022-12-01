@@ -22,6 +22,7 @@ import static org.javafish.board.Fen.START_POS;
 
 public class UciCommands {
 
+    private TranspTable transpositionTable = new TranspTable();
     private BoardPosition position = BoardPosition.fromFen(START_POS);
 
     @UciMapping("d")
@@ -91,7 +92,7 @@ public class UciCommands {
 //                BoardPosition boardPosition = fromFen(START_POS);
 //                BoardState state = fromPosition(boardPosition);
 
-                Search.SearchResult result = new Search(System.out).itDeep(position, depth);
+                Search.SearchResult result = new Search(transpositionTable, System.out).itDeep(position, depth);
                 String bestMoveString = String.format("bestmove %s", result.move().map(Move::toString).orElse("(none)"));
                 System.out.println(bestMoveString);
             }
@@ -115,7 +116,7 @@ public class UciCommands {
 
     @UciMapping("ucinewgame")
     public void ucinewgame() {
-        TranspTable.reset();
+        transpositionTable.reset();
     }
 
     @UciQuit

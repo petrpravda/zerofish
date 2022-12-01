@@ -188,9 +188,9 @@ public class BoardState implements Cloneable {
         return piece_bb[Piece.makePiece(side, pieceType)];
     }
 
-    public long checkers(){
-        return checkers;
-    }
+//    public long checkers(){
+//        return checkers;
+//    }
 
     public long diagonalSliders(int side){
         return side == Side.WHITE ? piece_bb[Piece.WHITE_BISHOP] | piece_bb[Piece.WHITE_QUEEN] :

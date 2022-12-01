@@ -1,6 +1,7 @@
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
-use crate::r#move::Move;
+use crate::r#move::{Move, MoveList};
+use crate::statistics::Statistics;
 use crate::time::Instant;
 
 pub struct SearchResult {
@@ -20,6 +21,7 @@ pub struct Search {
     start_time: Instant,
     sel_depth: i32,
     stop: bool,
+    statistics: Statistics,
 }
 
 impl Search {
@@ -29,7 +31,7 @@ impl Search {
     //     private final static int NULL_MIN_DEPTH = 2;
     //     private final static int LMR_MIN_DEPTH = 2;
     //     private final static int LMR_MOVES_WO_REDUCTION = 1;
-    //     private final static int ASPIRATION_WINDOW = 25;
+    const ASPIRATION_WINDOW: i32 = 25;
     //
     //
     //     private static boolean stop;
@@ -60,19 +62,19 @@ impl Search {
     //
 
 
-        pub fn itDeep(&mut self, position: &BoardPosition, searchDepth: u16) -> SearchResult {
+        pub fn itDeep(&mut self, position: &BoardPosition, search_depth: u16) -> SearchResult {
             let mut result = SearchResult { mowe: None, score: 0 };
 
-            self.search_position = position.for_search_depth(searchDepth);
+            self.search_position = position.for_search_depth(search_depth);
             self.start_time = Instant::now();
             self.sel_depth = 0;
             self.stop = false;
             let mut alpha: i32 = -Search::INF;
             let mut beta: i32 = Search::INF;
-            let depth: u16 = 1;
+            let mut depth: u16 = 1;
 
             // Deepen until end conditions
-            while depth <= searchDepth {
+            while depth <= search_depth {
 
                 // Check to see if the time has ended
                 //long elapsed = System.currentTimeMillis() - Limits.startTime;
@@ -95,10 +97,10 @@ impl Search {
                 // Adjust the window around the new score and increase the depth
                 else {
                     self.printInfo(&position.state, &result, depth);
-                    alpha = result.score - ASPIRATION_WINDOW;
-                    beta = result.score + ASPIRATION_WINDOW;
-                    depth++;
-                    Statistics.reset();
+                    alpha = result.score - Search::ASPIRATION_WINDOW;
+                    beta = result.score + Search::ASPIRATION_WINDOW;
+                    depth += 1;
+                    self.statistics.reset();
                 }
             }
 
@@ -107,40 +109,40 @@ impl Search {
 
         pub fn negaMaxRoot(&self, state: &BoardState, depth: u16, alpha: i32, beta: i32) -> SearchResult{
             let value = -Search::INF;
-            // MoveList moves = state.generateLegalMoves();
-            // boolean inCheck = state.checkers() != 0;
+            let moves = state.generate_legal_moves();
+            // let inCheck = state.checkers() != 0;
             // if (inCheck) ++depth;
-            // if (moves.size() == 1) {
-            //     return new SearchResult(Optional.of(moves.get(0)), 0);
-            // }
-            //
-            // MoveOrder.scoreMoves(state, moves, 0);
+            if moves.len() == 1 {
+                return SearchResult{ mowe: moves.moves.get(0).copied(), score: 0 }; // new SearchResult(Optional.of(moves.get(0)), 0);
+            }
+
+            self.score_moves(state, moves, 0);
             let bestMove: Option<Move> = None;
-            // for (int i = 0; i < moves.size(); i++){
-            //     MoveOrder.sortNextBestMove(moves, i);
-            //     Move move = moves.get(i);
-            //
-            //     BoardState newBoardState = state.doMove(move);
-            //     value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
-            //
-            //     if (stop || Limits.checkLimits()) {
-            //         stop = true;
-            //         break;
-            //     }
-            //     if (value > alpha){
-            //         bestMove = move;
-            //         if (value >= beta){
-            //             TranspTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
-            //             return new SearchResult(Optional.of(bestMove), beta);
-            //         }
-            //         alpha = value;
-            //         TranspTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
-            //     }
-            // }
-            // if (bestMove == null && moves.size() >= 1) {
-            //     bestMove = moves.get(0);
-            //     TranspTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
-            // }
+            for (int i = 0; i < moves.size(); i++){
+                MoveOrder.sortNextBestMove(moves, i);
+                Move move = moves.get(i);
+
+                BoardState newBoardState = state.doMove(move);
+                value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
+
+                if (stop || Limits.checkLimits()) {
+                    stop = true;
+                    break;
+                }
+                if (value > alpha){
+                    bestMove = move;
+                    if (value >= beta){
+                        TranspTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
+                        return new SearchResult(Optional.of(bestMove), beta);
+                    }
+                    alpha = value;
+                    TranspTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
+                }
+            }
+            if (bestMove == null && moves.size() >= 1) {
+                bestMove = moves.get(0);
+                TranspTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
+            }
 
             SearchResult{ mowe: bestMove, score: alpha }  // (Optional.ofNullable(bestMove), alpha);
         }
@@ -355,7 +357,7 @@ impl Search {
                 0, // Statistics.totalNodes()/((double)Limits.timeElapsed()/GIGA));
                 self.get_pv(state, depth)
             );
-            println!("{}" info_line);
+            println!("{}", info_line);
             // streamOut.print("info");
             // streamOut.print(" currmove " + result.move.map(Move::toString).orElse("(none)"));
             // streamOut.print(" depth " + depth);
@@ -377,6 +379,7 @@ impl Search {
         let duration = now - self.start_time;
         duration.as_millis() as u64
     }
+
     fn get_pv(&self, state: &BoardState, depth: u16) -> String {
         TTEntry bestEntry = TranspTable.probe(state.hash());
         if (bestEntry == null || depth == 0) {
@@ -387,4 +390,64 @@ impl Search {
         String pV = bestMove.uci() + " " + getPv(newBoardState, depth - 1);
         return pV;
     }
+
+    fn score_moves(&self, state: &BoardState, moves: MoveList, ply: u8) {
+
+    }
+    //     public void scoreMoves(final BoardState state, final MoveList moves, int ply) {
+    //
+    //         if (moves.size() == 0)
+    //             return;
+    //
+    //         Move hashMove = null;
+    //         TTEntry ttEntry = transpositionTable.probe(state.hash());
+    //         if (ttEntry != null) {
+    //             hashMove = ttEntry.move();
+    //         }
+    //
+    //         for (Move move : moves) {
+    //             if (move.equals(hashMove)) {
+    //                 move.addToScore(MoveOrder.HashMoveScore);
+    //             }
+    //             if (MoveOrder.isKiller(state, move, ply)) {
+    //                 move.addToScore(MoveOrder.KillerMoveScore);
+    //             }
+    //             int piece = state.items[move.from()];
+    //
+    //             switch (move.flags()) {
+    //                 case Move.PC_BISHOP:
+    //                 case Move.PC_KNIGHT:
+    //                 case Move.PC_ROOK:
+    //                 case Move.PC_QUEEN:
+    //                     int score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()]
+    //                             - MGS[state.items[move.to()]][move.to()];
+    //                     score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+    //                     move.addToScore(score);
+    //                     break;
+    //
+    //                 case Move.PR_BISHOP:
+    //                 case Move.PR_KNIGHT:
+    //                 case Move.PR_ROOK:
+    //                 case Move.PR_QUEEN:
+    //                     score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()];
+    //                     score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+    //                     move.addToScore(score);
+    //                     break;
+    //                 case Move.CAPTURE:
+    //                     score = MGS[piece][move.to()] - MGS[piece][move.from()] - MGS[state.items[move.to()]][move.to()];
+    //                     score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+    //                     move.addToScore(score);
+    //                     break;
+    //                 case Move.QUIET:
+    //                 case Move.EN_PASSANT:
+    //                 case Move.DOUBLE_PUSH:
+    //                 case Move.OO:
+    //                 case Move.OOO:
+    //                     score = MGS[piece][move.to()] - MGS[piece][move.from()];
+    //                     score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+    //                     move.addToScore(score);
+    //                     break;
+    //             }
+    //         }
+    //     }
 }

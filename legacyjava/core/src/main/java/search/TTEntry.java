@@ -9,8 +9,10 @@ public class TTEntry {
     private final int score;
     private final byte depth, flag;
     private final int bestMove;
+    final long key;
 
-    public TTEntry(int score, int depth, int flag, Move bestMove){
+    public TTEntry(long key, int score, int depth, int flag, Move bestMove){
+        this.key = key;
         this.score = score;
         this.depth = (byte)depth;
         this.flag = (byte)flag;

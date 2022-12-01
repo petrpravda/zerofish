@@ -1,11 +1,15 @@
+- Fen as trait
+- Elo tests
+  - synchronize result tables
+- make search.rs working
+============================================================
+
+
 - reflect version number - CARGO_PKG_VERSION / uci.rs
 - fill in missing functionality in set_piece_at
 - ~/ChessProjects/wasmlearn/nextjs-wasm/wasm
 - tests for zobrist hashing (with ep coverage ?)
 - tricky_perfts - use multithreading
-- Fen as trait
-- retrofit TT to Java
-- Elo tests
 - NNUE inspiration (links) - https://github.com/analog-hors/tantabus
 
 
