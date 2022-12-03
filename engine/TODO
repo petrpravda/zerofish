@@ -3,6 +3,7 @@
   - synchronize result tables
 - make search.rs working
 - iterator for moveOrdering
+- implement in killer moves
 ============================================================
 
 

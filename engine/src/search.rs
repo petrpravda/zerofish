@@ -391,9 +391,6 @@ impl Search {
         return pV;
     }
 
-    fn score_moves(&self, state: &BoardState, moves: MoveList, ply: u8) {
-
-    }
     //     public void scoreMoves(final BoardState state, final MoveList moves, int ply) {
     //
     //         if (moves.size() == 0)

@@ -233,7 +233,7 @@ public class Search {
                 bestMove = move;
                 if (value >= beta) {
                     if (move.flags() == Move.QUIET) {
-                        moveOrdering.addKiller(state, move, ply);
+                        // moveOrdering.addKiller(state, move, ply);
                         //MoveOrder.addHistory(move, depth);
                     }
                     statistics.betaCutoffs++;

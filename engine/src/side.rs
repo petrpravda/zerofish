@@ -45,14 +45,14 @@ impl Side {
         self as usize
     }
 
-    // #[inline(always)]
-    // pub fn multiplicator(&self) -> i8 {
-    //     if *self == Self::WHITE {
-    //         1
-    //     } else {
-    //         -1
-    //     }
-    // }
+    #[inline(always)]
+    pub fn multiplicator(&self) -> i8 {
+        if *self == Self::WHITE {
+            1
+        } else {
+            -1
+        }
+    }
 }
 
 impl From<u8> for Side {

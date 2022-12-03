@@ -79,12 +79,12 @@ impl From<TTEntry> for Hash {
 // Transposition Table
 ///////////////////////////////////////////////////////////////////
 
-pub struct TT {
+pub struct TranspositionTable {
     table: Vec<AtomicEntry>,
     bitmask: Hash,
 }
 
-impl TT {
+impl TranspositionTable {
     pub fn new(mb_size: usize) -> Self {
         assert_eq!(std::mem::size_of::<TTEntry>(), 8);
         // let upper_limit = mb_size * 1024 * 1024 / std::mem::size_of::<AtomicEntry>() + 1;
@@ -96,7 +96,7 @@ impl TT {
             table.push(AtomicEntry::default());
         }
 
-        TT {
+        TranspositionTable {
             table,
             bitmask: count as Hash - 1,
         }

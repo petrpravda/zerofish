@@ -1,13 +1,17 @@
+use std::borrow::Borrow;
 use std::fmt;
 use crate::bitboard::BitIter;
-use crate::piece::PieceType;
+use crate::board_state::BoardState;
+use crate::piece::{make_piece, PieceType};
+use crate::piece_square_table::MGS;
+use crate::side::Side;
 use crate::square::Square;
-use crate::transposition::BaseMove;
+use crate::transposition::{BaseMove, TranspositionTable, Value};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Move {
     pub(crate) bits: u32,
-    sort_score: u32
+    sort_score: i32
 }
 
 //
@@ -54,16 +58,40 @@ impl Move {
         ((self.bits >> 6) & 0x3f) as u8
     }
 
+    #[inline(always)]
     pub fn flags(&self) -> u8 {
         ((self.bits >> 12) & 0xf) as u8
     }
 
-    pub fn score(&self) -> u32 {
+    pub fn score(&self) -> i32 {
         self.sort_score
     }
 
+    pub fn base_move(&self) -> BaseMove { self.bits as BaseMove }
+
+    #[inline(always)] // TODO what if I use self.flags()? is it the same speed?
     pub fn is_promotion(&self) -> bool {
         ((self.bits >> 12) as u8 & Move::PROMOTION) != 0
+    }
+
+    #[inline(always)]
+    pub fn is_quiet(&self) -> bool { // TODO what if I use self.flags()? is it the same speed?
+        (self.bits >> 12) as u8 & Move::PROMOTION == 0
+    }
+
+    #[inline(always)]
+    pub fn is_capture(&self) -> bool {
+        (self.bits >> 12) as u8 & Move::CAPTURE != 0
+    }
+
+    #[inline(always)]
+    pub fn is_castling(&self) -> bool {
+        matches!(self.flags(), Move::OO | Move::OOO)
+    }
+
+    #[inline(always)]
+    pub fn is_ep(&self) -> bool {
+        self.flags() == Move::EN_PASSANT
     }
 
     // @Override
@@ -77,8 +105,8 @@ impl Move {
         PieceType::from((self.flags() & 0b11) + 1)
     }
 
-    // public int getPieceTypeForSide(int sideToPlay) {
-    // return this.get_piece_type() + sideToPlay * 8;
+    // pub fn get_piece_type_for_side(&self, side_to_play: Side) -> PieceType {
+    //     return PieceType::from(self.get_piece_type() as u8 + (side_to_play as u8 * 8));
     // }
 
     pub fn uci(&self) -> String {
@@ -103,10 +131,10 @@ impl Move {
                promo)
     }
 
-    // public void addToScore(int score){
-    // sort_score += score;
-    // }
-    //
+    pub fn addToScore(&mut self, score: i32){
+        self.sort_score += score;
+    }
+
     // @Override
     // public String toString() {
     // return uci();
@@ -204,6 +232,101 @@ impl MoveList {
         self.moves.len()
     }
 
+    //final BoardState state, TranspTable transpositionTable, int ply, MoveOrdering moveOrdering) {
+    pub fn score_moves(&self, state: &BoardState, transpositionTable: &TranspositionTable) {
+        if self.moves.len() == 0 {
+            return;
+        }
+
+        let tt_entry = transpositionTable.probe(state);
+        let hash_move = tt_entry.map(|tt| tt.best_move());
+
+        for index in 1..self.moves.len() {
+            let moov = self.moves[index];
+
+            if hash_move.is_some() && moov.base_move() == hash_move.unwrap() {
+                //moov.addToScore(MoveOrdering::HashMoveScore);
+                self.moves[index].addToScore(MoveOrdering::HashMoveScore);
+                continue;
+            }
+
+            // if moov.is_quiet() {
+            //     // if self.is_killer(board, m, ply) {
+            //     //     moves.scores[idx] += Self::KILLER_MOVE_SCORE;
+            //     //     continue;
+            //     // }
+            //
+            //     if moov.is_castling() {
+            //         self.moves[index].addToScore(MoveOrdering::CASTLING_SCORE);
+            //         continue;
+            //     }
+            //
+            //     // moves.scores[idx] += Self::HISTORY_MOVE_OFFSET + self.history_score(m);
+            //     continue;
+            // }
+
+            // if moov.is_capture() {
+            //     if moov.is_ep() {
+            //         self.moves[index].addToScore(MoveOrdering::WINNING_CAPTURES_OFFSET);
+            //         continue;
+            //     }
+            //
+            //     moves.scores[idx] += Self::mvv_lva_score(board, m);
+            //
+            //     if Self::see(board, m, -100) {
+            //         moves.scores[idx] += Self::WINNING_CAPTURES_OFFSET;
+            //     } else {
+            //         moves.scores[idx] += Self::LOSING_CAPTURES_OFFSET;
+            //     }
+            // }
+            //
+            // moves.scores[idx] += match m.promotion() {
+            //     PieceType::Knight => Self::KNIGHT_PROMOTION_SCORE,
+            //     PieceType::Bishop => Self::BISHOP_PROMOTION_SCORE,
+            //     PieceType::Rook => Self::ROOK_PROMOTION_SCORE,
+            //     PieceType::Queen => Self::QUEEN_PROMOTION_SCORE,
+            //     PieceType::None => 0,
+            //     _ => unreachable!(),
+            // };
+
+//            if (moveOrdering.isKiller(state, move, ply)) {
+//                move.addToScore(MoveOrdering.KillerMoveScore);
+//            }
+
+            let piece = state.items[moov.from() as usize];
+//
+            match moov.flags() {
+                Move::PC_BISHOP | Move::PC_KNIGHT | Move::PC_ROOK | Move::PC_QUEEN => {
+                    let score = (MGS[make_piece(state.side_to_play, moov.get_piece_type()) as usize][moov.to() as usize]
+                        - MGS[piece as usize][moov.from() as usize]
+                        - MGS[state.items[moov.to() as usize] as usize][moov.to() as usize])
+                        * state.side_to_play.multiplicator() as i32;
+                    self.moves[index].addToScore(score);
+                },
+                Move::PR_BISHOP | Move::PR_KNIGHT | Move::PR_ROOK | Move::PR_QUEEN => {
+                    let score = (MGS[make_piece(state.side_to_play, moov.get_piece_type()) as usize][moov.to() as usize]
+                        - MGS[piece as usize][moov.from() as usize])
+                        * state.side_to_play.multiplicator() as i32;
+                    self.moves[index].addToScore(score);
+                },
+                Move::CAPTURE => {
+                    let score = (MGS[piece as usize][moov.to() as usize]
+                        - MGS[piece as usize][moov.from() as usize]
+                        - MGS[state.items[moov.to() as usize] as usize][moov.to() as usize])
+                        * state.side_to_play.multiplicator() as i32;
+                    self.moves[index].addToScore(score);
+                },
+                Move::QUIET | Move::EN_PASSANT | Move::DOUBLE_PUSH | Move::OO | Move::OOO => {
+                    let score = (MGS[piece as usize][moov.to() as usize]
+                        - MGS[piece as usize][moov.from() as usize])
+                        * state.side_to_play.multiplicator() as i32;
+                    self.moves[index].addToScore(score);
+                },
+                _ => unreachable!(),
+            }
+        }
+    }
+
     pub fn to_string(&self) -> String {
         format!("length: {}", self.moves.len())
     }
@@ -215,3 +338,22 @@ impl fmt::Display for MoveList {
         write!(f, "Move list: {}", ucis)
     }
 }
+
+pub struct MoveOrdering {
+
+}
+
+impl MoveOrdering {
+    pub const HashMoveScore: Value = 10000; // 25000?
+    //const N_KILLERS: usize = 3;
+    const QUEEN_PROMOTION_SCORE: Value = 8000;
+    const ROOK_PROMOTION_SCORE: Value = 7000;
+    const BISHOP_PROMOTION_SCORE: Value = 6000;
+    const KNIGHT_PROMOTION_SCORE: Value = 5000;
+    const WINNING_CAPTURES_OFFSET: Value = 10;
+    const KILLER_MOVE_SCORE: Value = 2;
+    const CASTLING_SCORE: Value = 1;
+    const HISTORY_MOVE_OFFSET: Value = -30000;
+    const LOSING_CAPTURES_OFFSET: Value = -30001;
+}
+//    private final int[][][] killerMoves = new int[2][1000][1];

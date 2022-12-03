@@ -87,9 +87,9 @@ public class MoveList extends ArrayList<Move> {
             if (move.equals(hashMove)) {
                 move.addToScore(MoveOrdering.HashMoveScore);
             }
-            if (moveOrdering.isKiller(state, move, ply)) {
-                move.addToScore(MoveOrdering.KillerMoveScore);
-            }
+//            if (moveOrdering.isKiller(state, move, ply)) {
+//                move.addToScore(MoveOrdering.KillerMoveScore);
+//            }
             int piece = state.items[move.from()];
 
             switch (move.flags()) {
