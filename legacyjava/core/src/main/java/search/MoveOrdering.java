@@ -9,8 +9,8 @@ import java.util.Collections;
 
 public class MoveOrdering {
     private final int[][][] killerMoves = new int[2][1000][1];
-    static final int HashMoveScore = 10000;
-    static final int KillerMoveScore = 150;
+    public static final int HashMoveScore = 10000;
+    public static final int KillerMoveScore = 150;
 
     public void addKiller(BoardState state, Move move, int ply){
         int side = state.getSideToPlay();

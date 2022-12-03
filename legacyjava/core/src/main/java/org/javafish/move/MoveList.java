@@ -1,9 +1,17 @@
 package org.javafish.move;
 
+import com.sun.jdi.connect.spi.TransportService;
 import org.javafish.bitboard.Bitboard;
+import org.javafish.board.BoardState;
+import org.javafish.board.Side;
+import search.MoveOrdering;
+import search.TTEntry;
+import search.TranspTable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+
+import static org.javafish.eval.PieceSquareTable.MGS;
 
 public class MoveList extends ArrayList<Move> {
 
@@ -64,6 +72,62 @@ public class MoveList extends ArrayList<Move> {
         }
     }
 
+    public void scoreMoves(final BoardState state, TranspTable transpositionTable, int ply, MoveOrdering moveOrdering) {
+        if (this.size() == 0)
+            return;
+
+        Move hashMove = null;
+        TTEntry ttEntry = transpositionTable.probe(state.hash());
+        if (ttEntry != null) {
+            hashMove = ttEntry.move();
+        }
+
+        for (Move move : this) {
+            if (move.equals(hashMove)) {
+                move.addToScore(MoveOrdering.HashMoveScore);
+            }
+            if (moveOrdering.isKiller(state, move, ply)) {
+                move.addToScore(MoveOrdering.KillerMoveScore);
+            }
+            int piece = state.items[move.from()];
+
+            switch (move.flags()) {
+                case Move.PC_BISHOP:
+                case Move.PC_KNIGHT:
+                case Move.PC_ROOK:
+                case Move.PC_QUEEN:
+                    int score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()]
+                            - MGS[state.items[move.to()]][move.to()];
+                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+                    move.addToScore(score);
+                    break;
+
+                case Move.PR_BISHOP:
+                case Move.PR_KNIGHT:
+                case Move.PR_ROOK:
+                case Move.PR_QUEEN:
+                    score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()];
+                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+                    move.addToScore(score);
+                    break;
+                case Move.CAPTURE:
+                    score = MGS[piece][move.to()] - MGS[piece][move.from()] - MGS[state.items[move.to()]][move.to()];
+                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+                    move.addToScore(score);
+                    break;
+                case Move.QUIET:
+                case Move.EN_PASSANT:
+                case Move.DOUBLE_PUSH:
+                case Move.OO:
+                case Move.OOO:
+                    score = MGS[piece][move.to()] - MGS[piece][move.from()];
+                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
+                    move.addToScore(score);
+                    break;
+            }
+        }
+    }
+
     public void pickNextBestMove(int curIndex){
         int max = Integer.MIN_VALUE;
         int maxIndex = -1;
@@ -75,4 +139,8 @@ public class MoveList extends ArrayList<Move> {
         }
         Collections.swap(this, curIndex, maxIndex);
     }
+
+//    public String overSorted() {
+//
+//    }
 }

@@ -58,63 +58,6 @@ public class Search {
         this.streamOut = out;
     }
 
-    public void scoreMoves(final BoardState state, final MoveList moves, int ply) {
-
-        if (moves.size() == 0)
-            return;
-
-        Move hashMove = null;
-        TTEntry ttEntry = transpositionTable.probe(state.hash());
-        if (ttEntry != null) {
-            hashMove = ttEntry.move();
-        }
-
-        for (Move move : moves) {
-            if (move.equals(hashMove)) {
-                move.addToScore(MoveOrdering.HashMoveScore);
-            }
-            if (moveOrdering.isKiller(state, move, ply)) {
-                move.addToScore(MoveOrdering.KillerMoveScore);
-            }
-            int piece = state.items[move.from()];
-
-            switch (move.flags()) {
-                case Move.PC_BISHOP:
-                case Move.PC_KNIGHT:
-                case Move.PC_ROOK:
-                case Move.PC_QUEEN:
-                    int score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()]
-                            - MGS[state.items[move.to()]][move.to()];
-                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-                    move.addToScore(score);
-                    break;
-
-                case Move.PR_BISHOP:
-                case Move.PR_KNIGHT:
-                case Move.PR_ROOK:
-                case Move.PR_QUEEN:
-                    score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()];
-                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-                    move.addToScore(score);
-                    break;
-                case Move.CAPTURE:
-                    score = MGS[piece][move.to()] - MGS[piece][move.from()] - MGS[state.items[move.to()]][move.to()];
-                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-                    move.addToScore(score);
-                    break;
-                case Move.QUIET:
-                case Move.EN_PASSANT:
-                case Move.DOUBLE_PUSH:
-                case Move.OO:
-                case Move.OOO:
-                    score = MGS[piece][move.to()] - MGS[piece][move.from()];
-                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-                    move.addToScore(score);
-                    break;
-            }
-        }
-    }
-
     public record SearchResult(Optional<Move> move, int score) {
         @Override
         public Optional<Move> move() {
@@ -182,7 +125,7 @@ public class Search {
             return new SearchResult(Optional.of(moves.get(0)), 0);
         }
 
-        scoreMoves(state, moves, 0);
+        moves.scoreMoves(state, transpositionTable, 0, moveOrdering);
         Move bestMove = null;
         for (int i = 0; i < moves.size(); i++){
             moves.pickNextBestMove(i);
@@ -274,7 +217,7 @@ public class Search {
         MoveList moves = state.generateLegalMoves();
         int value;
         Move bestMove = Move.NULL_MOVE;
-        scoreMoves(state, moves, ply);
+        moves.scoreMoves(state, transpositionTable, ply, moveOrdering);
         for (int i = 0; i < moves.size(); i++){
             moves.pickNextBestMove(i);
             Move move = moves.get(i);
@@ -341,7 +284,7 @@ public class Search {
             alpha = value;
 
         MoveList moves = state.generateLegalQuiescence();
-        scoreMoves(state, moves, ply);
+        moves.scoreMoves(state, transpositionTable, ply, moveOrdering);
         for (int i = 0; i < moves.size(); i++) {
             moves.pickNextBestMove(i);
             Move move = moves.get(i);
