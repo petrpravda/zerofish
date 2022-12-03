@@ -3,6 +3,7 @@ package org.javafish.move;
 import org.javafish.bitboard.Bitboard;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class MoveList extends ArrayList<Move> {
 
@@ -63,4 +64,15 @@ public class MoveList extends ArrayList<Move> {
         }
     }
 
+    public void pickNextBestMove(int curIndex){
+        int max = Integer.MIN_VALUE;
+        int maxIndex = -1;
+        for (int i = curIndex; i < this.size(); i++){
+            if (this.get(i).score() > max){
+                max = this.get(i).score();
+                maxIndex = i;
+            }
+        }
+        Collections.swap(this, curIndex, maxIndex);
+    }
 }

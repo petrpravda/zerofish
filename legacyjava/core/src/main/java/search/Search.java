@@ -25,6 +25,7 @@ public class Search {
     private final static int ASPIRATION_WINDOW = 25;
     private final TranspTable transpositionTable;
     private final Statistics statistics;
+    private final MoveOrdering moveOrdering = new MoveOrdering();
 
 
     private boolean stop;
@@ -70,10 +71,10 @@ public class Search {
 
         for (Move move : moves) {
             if (move.equals(hashMove)) {
-                move.addToScore(MoveOrder.HashMoveScore);
+                move.addToScore(MoveOrdering.HashMoveScore);
             }
-            if (MoveOrder.isKiller(state, move, ply)) {
-                move.addToScore(MoveOrder.KillerMoveScore);
+            if (moveOrdering.isKiller(state, move, ply)) {
+                move.addToScore(MoveOrdering.KillerMoveScore);
             }
             int piece = state.items[move.from()];
 
@@ -184,7 +185,7 @@ public class Search {
         scoreMoves(state, moves, 0);
         Move bestMove = null;
         for (int i = 0; i < moves.size(); i++){
-            MoveOrder.sortNextBestMove(moves, i);
+            moves.pickNextBestMove(i);
             Move move = moves.get(i);
 
             BoardState newBoardState = state.doMove(move);
@@ -275,7 +276,7 @@ public class Search {
         Move bestMove = Move.NULL_MOVE;
         scoreMoves(state, moves, ply);
         for (int i = 0; i < moves.size(); i++){
-            MoveOrder.sortNextBestMove(moves, i);
+            moves.pickNextBestMove(i);
             Move move = moves.get(i);
 
             // LATE MOVE REDUCTION
@@ -295,7 +296,7 @@ public class Search {
                 bestMove = move;
                 if (value >= beta) {
                     if (move.flags() == Move.QUIET) {
-                        MoveOrder.addKiller(state, move, ply);
+                        moveOrdering.addKiller(state, move, ply);
                         //MoveOrder.addHistory(move, depth);
                     }
                     statistics.betaCutoffs++;
@@ -342,7 +343,7 @@ public class Search {
         MoveList moves = state.generateLegalQuiescence();
         scoreMoves(state, moves, ply);
         for (int i = 0; i < moves.size(); i++) {
-            MoveOrder.sortNextBestMove(moves, i);
+            moves.pickNextBestMove(i);
             Move move = moves.get(i);
 
             // Skip if underpromotion.
