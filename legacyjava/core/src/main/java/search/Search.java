@@ -2,10 +2,10 @@ package search;
 
 import evaluation.Evaluation;
 import org.javafish.board.BoardState;
-import org.javafish.board.Side;
 import org.javafish.move.Move;
 import org.javafish.move.MoveList;
 import org.javafish.board.BoardPosition;
+import org.javafish.move.MoveList.IndexedMove;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -14,7 +14,6 @@ import java.util.Optional;
 import static org.javafish.app.Benchmark.GIGA;
 import static org.javafish.app.Benchmark.MEGA;
 import static org.javafish.board.Fen.START_POS;
-import static org.javafish.eval.PieceSquareTable.MGS;
 
 public class Search {
     public final static int INF = 999999;
@@ -46,9 +45,6 @@ public class Search {
     private BoardPosition searchPosition;
 
     public Search(TranspTable transpositionTable) {
-//        this.transpositionTable = transpositionTable;
-//        // sort of null stream
-//        this.streamOut = new PrintStream(new ByteArrayOutputStream());
         this(transpositionTable, new PrintStream(new ByteArrayOutputStream()));
     }
 
@@ -125,11 +121,10 @@ public class Search {
             return new SearchResult(Optional.of(moves.get(0)), 0);
         }
 
-        moves.scoreMoves(state, transpositionTable, 0, moveOrdering);
         Move bestMove = null;
-        for (int i = 0; i < moves.size(); i++){
-            moves.pickNextBestMove(i);
-            Move move = moves.get(i);
+
+        for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, 0, moveOrdering)) {
+            Move move = indexedMove.move();
 
             BoardState newBoardState = state.doMove(move);
             value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
@@ -217,10 +212,9 @@ public class Search {
         MoveList moves = state.generateLegalMoves();
         int value;
         Move bestMove = Move.NULL_MOVE;
-        moves.scoreMoves(state, transpositionTable, ply, moveOrdering);
-        for (int i = 0; i < moves.size(); i++){
-            moves.pickNextBestMove(i);
-            Move move = moves.get(i);
+        for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, ply, moveOrdering)) {
+            Move move = indexedMove.move();
+            int i = indexedMove.index();
 
             // LATE MOVE REDUCTION
             reducedDepth = depth;
@@ -284,10 +278,8 @@ public class Search {
             alpha = value;
 
         MoveList moves = state.generateLegalQuiescence();
-        moves.scoreMoves(state, transpositionTable, ply, moveOrdering);
-        for (int i = 0; i < moves.size(); i++) {
-            moves.pickNextBestMove(i);
-            Move move = moves.get(i);
+        for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, ply, moveOrdering)) {
+            Move move = indexedMove.move();
 
             // Skip if underpromotion.
             if (move.isPromotion() && move.flags() != Move.PR_QUEEN && move.flags() != Move.PC_QUEEN)
@@ -337,14 +329,6 @@ public class Search {
         BoardState newBoardState = state.doMove(bestMove);
         return bestMove.uci() + " " + getPv(newBoardState, depth - 1);
     }
-
-//    public static Move getMove(){
-//        return Objects.requireNonNullElseGet(IDMove, Move::nullMove);
-//    }
-//
-//    public static int getScore(){
-//        return IDScore;
-//    }
 
     public void stop(){
         stop = true;

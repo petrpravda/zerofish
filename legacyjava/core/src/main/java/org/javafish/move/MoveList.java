@@ -1,6 +1,5 @@
 package org.javafish.move;
 
-import com.sun.jdi.connect.spi.TransportService;
 import org.javafish.bitboard.Bitboard;
 import org.javafish.board.BoardState;
 import org.javafish.board.Side;
@@ -10,6 +9,8 @@ import search.TranspTable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.javafish.eval.PieceSquareTable.MGS;
 
@@ -72,7 +73,7 @@ public class MoveList extends ArrayList<Move> {
         }
     }
 
-    public void scoreMoves(final BoardState state, TranspTable transpositionTable, int ply, MoveOrdering moveOrdering) {
+    private void scoreMoves(final BoardState state, TranspTable transpositionTable, int ply, MoveOrdering moveOrdering) {
         if (this.size() == 0)
             return;
 
@@ -140,7 +141,30 @@ public class MoveList extends ArrayList<Move> {
         Collections.swap(this, curIndex, maxIndex);
     }
 
-//    public String overSorted() {
-//
-//    }
+    public Iterable<IndexedMove> overSorted(final BoardState state, TranspTable transpositionTable, int ply, MoveOrdering moveOrdering) {
+        scoreMoves(state, transpositionTable, ply, moveOrdering);
+        // //        moves.scoreMoves(state, transpositionTable, 0, moveOrdering);
+        ////        for (int i = 0; i < moves.size(); i++){
+        ////            moves.pickNextBestMove(i);
+        ////            Move move = moves.get(i);
+        AtomicInteger index = new AtomicInteger();
+        int count = this.size();
+        MoveList outer = this;
+        return () -> new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return index.get() < count;
+            }
+
+            @Override
+            public IndexedMove next() {
+                int i = index.get();
+                index.getAndIncrement();
+                outer.pickNextBestMove(i);
+                return new IndexedMove(outer.get(i), i);
+            }
+        };
+    }
+
+    public record IndexedMove(Move move, int index) {}
 }
