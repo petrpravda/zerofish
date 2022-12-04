@@ -5,7 +5,9 @@
 - iterator for moveOrdering
 - implement in killer moves
 ============================================================
-
+https://medium.com/@SereneBiologist/the-anatomy-of-a-chess-ai-2087d0d565
+https://towardsdatascience.com/creating-a-chess-engine-with-deep-learning-b9477ff3ee3d
+https://www.youtube.com/watch?v=-ivz8yJ4l4E - heuristics
 
 - reflect version number - CARGO_PKG_VERSION / uci.rs
 - fill in missing functionality in set_piece_at

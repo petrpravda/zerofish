@@ -116,33 +116,33 @@ impl Search {
                 return SearchResult{ mowe: moves.moves.get(0).copied(), score: 0 }; // new SearchResult(Optional.of(moves.get(0)), 0);
             }
 
-            self.score_moves(state, moves, 0);
+            // self.score_moves(state, moves, 0);
             let bestMove: Option<Move> = None;
-            for (int i = 0; i < moves.size(); i++){
-                MoveOrder.sortNextBestMove(moves, i);
-                Move move = moves.get(i);
-
-                BoardState newBoardState = state.doMove(move);
-                value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
-
-                if (stop || Limits.checkLimits()) {
-                    stop = true;
-                    break;
-                }
-                if (value > alpha){
-                    bestMove = move;
-                    if (value >= beta){
-                        TranspTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
-                        return new SearchResult(Optional.of(bestMove), beta);
-                    }
-                    alpha = value;
-                    TranspTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
-                }
-            }
-            if (bestMove == null && moves.size() >= 1) {
-                bestMove = moves.get(0);
-                TranspTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
-            }
+            // for (int i = 0; i < moves.size(); i++){
+            //     MoveOrder.sortNextBestMove(moves, i);
+            //     Move move = moves.get(i);
+            //
+            //     BoardState newBoardState = state.doMove(move);
+            //     value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
+            //
+            //     if (stop || Limits.checkLimits()) {
+            //         stop = true;
+            //         break;
+            //     }
+            //     if (value > alpha){
+            //         bestMove = move;
+            //         if (value >= beta){
+            //             TranspTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
+            //             return new SearchResult(Optional.of(bestMove), beta);
+            //         }
+            //         alpha = value;
+            //         TranspTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
+            //     }
+            // }
+            // if (bestMove == null && moves.size() >= 1) {
+            //     bestMove = moves.get(0);
+            //     TranspTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
+            // }
 
             SearchResult{ mowe: bestMove, score: alpha }  // (Optional.ofNullable(bestMove), alpha);
         }
@@ -381,14 +381,15 @@ impl Search {
     }
 
     fn get_pv(&self, state: &BoardState, depth: u16) -> String {
-        TTEntry bestEntry = TranspTable.probe(state.hash());
-        if (bestEntry == null || depth == 0) {
-            return "";
-        }
-        Move bestMove = bestEntry.move();
-        BoardState newBoardState = state.doMove(bestMove);
-        String pV = bestMove.uci() + " " + getPv(newBoardState, depth - 1);
-        return pV;
+        // TTEntry bestEntry = TranspTable.probe(state.hash());
+        // if (bestEntry == null || depth == 0) {
+        //     return "";
+        // }
+        // Move bestMove = bestEntry.move();
+        // BoardState newBoardState = state.doMove(bestMove);
+        // String pV = bestMove.uci() + " " + getPv(newBoardState, depth - 1);
+        // return pV;
+        todo!()
     }
 
     //     public void scoreMoves(final BoardState state, final MoveList moves, int ply) {

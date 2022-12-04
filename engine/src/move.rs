@@ -232,13 +232,13 @@ impl MoveList {
         self.moves.len()
     }
 
-    //final BoardState state, TranspTable transpositionTable, int ply, MoveOrdering moveOrdering) {
-    pub fn score_moves(&self, state: &BoardState, transpositionTable: &TranspositionTable) {
+    //final BoardState state, TranspTable transposition_table, int ply, MoveOrdering moveOrdering) {
+    pub fn score_moves(&mut self, state: &BoardState, transposition_table: &TranspositionTable) {
         if self.moves.len() == 0 {
             return;
         }
 
-        let tt_entry = transpositionTable.probe(state);
+        let tt_entry = transposition_table.probe(state);
         let hash_move = tt_entry.map(|tt| tt.best_move());
 
         for index in 1..self.moves.len() {
@@ -327,8 +327,56 @@ impl MoveList {
         }
     }
 
+    pub fn pick_next_best_move(&mut self, cur_index: usize){
+        let size = self.moves.len();
+        let mut max = i32::MAX;
+        let mut max_index = 0;
+        let mut i = cur_index;
+        while i < size {
+            if self.moves[i].score() > max {
+                max = self.moves[i].score();
+                max_index = i;
+            }
+            i += 1;
+        }
+        self.moves.swap(cur_index, max_index);
+    }
+
     pub fn to_string(&self) -> String {
         format!("length: {}", self.moves.len())
+    }
+
+    pub fn over_sorted<'a>(&'a mut self, state: &'a BoardState, transposition_state: &'a TranspositionTable) -> SortedMovesIter<'a> {
+        &self.score_moves(state, transposition_state);
+        SortedMovesIter {
+            state, // TODO check if it is really needed to keep the references
+            transposition_state,
+            move_list: self,
+            index: 0,
+        }
+    }
+}
+
+pub struct SortedMovesIter<'a> {
+    state: &'a BoardState,
+    transposition_state: &'a TranspositionTable,
+    move_list: &'a mut MoveList,
+    index: usize,
+}
+impl<'a> Iterator for SortedMovesIter<'a> {
+    type Item = &'a Move;
+    //fn next(&mut self) -> Option<&Move> {
+    //fn next<'a>(&'a mut self) -> Option<&'a Move> {
+    //fn next<'b>(&'a mut self) -> Option<&'a Move> where 'a: 'b {
+    fn next(&'a mut self) -> Option<&'a Move> {
+        if self.index == self.move_list.len() {
+            return None;
+        }
+
+        self.move_list.pick_next_best_move(self.index);
+        self.index += 1;
+        let moov: &'a Move = &self.move_list.moves[self.index];
+        Some(moov)
     }
 }
 
