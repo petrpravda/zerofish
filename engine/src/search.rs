@@ -1,8 +1,10 @@
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
+use crate::evaluation::Evaluation;
 use crate::r#move::{Move, MoveList};
 use crate::statistics::Statistics;
 use crate::time::Instant;
+use crate::transposition::{Depth, TranspositionTable, TTEntry};
 
 pub struct SearchResult {
     pub mowe: Option<Move>,
@@ -19,9 +21,10 @@ pub enum Bound {
 pub struct Search {
     search_position: BoardPosition, // TODO rename to board_position
     start_time: Instant,
-    sel_depth: i32,
+    sel_depth: Depth,
     stop: bool,
     statistics: Statistics,
+    transposition_table: &'static TranspositionTable,
 }
 
 impl Search {
@@ -62,7 +65,7 @@ impl Search {
     //
 
 
-        pub fn itDeep(&mut self, position: &BoardPosition, search_depth: u16) -> SearchResult {
+        pub fn itDeep(&mut self, position: &BoardPosition, search_depth: Depth) -> SearchResult {
             let mut result = SearchResult { mowe: None, score: 0 };
 
             self.search_position = position.for_search_depth(search_depth);
@@ -71,7 +74,7 @@ impl Search {
             self.stop = false;
             let mut alpha: i32 = -Search::INF;
             let mut beta: i32 = Search::INF;
-            let mut depth: u16 = 1;
+            let mut depth: Depth = 1;
 
             // Deepen until end conditions
             while depth <= search_depth {
@@ -107,100 +110,109 @@ impl Search {
             return result;
         }
 
-        pub fn negaMaxRoot(&self, state: &BoardState, depth: u16, alpha: i32, beta: i32) -> SearchResult{
-            let value = -Search::INF;
-            let moves = state.generate_legal_moves();
+        pub fn negaMaxRoot(&mut self, state: &BoardState, depth: Depth, mut alpha: i32, beta: i32) -> SearchResult{
+            let mut value = -Search::INF;
+            let mut moves = state.generate_legal_moves();
             // let inCheck = state.checkers() != 0;
             // if (inCheck) ++depth;
             if moves.len() == 1 {
                 return SearchResult{ mowe: moves.moves.get(0).copied(), score: 0 }; // new SearchResult(Optional.of(moves.get(0)), 0);
             }
 
+            let mut bestMove: Option<Move> = None;
             // self.score_moves(state, moves, 0);
-            let bestMove: Option<Move> = None;
-            // for (int i = 0; i < moves.size(); i++){
-            //     MoveOrder.sortNextBestMove(moves, i);
-            //     Move move = moves.get(i);
-            //
-            //     BoardState newBoardState = state.doMove(move);
-            //     value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
-            //
-            //     if (stop || Limits.checkLimits()) {
-            //         stop = true;
-            //         break;
-            //     }
-            //     if (value > alpha){
-            //         bestMove = move;
-            //         if (value >= beta){
-            //             TranspTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
-            //             return new SearchResult(Optional.of(bestMove), beta);
-            //         }
-            //         alpha = value;
-            //         TranspTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
-            //     }
-            // }
-            // if (bestMove == null && moves.size() >= 1) {
-            //     bestMove = moves.get(0);
-            //     TranspTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
-            // }
+            for moov in moves.over_sorted(&state, self.transposition_table) {
+
+                let newBoardState = state.do_move(&moov);
+                value = -self.nega_max(&newBoardState, depth - 1, 1, -beta, -alpha, true);
+
+                // if (stop || Limits.checkLimits()) {
+                //     stop = true;
+                //     break;
+                // }
+                if value > alpha {
+                    bestMove = Some(moov.clone());
+                    if value >= beta {
+                        self.transposition_table.insert(&state, depth, beta, moov.base_move(), Bound::Lower);
+                        //set(state.hash, beta, depth, Bound::Lower, bestMove);
+                        return SearchResult{ mowe: bestMove, score: beta };
+                    }
+                    alpha = value;
+                    self.transposition_table.insert(&state, depth, alpha, moov.base_move(), Bound::Upper);
+                }
+            }
+
+            if bestMove.is_some() && moves.len() >= 1 {
+                bestMove = Some(moves.moves[0].clone());
+                self.transposition_table.insert(&state, depth, alpha, bestMove.unwrap().base_move(), Bound::Exact);
+                //TranspTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
+            }
 
             SearchResult{ mowe: bestMove, score: alpha }  // (Optional.ofNullable(bestMove), alpha);
         }
 
-    //     public int negaMax(BoardState state, int depth, int ply, int alpha, int beta, boolean canApplyNull){
-    //         int mateValue = INF - ply;
-    //         boolean inCheck;
-    //         int ttFlag = TTEntry.UPPER_BOUND;
-    //         int reducedDepth;
-    //
-    //         if (stop || Limits.checkLimits()) {
-    //             stop = true;
-    //             return 0;
-    //         }
-    //
-    //         // MATE DISTANCE PRUNING
-    //         if (alpha < -mateValue) alpha = -mateValue;
-    //         if (beta > mateValue - 1) beta = mateValue - 1;
-    //         if (alpha >= beta) {
-    //             Statistics.leafs++;
-    //             return alpha;
-    //         }
-    //
-    //         inCheck = state.kingAttacked();
-    //         if (depth <= 0 && !inCheck) return qSearch(state, depth, ply, alpha, beta);
-    //         Statistics.nodes++;
-    //
-    //         if (state.isRepetitionOrFifty(this.searchPosition)) {
-    //             Statistics.leafs++;
-    //             return 0;
-    //         }
-    //
-    //         // PROBE TTABLE
-    //         final TTEntry ttEntry = TranspTable.probe(state.hash());
-    //         if (ttEntry != null && ttEntry.depth() >= depth) {
-    //             Statistics.ttHits++;
-    //             switch (ttEntry.flag()) {
-    //                 case TTEntry.EXACT:
-    //                     Statistics.leafs++;
-    //                     return ttEntry.score();
-    //                 case TTEntry.LOWER_BOUND:
-    //                     alpha = Math.max(alpha, ttEntry.score());
-    //                     break;
-    //                 case TTEntry.UPPER_BOUND:
-    //                     beta = Math.min(beta, ttEntry.score());
-    //                     break;
-    //             }
-    //             if (alpha >= beta) {
-    //                 Statistics.leafs++;
-    //                 return ttEntry.score();
-    //             }
-    //         }
-    //
+        pub fn nega_max(&mut self, state: &BoardState, depth: Depth, ply: u16, mut alpha: i32, mut beta: i32, canApplyNull: bool) -> i32 {
+            let mateValue = Search::INF - ply as i32;
+            let mut inCheck = false;
+            let ttFlag = Bound::Upper;
+            // let reducedDepth = 0; // TODO is really needed?
+
+            // if (stop || Limits.checkLimits()) {
+            //     stop = true;
+            //     return 0;
+            // }
+
+            // MATE DISTANCE PRUNING
+            if alpha < -mateValue {
+                alpha = -mateValue;
+            }
+            if beta > mateValue - 1 {
+                beta = mateValue - 1;
+            }
+            if alpha >= beta {
+                self.statistics.incrementLeafs();
+                return alpha;
+            }
+
+            inCheck = state.is_king_attacked();
+            if depth <= 0 && !inCheck {
+                return self.qSearch(state, depth, ply as Depth, alpha, beta);
+            }
+            self.statistics.incrementNodes();
+
+            if state.is_repetition_or_fifty(&self.search_position) {
+                self.statistics.incrementLeafs();
+                return 0;
+            }
+
+            // PROBE TTABLE
+            let ttEntry = self.transposition_table.probe(state);
+            if ttEntry.is_some() && ttEntry.unwrap().depth() >= depth {
+                let tt_entry_some = ttEntry.unwrap();
+                self.statistics.increaseTTHits();
+                match tt_entry_some.flag() {
+                    Bound::Exact => {
+                        self.statistics.incrementLeafs();
+                        return tt_entry_some.value();
+                    }
+                    Bound::Lower => {
+                        alpha = alpha.max(tt_entry_some.value());
+                    }
+                    Bound::Upper => {
+                        beta = beta.max(tt_entry_some.value());
+                    }
+                }
+                if alpha >= beta {
+                    self.statistics.incrementLeafs();
+                    return tt_entry_some.value();
+                }
+            }
+
     //         // NULL MOVE
     //         if (canApplyNullWindow(state, depth, beta, inCheck, canApplyNull)) {
     //             int R = depth > 6 ? 3 : 2;
     //             BoardState newBoardState = state.doNullMove();
-    //             int value = -negaMax(newBoardState, depth - R - 1, ply, -beta, -beta + 1, false);
+    //             int value = -nega_max(newBoardState, depth - R - 1, ply, -beta, -beta + 1, false);
     //             if (stop) return 0;
     //             if (value >= beta){
     //                 Statistics.betaCutoffs++;
@@ -225,7 +237,7 @@ impl Search {
     //             if (inCheck) reducedDepth++;
     //
     //             BoardState newBoardState = state.doMove(move);
-    //             value = -negaMax(newBoardState, reducedDepth - 1, ply + 1, -beta, -alpha, true);
+    //             value = -nega_max(newBoardState, reducedDepth - 1, ply + 1, -beta, -alpha, true);
     //
     //             if (stop) return 0;
     //
@@ -256,54 +268,55 @@ impl Search {
     //
     //         if (!bestMove.equals(Move.NULL_MOVE) && !stop) TranspTable.set(state.hash(), alpha, depth, ttFlag, bestMove);
     //
-    //         return alpha;
-    //     }
-    //
-    //     public int qSearch(BoardState state, int depth, int ply, int alpha, int beta){
-    //         if (stop || Limits.checkLimits()){
-    //             stop = true;
-    //             return 0;
-    //         }
-    //         selDepth = Math.max(ply, selDepth);
-    //         Statistics.qnodes++;
-    //
-    //         int value = Evaluation.evaluateState(state);
-    //
-    //         if (value >= beta){
-    //             Statistics.qleafs++;
-    //             return beta;
-    //         }
-    //
-    //         if (alpha < value)
-    //             alpha = value;
-    //
-    //         MoveList moves = state.generateLegalQuiescence();
-    //         MoveOrder.scoreMoves(state, moves, ply);
-    //         for (int i = 0; i < moves.size(); i++) {
-    //             MoveOrder.sortNextBestMove(moves, i);
-    //             Move move = moves.get(i);
-    //
-    //             // Skip if underpromotion.
-    //             if (move.isPromotion() && move.flags() != Move.PR_QUEEN && move.flags() != Move.PC_QUEEN)
-    //                 continue;
-    //
-    //             BoardState newBoardState = state.doMove(move);
-    //             value = -qSearch(newBoardState, depth - 1, ply + 1, -beta, -alpha);
-    //
-    //             if (stop)
-    //                 return 0;
-    //
-    //             if (value > alpha) {
-    //                 if (value >= beta) {
-    //                     Statistics.qbetaCutoffs++;
-    //                     return beta;
-    //                 }
-    //                 alpha = value;
-    //             }
-    //         }
-    //         return alpha;
-    //     }
-    //
+             return alpha;
+         }
+
+        pub fn qSearch(&mut self, state: &BoardState, depth: Depth, ply: Depth, mut alpha: i32, beta: i32) -> i32 {
+            // if (stop || Limits.checkLimits()){
+            //     stop = true;
+            //     return 0;
+            // }
+            self.sel_depth = self.sel_depth.max(ply);
+            self.statistics.incrementQNodes();
+
+            let mut value = Evaluation::evaluate_state(state);
+
+            if value >= beta {
+                self.statistics.incrementQLeafs();
+                return beta;
+            }
+
+            if alpha < value {
+                alpha = value;
+            }
+
+            let mut moves = state.generate_legal_moves_wo(true);
+            // MoveOrder.scoreMoves(state, moves, ply);
+            for moov in moves.over_sorted(&state, self.transposition_table) {
+
+                // Skip if underpromotion.
+                if moov.is_promotion() && moov.flags() != Move::PR_QUEEN && moov.flags() != Move::PC_QUEEN {
+                    continue;
+                }
+
+                let newBoardState = state.do_move(&moov);
+                value = -self.qSearch(&newBoardState, depth - 1, ply + 1, -beta, -alpha);
+
+                // if (stop) {
+                //     return 0;
+                // }
+
+                if value > alpha {
+                    if value >= beta {
+                        self.statistics.incrementQBetaCutoffs();
+                        return beta;
+                    }
+                    alpha = value;
+                }
+            }
+            return alpha;
+        }
+
     //     public static boolean isScoreCheckmate(int score){
     //         return Math.abs(score) >= INF/2;
     //     }
@@ -313,7 +326,7 @@ impl Search {
     //                 !inCheck &&
     //                 depth >= NULL_MIN_DEPTH &&
     //                 state.hasNonPawnMaterial(state.getSideToPlay()) &&
-    //                 Evaluation.evaluateState(state) >= beta;
+    //                 Evaluation.evaluate_state(state) >= beta;
     //     }
     //
     //     public static boolean canApplyLMR(int depth, Move move, int moveIndex){
@@ -346,7 +359,7 @@ impl Search {
     //         stop = true;
     //     }
 
-        pub fn printInfo(&self, state: &BoardState, searchResult: &SearchResult, depth: u16) {
+        pub fn printInfo(&self, state: &BoardState, searchResult: &SearchResult, depth: Depth) {
             let info_line = format!("info currmove {} depth {} seldepth {} time {} score cp {} nodes {} nps {} pv {}",
                     searchResult.mowe.map(|m|m.uci()).unwrap_or(String::from("(none)")),
                 depth,
@@ -380,7 +393,7 @@ impl Search {
         duration.as_millis() as u64
     }
 
-    fn get_pv(&self, state: &BoardState, depth: u16) -> String {
+    fn get_pv(&self, state: &BoardState, depth: Depth) -> String {
         // TTEntry bestEntry = TranspTable.probe(state.hash());
         // if (bestEntry == null || depth == 0) {
         //     return "";
@@ -391,61 +404,4 @@ impl Search {
         // return pV;
         todo!()
     }
-
-    //     public void scoreMoves(final BoardState state, final MoveList moves, int ply) {
-    //
-    //         if (moves.size() == 0)
-    //             return;
-    //
-    //         Move hashMove = null;
-    //         TTEntry ttEntry = transpositionTable.probe(state.hash());
-    //         if (ttEntry != null) {
-    //             hashMove = ttEntry.move();
-    //         }
-    //
-    //         for (Move move : moves) {
-    //             if (move.equals(hashMove)) {
-    //                 move.addToScore(MoveOrder.HashMoveScore);
-    //             }
-    //             if (MoveOrder.isKiller(state, move, ply)) {
-    //                 move.addToScore(MoveOrder.KillerMoveScore);
-    //             }
-    //             int piece = state.items[move.from()];
-    //
-    //             switch (move.flags()) {
-    //                 case Move.PC_BISHOP:
-    //                 case Move.PC_KNIGHT:
-    //                 case Move.PC_ROOK:
-    //                 case Move.PC_QUEEN:
-    //                     int score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()]
-    //                             - MGS[state.items[move.to()]][move.to()];
-    //                     score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-    //                     move.addToScore(score);
-    //                     break;
-    //
-    //                 case Move.PR_BISHOP:
-    //                 case Move.PR_KNIGHT:
-    //                 case Move.PR_ROOK:
-    //                 case Move.PR_QUEEN:
-    //                     score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()];
-    //                     score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-    //                     move.addToScore(score);
-    //                     break;
-    //                 case Move.CAPTURE:
-    //                     score = MGS[piece][move.to()] - MGS[piece][move.from()] - MGS[state.items[move.to()]][move.to()];
-    //                     score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-    //                     move.addToScore(score);
-    //                     break;
-    //                 case Move.QUIET:
-    //                 case Move.EN_PASSANT:
-    //                 case Move.DOUBLE_PUSH:
-    //                 case Move.OO:
-    //                 case Move.OOO:
-    //                     score = MGS[piece][move.to()] - MGS[piece][move.from()];
-    //                     score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-    //                     move.addToScore(score);
-    //                     break;
-    //             }
-    //         }
-    //     }
 }

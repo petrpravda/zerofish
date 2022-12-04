@@ -3,6 +3,7 @@
 use std::fmt;
 
 use crate::bitboard::{Bitboard, BITBOARD, BitIter};
+use crate::board_position::BoardPosition;
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
 use crate::piece_square_table::{EGS, MGS};
@@ -10,6 +11,7 @@ use crate::r#move::{Move, MoveList};
 use crate::side::Side;
 use crate::side::Side::{BLACK, WHITE};
 use crate::square::{BACK, DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, Square};
+use crate::transposition::Depth;
 use crate::zobrist::ZOBRIST;
 
 const TOTAL_PHASE: u32 = 24u32;
@@ -326,29 +328,29 @@ impl BoardState {
 
 
 
-    pub fn do_move(&self, mowe: &Move) -> BoardState {
+    pub fn do_move(&self, moov: &Move) -> BoardState {
         let mut state = self.clone();
         let zobrist = &ZOBRIST;
 
         state.full_move_normalized += 1;
         state.half_move_clock += 1;
-        state.history[state.ply] = mowe.bits;
+        state.history[state.ply] = moov.bits;
         state.ply += 1;
-        state.movements |= 1u64 << mowe.to() | 1u64 << mowe.from();
+        state.movements |= 1u64 << moov.to() | 1u64 << moov.from();
 
-        if type_of(state.items[mowe.from() as usize]) == PAWN {
+        if type_of(state.items[moov.from() as usize]) == PAWN {
             state.half_move_clock = 0;
         }
 
         state.clear_en_passant();
 
-        match mowe.flags() {
+        match moov.flags() {
             Move::QUIET => {
-                state.move_piece_quiet(mowe.from(), mowe.to());
+                state.move_piece_quiet(moov.from(), moov.to());
             }
             Move::DOUBLE_PUSH => {
-                state.move_piece_quiet(mowe.from(), mowe.to());
-                state.en_passant = 1u64 << (mowe.from() as i8 + Square::direction(FORWARD, state.side_to_play));
+                state.move_piece_quiet(moov.from(), moov.to());
+                state.en_passant = 1u64 << (moov.from() as i8 + Square::direction(FORWARD, state.side_to_play));
                 state.hash ^= zobrist.en_passant[(state.en_passant.trailing_zeros() & 0b111) as usize];
             }
             Move::OO => {
@@ -371,21 +373,21 @@ impl BoardState {
                 }
             }
             Move::EN_PASSANT => {
-                state.move_piece_quiet(mowe.from(), mowe.to());
-                state.remove_piece((mowe.to() as i8 + Square::direction(BACK, state.side_to_play)) as u8);
+                state.move_piece_quiet(moov.from(), moov.to());
+                state.remove_piece((moov.to() as i8 + Square::direction(BACK, state.side_to_play)) as u8);
             }
             Move::PR_KNIGHT | Move::PR_BISHOP | Move::PR_ROOK | Move::PR_QUEEN=> {
-                state.remove_piece(mowe.from());
-                state.set_piece_at(make_piece(state.side_to_play, mowe.get_piece_type()), mowe.to() as usize);
+                state.remove_piece(moov.from());
+                state.set_piece_at(make_piece(state.side_to_play, moov.get_piece_type()), moov.to() as usize);
             }
             Move::PC_KNIGHT | Move::PC_BISHOP | Move::PC_ROOK | Move::PC_QUEEN => {
-                state.remove_piece(mowe.from());
-                state.remove_piece(mowe.to());
-                state.set_piece_at(make_piece(state.side_to_play, mowe.get_piece_type()), mowe.to() as usize);
+                state.remove_piece(moov.from());
+                state.remove_piece(moov.to());
+                state.set_piece_at(make_piece(state.side_to_play, moov.get_piece_type()), moov.to() as usize);
             }
             Move::CAPTURE => {
                 state.half_move_clock = 0;
-                state.move_piece(mowe.from(), mowe.to());
+                state.move_piece(moov.from(), moov.to());
             }
             _ => {
                 panic!()
@@ -401,30 +403,34 @@ impl BoardState {
     //         return sideToPlay;
     //     }
     //
-    //     public boolean kingAttacked(){
-    //         final int us = sideToPlay;
-    //         final int them = Side.flip(sideToPlay);
-    //         final int ourKing = Long.numberOfTrailingZeros(bitboard_of(us, PieceType.KING));
-    //
-    //         if ((pawn_attacks(ourKing, us) & bitboard_of(them, PieceType.PAWN)) != 0)
-    //             return true;
-    //
-    //         if ((get_knight_attacks(ourKing) & bitboard_of(them, PieceType.KNIGHT)) != 0)
-    //             return true;
-    //
-    //         let usBb = all_pieces(us);
-    //         let themBb = all_pieces(them);
-    //         let all = usBb | themBb;
-    //
-    //         let theirDiagSliders = diagonal_sliders(them);
-    //         let theirOrthSliders = orthogonal_sliders(them);
-    //
-    //         if ((getRookAttacks(ourKing, all) & theirOrthSliders) != 0)
-    //             return true;
-    //
-    //         return (getBishopAttacks(ourKing, all) & theirDiagSliders) != 0;
-    //     }
-    //
+
+    pub fn is_king_attacked(&self) -> bool {
+        let us = self.side_to_play;
+        let them = !us;
+        let our_king = self.bitboard_of(us, PieceType::KING).trailing_zeros();
+
+        if (Bitboard::pawn_attacks_from_square(our_king as u8, us) & self.bitboard_of(them, PieceType::PAWN)) != 0 {
+            return true;
+        }
+
+        if (BITBOARD.get_knight_attacks(our_king as usize) & self.bitboard_of(them, PieceType::KNIGHT)) != 0 {
+            return true;
+        }
+
+        let us_bb = self.all_pieces_for_side(us);
+        let them_bb = self.all_pieces_for_side(them);
+        let all = us_bb | them_bb;
+
+        let their_diagonal_sliders = self.diagonal_sliders(them);
+        let their_orthogonal_sliders = self.orthogonal_sliders(them);
+
+        if (BITBOARD.get_rook_attacks(our_king as usize, all) & their_orthogonal_sliders) != 0 {
+            return true;
+        }
+
+        return (BITBOARD.get_bishop_attacks(our_king as usize, all) & their_diagonal_sliders) != 0;
+    }
+
     //
     //     /* not    side of the attacker */
     //     /**
@@ -540,25 +546,27 @@ impl BoardState {
     // //        }
     // //        return true;
     // //    }
-    // //
-    //     public boolean isRepetitionOrFifty(BoardPosition position){
-    //         let lastMoveBits = this.ply > 0 ? this.history[this.ply - 1] : position.history[position.historyIndex - 1];
-    //         int count = 0;
-    //         int index = this.ply - 1;
-    //         while (index >= 0) {
-    //             if (this.history[index--] == lastMoveBits) {
-    //                 count++;
-    //             }
-    //         }
-    //         index = position.historyIndex - 1;
-    //         while (index >= 0) {
-    //             if (position.history[index--] == lastMoveBits) {
-    //                 count++;
-    //             }
-    //         }
-    //         return count > 2 || this.halfMoveClock >= 100;
-    //     }
-    //
+
+        pub fn is_repetition_or_fifty(&self, position: &BoardPosition) -> bool {
+            let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { position.history[position.historyIndex - 1] };
+            let mut count = 0;
+            let mut index = self.ply - 1;
+            while index >= 0 {
+                if self.history[index] == last_move_bits {
+                    count += 1;
+                }
+                index -= 1;
+            }
+            index = position.historyIndex - 1;
+            while index >= 0 {
+                if position.history[index] == last_move_bits {
+                    count += 1;
+                }
+                index -= 1;
+            }
+            return count > 2 || self.half_move_clock >= 100;
+        }
+
     //     public boolean hasNonPawnMaterial(int side) {
     //         int start = Piece.make_piece(side, PieceType.KNIGHT);
     //         int end = Piece.make_piece(side, PieceType.QUEEN);
@@ -890,7 +898,7 @@ impl BoardState {
         }
     }
 
-    pub fn for_search_depth(&self, searchDepth: u16) -> BoardState {
+    pub fn for_search_depth(&self, searchDepth: Depth) -> BoardState {
         let mut result = self.clone();
         //result.history = new long[searchDepth];
         result.ply = 0;
@@ -909,11 +917,11 @@ impl BoardState {
     //         return eg;
     //     }
     //
-    //     public int interpolatedScore() {
-    //         int phase = (this.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE;
-    //         return (this.mg() * (256 - phase) + this.eg() * phase) / 256;
-    //     }
-    //
+        pub fn interpolated_score(&self) -> i32 {
+            let phase= ((self.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE) as i32;
+            return (self.mg * (256 - phase) + self.eg * phase) / 256;
+        }
+
     //     public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
     //
     //     public Params toParams() {

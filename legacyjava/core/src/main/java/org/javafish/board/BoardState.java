@@ -341,7 +341,7 @@ public class BoardState implements Cloneable {
         return sideToPlay;
     }
 
-    public boolean kingAttacked(){
+    public boolean isKingAttacked() {
         final int us = sideToPlay;
         final int them = Side.flip(sideToPlay);
         final int ourKing = Long.numberOfTrailingZeros(bitboardOf(us, PieceType.KING));
@@ -356,13 +356,13 @@ public class BoardState implements Cloneable {
         final long themBb = allPieces(them);
         final long all = usBb | themBb;
 
-        final long theirDiagSliders = diagonalSliders(them);
-        final long theirOrthSliders = orthogonalSliders(them);
+        final long theirDiagonalSliders = diagonalSliders(them);
+        final long theirOrthogonalSliders = orthogonalSliders(them);
 
-        if ((getRookAttacks(ourKing, all) & theirOrthSliders) != 0)
+        if ((getRookAttacks(ourKing, all) & theirOrthogonalSliders) != 0)
             return true;
 
-        return (getBishopAttacks(ourKing, all) & theirDiagSliders) != 0;
+        return (getBishopAttacks(ourKing, all) & theirDiagonalSliders) != 0;
     }
 
 

@@ -9,11 +9,12 @@
 use crate::board_state::BoardState;
 use crate::fen::from_fen_default;
 use crate::r#move::Move;
+use crate::transposition::Depth;
 
 pub struct BoardPosition {
     pub(crate) state: BoardState,
-    historyIndex: usize,
-    history: Vec<u32>,
+    pub(crate) historyIndex: usize,
+    pub(crate) history: Vec<u32>,
     //public long[] history = new long[MAX_GAME_HISTORY_DEPTH];
 
 }
@@ -43,7 +44,7 @@ impl BoardPosition {
     //         return doMove(move);
     //     }
     //
-    pub fn for_search_depth(&self, search_depth: u16) -> BoardPosition {
+    pub fn for_search_depth(&self, search_depth: Depth) -> BoardPosition {
         BoardPosition {
             state: self.state.for_search_depth(search_depth),
             historyIndex: self.historyIndex,

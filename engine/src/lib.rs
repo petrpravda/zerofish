@@ -16,6 +16,7 @@ mod board_position;
 mod time;
 mod transposition;
 mod statistics;
+mod evaluation;
 
 
 pub fn add(left: usize, right: usize) -> usize {

@@ -21,7 +21,7 @@ impl Statistics {
         }
     }
 
-    pub(crate) fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.leafs = 0;
         self.qleafs = 0;
         self.betaCutoffs = 0;
@@ -30,6 +30,31 @@ impl Statistics {
         self.nodes = 0;
         self.qnodes = 0;
     }
+
+    pub fn incrementLeafs(&mut self) {
+        self.leafs += 1;
+    }
+
+    pub fn incrementNodes(&mut self) {
+        self.nodes += 1;
+    }
+
+    pub fn incrementQNodes(&mut self) {
+        self.qnodes += 1;
+    }
+
+    pub fn incrementQLeafs(&mut self) {
+        self.qleafs += 1;
+    }
+
+    pub fn incrementQBetaCutoffs(&mut self) {
+        self.qbetaCutoffs += 1;
+    }
+
+    pub fn increaseTTHits(&mut self) {
+        self.ttHits += 1;
+    }
+
 }
 
 // public class Statistics {

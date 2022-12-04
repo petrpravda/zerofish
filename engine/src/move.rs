@@ -197,6 +197,12 @@ impl MoveList {
         }
     }
 
+    pub fn clone(&self) -> Self {
+        Self {
+            moves: self.moves.to_vec()
+        }
+    }
+
     pub fn make_quiets(&mut self, from: u8, targets: u64) {
         for to in BitIter(targets) {
             self.moves.push(Move::new_from_flags(from, to as u8, Move::QUIET));
@@ -351,7 +357,7 @@ impl MoveList {
         SortedMovesIter {
             state, // TODO check if it is really needed to keep the references
             transposition_state,
-            move_list: self,
+            move_list: self.clone(),
             index: 0,
         }
     }
@@ -360,23 +366,21 @@ impl MoveList {
 pub struct SortedMovesIter<'a> {
     state: &'a BoardState,
     transposition_state: &'a TranspositionTable,
-    move_list: &'a mut MoveList,
+    move_list: MoveList,
     index: usize,
 }
+
 impl<'a> Iterator for SortedMovesIter<'a> {
-    type Item = &'a Move;
-    //fn next(&mut self) -> Option<&Move> {
-    //fn next<'a>(&'a mut self) -> Option<&'a Move> {
-    //fn next<'b>(&'a mut self) -> Option<&'a Move> where 'a: 'b {
-    fn next(&'a mut self) -> Option<&'a Move> {
+    type Item = Move;
+    fn next(&mut self) -> Option<Move> {
         if self.index == self.move_list.len() {
             return None;
         }
 
         self.move_list.pick_next_best_move(self.index);
+        let moov: &Move = &self.move_list.moves[self.index];
         self.index += 1;
-        let moov: &'a Move = &self.move_list.moves[self.index];
-        Some(moov)
+        Some(moov.clone())
     }
 }
 

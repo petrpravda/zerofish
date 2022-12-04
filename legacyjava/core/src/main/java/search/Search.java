@@ -170,7 +170,7 @@ public class Search {
             return alpha;
         }
 
-        inCheck = state.kingAttacked();
+        inCheck = state.isKingAttacked();
         if (depth <= 0 && !inCheck) return qSearch(state, depth, ply, alpha, beta);
         statistics.nodes++;
 

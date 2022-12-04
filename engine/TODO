@@ -4,6 +4,7 @@
 - make search.rs working
 - iterator for moveOrdering
 - implement in killer moves
+- rename mowe -> moov
 ============================================================
 https://medium.com/@SereneBiologist/the-anatomy-of-a-chess-ai-2087d0d565
 https://towardsdatascience.com/creating-a-chess-engine-with-deep-learning-b9477ff3ee3d
