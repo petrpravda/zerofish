@@ -309,24 +309,20 @@ impl BoardState {
     //     public BoardState do_move(String uciMove) {
     //         return performMove(this.generate_legal_moves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
     //     }
-    //
-    //     public BoardState doNullMove() {
-    //         return performNullMove(this);
-    //     }
-    //
-    //     private BoardState performNullMove(BoardState oldBoardState) {
-    //         BoardState state = oldBoardState.clone();
-    //
-    //         state.halfMoveClock += 1;
-    //         state.clear_en_passant();
-    //         state.sideToPlay = Side.flip(state.sideToPlay);
-    //         state.hash ^= Zobrist.SIDE;
-    //         return state;
-    //     }
-    //
 
+    pub fn do_null_move(&self) -> BoardState {
+        BoardState::perform_null_move(self)
+    }
 
+    fn perform_null_move(old_board_state: &BoardState) -> BoardState {
+        let mut state = old_board_state.clone();
 
+        state.half_move_clock += 1;
+        state.clear_en_passant();
+        state.side_to_play = !state.side_to_play;
+        state.hash ^= ZOBRIST.side;
+        state
+    }
 
     pub fn do_move(&self, moov: &Move) -> BoardState {
         let mut state = self.clone();
@@ -438,7 +434,7 @@ impl BoardState {
     //      * @return attacked pieces
     //      */
     //     public long attackedPieces(int side) {
-    //         BoardState workingState = this.getSideToPlay() == side ? this.doNullMove() : this;
+    //         BoardState workingState = this.getSideToPlay() == side ? this.do_null_move() : this;
     //         MoveList quiescence = workingState.generateLegalQuiescence();
     //         //BoardState finalWorkingState = workingState;
     //         List<Move> attackingMoves = quiescence.stream()
@@ -550,16 +546,16 @@ impl BoardState {
         pub fn is_repetition_or_fifty(&self, position: &BoardPosition) -> bool {
             let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { position.history[position.historyIndex - 1] };
             let mut count = 0;
-            let mut index = self.ply - 1;
+            let mut index: i32 = (self.ply - 1) as i32;
             while index >= 0 {
-                if self.history[index] == last_move_bits {
+                if self.history[index as usize] == last_move_bits {
                     count += 1;
                 }
                 index -= 1;
             }
-            index = position.historyIndex - 1;
+            index = position.historyIndex as i32 - 1;
             while index >= 0 {
-                if position.history[index] == last_move_bits {
+                if position.history[index as usize] == last_move_bits {
                     count += 1;
                 }
                 index -= 1;
@@ -567,16 +563,15 @@ impl BoardState {
             return count > 2 || self.half_move_clock >= 100;
         }
 
-    //     public boolean hasNonPawnMaterial(int side) {
-    //         int start = Piece.make_piece(side, PieceType.KNIGHT);
-    //         int end = Piece.make_piece(side, PieceType.QUEEN);
-    //         for (int piece = start; piece <= end; piece++){
-    //             if (bitboard_of(piece) != 0)
-    //                 return true;
-    //         }
-    //         return false;
-    //     }
-    //
+        pub fn has_non_pawn_material(&self, side: Side) -> bool {
+            for piece in make_piece(side, PieceType::KNIGHT)..=make_piece(side, PieceType::QUEEN) {
+                if self.bitboard_of_piece(piece) != 0 {
+                    return true;
+                }
+            }
+            return false;
+        }
+
     //     public MoveList generate_legal_moves(){
     //         return this.generate_legal_moves(false);
     //     }

@@ -8,7 +8,7 @@ use crate::side::Side;
 use crate::square::Square;
 use crate::transposition::{BaseMove, TranspositionTable, Value};
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Move {
     pub(crate) bits: u32,
     sort_score: i32
@@ -363,6 +363,16 @@ impl MoveList {
     }
 }
 
+pub struct IndexedMove {
+    pub moov: Move,
+    pub index: usize,
+}
+
+// pub struct IndexedMove<'a> {
+//     moov: &'a Move,
+//     index: usize,
+// }
+//
 pub struct SortedMovesIter<'a> {
     state: &'a BoardState,
     transposition_state: &'a TranspositionTable,
@@ -371,16 +381,17 @@ pub struct SortedMovesIter<'a> {
 }
 
 impl<'a> Iterator for SortedMovesIter<'a> {
-    type Item = Move;
-    fn next(&mut self) -> Option<Move> {
+    type Item = IndexedMove;
+    fn next(&mut self) -> Option<IndexedMove> {
         if self.index == self.move_list.len() {
             return None;
         }
 
         self.move_list.pick_next_best_move(self.index);
         let moov: &Move = &self.move_list.moves[self.index];
+        let result = Some(IndexedMove { moov: moov.clone(), index: 0 } );
         self.index += 1;
-        Some(moov.clone())
+        result
     }
 }
 

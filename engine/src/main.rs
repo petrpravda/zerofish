@@ -1,6 +1,10 @@
+use std::time::Instant;
 // use zerofish::bitboard::Bitboard;
 // use zerofish::fen::{from_fen_default, START_POS};
 use zerofish::{engine_thread, uci};
+use zerofish::board_position::BoardPosition;
+use zerofish::fen::START_POS;
+use zerofish::search::Search;
 //use zerofish::piece_square_table::MGS;
 
 // mod uci;
@@ -17,51 +21,15 @@ use zerofish::{engine_thread, uci};
 // mod board_state;
 //use zerofish::{engine_thread, uci};
 
-// #[derive(Debug)]
-// pub struct MyMove {
-//     id: u32,
-//     code: String,
-// }
-//
-// impl MyMove {
-//     fn new(code: &str, id: u32) -> Self {
-//         Self {
-//             code: code.to_string(),
-//             id
-//         }
-//     }
-// }
-//
-// pub struct SortedMovesIter<'a> {
-//     move_list: Vec<MyMove>,
-//     index: usize,
-// }
-//
-// impl<'a> Iterator for SortedMovesIter<'a> {
-//     type Item = &'a MyMove;
-//
-//     fn next(&mut self) -> Option<&'a MyMove> {
-//         if self.index == self.move_list.len() {
-//             return None;
-//         }
-//         let item = &self.move_list[self.index];
-//         self.index += 1;
-//         Some(item)
-//     }
-// }
 
 fn main() {
-    // let moves = vec![
-    //     MyMove::new("d2d4", 0),
-    //     MyMove::new("e7e5", 1),
-    //     MyMove::new("d4e5", 2)];
-    //
-    // for moov in (SortedMovesIter { move_list: moves.to_vec(), index: 0 }) {
-    //     println!("{:?}", moov);
-    // }
-    uci::start_uci_loop(&engine_thread::spawn_engine_thread());
+    // uci::start_uci_loop(&engine_thread::spawn_engine_thread());
 
-    //println!("{}", MGS[1][3]);
+
+    let mut search = Search::new();     //println!("{}", MGS[1][3]);
+    let position = BoardPosition::from_fen(START_POS);
+    let result = search.itDeep(&position, 10);
+    println!("{:?}", result);
     //uci::start_uci_loop(&engine_thread::spawn_engine_thread());
     // let bitboard = Bitboard::new();
     // let mut state = from_fen_default(START_POS, &bitboard);
