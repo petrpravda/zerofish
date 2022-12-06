@@ -9,6 +9,7 @@ import org.javafish.uci.annotation.UciArgs;
 import org.javafish.uci.annotation.UciMapping;
 import org.javafish.uci.annotation.UciQuit;
 import search.Search;
+import search.SearchResult;
 import search.TranspTable;
 
 import java.util.Arrays;
@@ -92,9 +93,9 @@ public class UciCommands {
 //                BoardPosition boardPosition = fromFen(START_POS);
 //                BoardState state = fromPosition(boardPosition);
 
-                Search.SearchResult result = new Search(transpositionTable, System.out).itDeep(position, depth);
-                String bestMoveString = String.format("bestmove %s", result.move().map(Move::toString).orElse("(none)"));
-                System.out.println(bestMoveString);
+                SearchResult result = new Search(transpositionTable, System.out).itDeep(position, depth);
+                //String bestMoveString = String.format("bestmove %s", result.move().map(Move::toString).orElse("(none)"));
+                //System.out.println(bestMoveString);
             }
         } else {
             System.out.format("go - %s%n", Arrays.asList(tokens));

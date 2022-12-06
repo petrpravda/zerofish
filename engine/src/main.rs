@@ -28,7 +28,7 @@ fn main() {
 
     let mut search = Search::new();     //println!("{}", MGS[1][3]);
     let position = BoardPosition::from_fen(START_POS);
-    let result = search.itDeep(&position, 10);
+    let result = search.itDeep(&position, 1);
     println!("{:?}", result);
     //uci::start_uci_loop(&engine_thread::spawn_engine_thread());
     // let bitboard = Bitboard::new();

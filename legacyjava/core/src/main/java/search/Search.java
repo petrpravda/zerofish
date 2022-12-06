@@ -54,18 +54,6 @@ public class Search {
         this.streamOut = out;
     }
 
-    public record SearchResult(Optional<Move> move, int score) {
-        @Override
-        public Optional<Move> move() {
-            return move;
-        }
-
-        @Override
-        public int score() {
-            return score;
-        }
-    }
-
     public SearchResult itDeep(BoardPosition position, int searchDepth){
         this.searchPosition = position.forSearchDepth(searchDepth);
         // Limits.calcTime(board.getSideToPlay(), board.gamePly());
@@ -75,7 +63,7 @@ public class Search {
         int alpha = -INF;
         int beta = INF;
         int depth = 1;
-        SearchResult result = new SearchResult(Optional.empty(), 0);
+        SearchResult result = new SearchResult(0);
         // MoveOrder.ageHistory();
 
         // Deepen until end conditions
@@ -90,20 +78,16 @@ public class Search {
             result = negaMaxRoot(position.getState(), depth, alpha, beta);
 
             // Failed low, adjust window
-            if (result.score <= alpha) {
+            if (result.score() <= alpha) {
                 alpha = -INF;
-            }
-
             // Failed high, adjust window
-            else if (result.score >= beta){
+            } else if (result.score() >= beta){
                 beta = INF;
-            }
-
             // Adjust the window around the new score and increase the depth
-            else {
+            } else {
                 printInfo(position.getState(), result, depth);
-                alpha = result.score - ASPIRATION_WINDOW;
-                beta = result.score + ASPIRATION_WINDOW;
+                alpha = result.score() - ASPIRATION_WINDOW;
+                beta = result.score() + ASPIRATION_WINDOW;
                 depth++;
                 statistics.reset();
             }
@@ -118,7 +102,7 @@ public class Search {
 //        boolean inCheck = state.checkers() != 0;
 //        if (inCheck) ++depth;
         if (moves.size() == 1) {
-            return new SearchResult(Optional.of(moves.get(0)), 0);
+            return new SearchResult(0);
         }
 
         Move bestMove = null;
@@ -129,15 +113,15 @@ public class Search {
             BoardState newBoardState = state.doMove(move);
             value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
 
-            if (stop || Limits.checkLimits()) {
-                stop = true;
-                break;
-            }
-            if (value > alpha){
+//            if (stop || Limits.checkLimits()) {
+//                stop = true;
+//                break;
+//            }
+            if (value > alpha) {
                 bestMove = move;
                 if (value >= beta){
                     transpositionTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
-                    return new SearchResult(Optional.of(bestMove), beta);
+                    return new SearchResult(beta);
                 }
                 alpha = value;
                 transpositionTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
@@ -148,7 +132,7 @@ public class Search {
             transpositionTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
         }
 
-        return new SearchResult(Optional.ofNullable(bestMove), alpha);
+        return new SearchResult(alpha);
     }
 
     public int negaMax(BoardState state, int depth, int ply, int alpha, int beta, boolean canApplyNull){
@@ -157,21 +141,24 @@ public class Search {
         int ttFlag = TTEntry.UPPER_BOUND;
         int reducedDepth;
 
-        if (stop || Limits.checkLimits()) {
-            stop = true;
-            return 0;
-        }
+//        if (stop || Limits.checkLimits()) {
+//            stop = true;
+//            return 0;
+//        }
 
-        // MATE DISTANCE PRUNING
-        if (alpha < -mateValue) alpha = -mateValue;
-        if (beta > mateValue - 1) beta = mateValue - 1;
-        if (alpha >= beta) {
-            statistics.leafs++;
-            return alpha;
-        }
+//        // MATE DISTANCE PRUNING
+//        if (alpha < -mateValue) alpha = -mateValue;
+//        if (beta > mateValue - 1) beta = mateValue - 1;
+//        if (alpha >= beta) {
+//            statistics.leafs++;
+//            return alpha;
+//        }
 
         inCheck = state.isKingAttacked();
-        if (depth <= 0 && !inCheck) return qSearch(state, depth, ply, alpha, beta);
+        if (depth <= 0 && !inCheck) {
+            return state.interpolatedScore();
+            //qSearch(state, depth, ply, alpha, beta)
+        }
         statistics.nodes++;
 
         if (state.isRepetitionOrFifty(this.searchPosition)) {
@@ -218,9 +205,9 @@ public class Search {
 
             // LATE MOVE REDUCTION
             reducedDepth = depth;
-            if (canApplyLMR(depth, move, i)) {
-                reducedDepth -= LMR_TABLE[Math.min(depth, 63)][Math.min(i, 63)];
-            }
+//            if (canApplyLMR(depth, move, i)) {
+//                reducedDepth -= LMR_TABLE[Math.min(depth, 63)][Math.min(i, 63)];
+//            }
 
             if (inCheck) reducedDepth++;
 
@@ -259,48 +246,48 @@ public class Search {
         return alpha;
     }
 
-    public int qSearch(BoardState state, int depth, int ply, int alpha, int beta){
-        if (stop || Limits.checkLimits()){
-            stop = true;
-            return 0;
-        }
-        selDepth = Math.max(ply, selDepth);
-        statistics.qnodes++;
-
-        int value = Evaluation.evaluateState(state);
-
-        if (value >= beta){
-            statistics.qleafs++;
-            return beta;
-        }
-
-        if (alpha < value)
-            alpha = value;
-
-        MoveList moves = state.generateLegalQuiescence();
-        for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, ply, moveOrdering)) {
-            Move move = indexedMove.move();
-
-            // Skip if underpromotion.
-            if (move.isPromotion() && move.flags() != Move.PR_QUEEN && move.flags() != Move.PC_QUEEN)
-                continue;
-
-            BoardState newBoardState = state.doMove(move);
-            value = -qSearch(newBoardState, depth - 1, ply + 1, -beta, -alpha);
-
-            if (stop)
-                return 0;
-
-            if (value > alpha) {
-                if (value >= beta) {
-                    statistics.qbetaCutoffs++;
-                    return beta;
-                }
-                alpha = value;
-            }
-        }
-        return alpha;
-    }
+//    public int qSearch(BoardState state, int depth, int ply, int alpha, int beta){
+//        if (stop || Limits.checkLimits()){
+//            stop = true;
+//            return 0;
+//        }
+//        this.selDepth = Math.max(ply, selDepth);
+//        statistics.qnodes++;
+//
+//        int value = Evaluation.evaluateState(state);
+//
+//        if (value >= beta){
+//            statistics.qleafs++;
+//            return beta;
+//        }
+//
+//        if (alpha < value)
+//            alpha = value;
+//
+//        MoveList moves = state.generateLegalQuiescence();
+//        for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, ply, moveOrdering)) {
+//            Move move = indexedMove.move();
+//
+//            // Skip if underpromotion.
+//            if (move.isPromotion() && move.flags() != Move.PR_QUEEN && move.flags() != Move.PC_QUEEN)
+//                continue;
+//
+//            BoardState newBoardState = state.doMove(move);
+//            value = -qSearch(newBoardState, depth - 1, ply + 1, -beta, -alpha);
+//
+//            if (stop)
+//                return 0;
+//
+//            if (value > alpha) {
+//                if (value >= beta) {
+//                    statistics.qbetaCutoffs++;
+//                    return beta;
+//                }
+//                alpha = value;
+//            }
+//        }
+//        return alpha;
+//    }
 
     public static boolean isScoreCheckmate(int score){
         return Math.abs(score) >= INF/2;
@@ -336,11 +323,11 @@ public class Search {
 
     public void printInfo(BoardState state, SearchResult result, int depth){
         streamOut.print("info");
-        streamOut.print(" currmove " + result.move.map(Move::toString).orElse("(none)"));
+        //streamOut.print(" currmove " + result.move().map(Move::toString).orElse("(none)"));
         streamOut.print(" depth " + depth);
         streamOut.print(" seldepth " + selDepth);
         streamOut.print(" time " + (int)(Limits.timeElapsed() / MEGA));
-        streamOut.print(" score cp " + result.score);
+        streamOut.print(" score cp " + result.score());
         streamOut.print(" nodes " + statistics.totalNodes());
         streamOut.printf(" nps %.0f", statistics.totalNodes()/((double)Limits.timeElapsed()/GIGA));
         streamOut.println(" pv " + getPv(state, depth));
@@ -348,7 +335,7 @@ public class Search {
 
     public static void main(String[] args) {
         BoardPosition position = BoardPosition.fromFen(START_POS);
-        new Search(new TranspTable(), System.out).itDeep(position, 9);
+        new Search(new TranspTable(), System.out).itDeep(position, 10);
     }
 
     //         Search.stop();
