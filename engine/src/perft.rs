@@ -114,8 +114,7 @@ mod tests {
 
     #[test]
     fn from_fen_startpos_depth_1() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default(START_POS, &bitboard);
+        let state = from_fen_default(START_POS);
         //let count = Perft::perft(&state, 1);
         let (result, count) = Perft::perft_sf_string(&state, 1);
         // println!("{}", result);
@@ -146,8 +145,7 @@ g1h3: 1
 
     #[test]
     fn from_fen_startpos_depth_1_n() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq - 1 1", &bitboard);
+        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq - 1 1", );
         //let count = Perft::perft(&state, 1);
         let (result, count) = Perft::perft_sf_string(&state, 1);
         // println!("{}", result);
@@ -178,8 +176,7 @@ g8h6: 1
 
     #[test]
     fn from_fen_startpos_depth_2() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default(START_POS, &bitboard);
+        let state = from_fen_default(START_POS, );
         let (result, count) = Perft::perft_sf_string(&state, 2);
         let expected = r#"a2a3: 20
 b2b3: 20
@@ -208,8 +205,7 @@ g1h3: 20"#;
 
     #[test]
     fn from_fen_startpos_depth_2_p() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/P7/1PPPPPPP/RNBQKBNR b KQkq - 0 1", &bitboard);
+        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/P7/1PPPPPPP/RNBQKBNR b KQkq - 0 1", );
         let (result, count) = Perft::perft_sf_string(&state, 1);
         let expected = r#"a7a6: 1
 b7b6: 1
@@ -239,8 +235,7 @@ g8h6: 1
 
     #[test]
     fn from_fen_startpos_depth_2_n() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/N7/PPPPPPPP/R1BQKBNR b KQkq - 1 1", &bitboard);
+        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/8/N7/PPPPPPPP/R1BQKBNR b KQkq - 1 1", );
         let (_result, count) = Perft::perft_sf_string(&state, 2);
         // println!("{}", result);
         assert_eq!(400, count);
@@ -248,8 +243,7 @@ g8h6: 1
 
     #[test]
     fn from_fen_startpos_depth_3() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default(START_POS, &bitboard);
+        let state = from_fen_default(START_POS, );
         let (perft_sf, count) = Perft::perft_sf_string(&state, 3);
         let expected = r#"a2a3: 380
 b2b3: 420
@@ -277,8 +271,7 @@ g1h3: 400"#;
 
     #[test]
     fn from_fen_startpos_depth_3_pp() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1", &bitboard);
+        let state = from_fen_default("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1", );
         let (perft_sf, count) = Perft::perft_sf_string(&state, 2);
         let expected = r#"a7a6: 28
 b7b6: 28
@@ -306,8 +299,7 @@ g8h6: 28"#;
 
     #[test]
     fn from_fen_startpos_depth_3_pp1() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default("rnbqkbnr/1ppppppp/8/p7/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2", &bitboard);
+        let state = from_fen_default("rnbqkbnr/1ppppppp/8/p7/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2", );
         let (perft_sf, _count) = Perft::perft_sf_string(&state, 1);
         let expected = r#"a2a3: 1
 b2b3: 1
@@ -342,16 +334,14 @@ e1d2: 1"#;
 
     #[test]
     fn from_fen_startpos_depth_4() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default(START_POS, &bitboard);
+        let state = from_fen_default(START_POS, );
         let (_perft_sf, count) = Perft::perft_sf_string(&state, 4);
         assert_eq!(197281, count);
     }
 
     #[test]
     fn from_fen_startpos_depth_5() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default(START_POS, &bitboard);
+        let state = from_fen_default(START_POS, );
         let (_perft_sf, count) = Perft::perft_sf_string(&state, 5);
         assert_eq!(4865609, count);
     }
@@ -359,8 +349,7 @@ e1d2: 1"#;
     #[test]
     fn from_fen_startpos_depth_5_detail() {
         // position startpos moves d2d3 g8f6 e1d2 f6e4
-        let bitboard = Bitboard::new();
-        let state = from_fen_default("rnbqkb1r/pppppppp/8/8/4n3/3P4/PPPKPPPP/RNBQ1BNR w kq - 3 3", &bitboard);
+        let state = from_fen_default("rnbqkb1r/pppppppp/8/8/4n3/3P4/PPPKPPPP/RNBQ1BNR w kq - 3 3", );
         let (perft_sf, _count) = Perft::perft_sf_string(&state, 1);
         let expected = r#"d2e1: 1
 d3e4: 1
@@ -428,21 +417,20 @@ double check:
         }
     }
 
-    fn test_tricky(_name: &str, line: &str, bitboard: &Bitboard) {
+    fn test_tricky(_name: &str, line: &str) {
         let position = parse_line(line);
-        let state = from_fen_default(&position.fen, bitboard);
+        let state = from_fen_default(&position.fen);
         let (_perft_sf, count) = Perft::perft_sf_string(&state, position.depth);
         assert_eq!(position.count, count);
     }
 
     #[test]
     fn tricky_perfts() {
-        let bitboard = Bitboard::new();
         TRICKY_PERFTS.lines().collect::<Vec<&str>>().chunks(3).for_each(|ch| {
             let (name, white, black) = (ch[0], ch[1], ch[2]);
             // println!("{}", name);
-            test_tricky(name, white, &bitboard);
-            test_tricky(name, black, &bitboard);
+            test_tricky(name, white);
+            test_tricky(name, black);
         });
     }
 

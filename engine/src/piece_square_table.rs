@@ -113,7 +113,7 @@ const fn prepare_value_tables(source: &[[u16; 64]; 6]) -> [[i32; 64]; 14] {
             let square_black = square ^ 0b000111;
 
             result[piece][square_white] = source[piece][square] as i32;
-            result[piece+8][square_black] = source[piece][square] as i32;
+            result[piece+8][square_black] = -(source[piece][square] as i32);
 
             square += 1;
             if square == 64 {
