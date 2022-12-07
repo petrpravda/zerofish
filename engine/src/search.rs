@@ -160,6 +160,12 @@ impl Search {
             // self.score_moves(state, moves, 0);
             for indexed_moov in moves.over_sorted(&state, self.transposition_table) {
                 let moov = indexed_moov.moov;
+                // let uciText = moov.uci();
+                // if uciText.eq("b1c3") {
+                //     println!("{}", moov.uci());
+                // }
+
+
 
                 let newBoardState = state.do_move(&moov);
                 value = -self.nega_max(&newBoardState, depth - 1, 1, -beta, -alpha, true);
@@ -214,7 +220,8 @@ impl Search {
 
             inCheck = state.is_king_attacked();
             if depth <= 0 && !inCheck {
-                return self.qSearch(state, depth, ply as Depth, alpha, beta);
+                let q_value = self.qSearch(state, depth as i32, ply as Depth, alpha, beta);
+                return q_value
             }
             self.statistics.increment_nodes();
 
@@ -319,7 +326,7 @@ impl Search {
              return alpha;
          }
 
-        pub fn qSearch(&mut self, state: &BoardState, depth: Depth, ply: Depth, mut alpha: i32, beta: i32) -> i32 {
+        pub fn qSearch(&mut self, state: &BoardState, depth: i32, ply: Depth, mut alpha: i32, beta: i32) -> i32 {
             // if (stop || Limits.checkLimits()){
             //     stop = true;
             //     return 0;

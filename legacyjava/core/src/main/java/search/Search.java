@@ -125,6 +125,9 @@ public class Search {
 
         for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, 0, moveOrdering)) {
             Move move = indexedMove.move();
+            if (indexedMove.move().uci().equals("b1c3")) {
+                System.out.println(move.uci());
+            }
 
             BoardState newBoardState = state.doMove(move);
             value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
@@ -171,7 +174,9 @@ public class Search {
         }
 
         inCheck = state.isKingAttacked();
-        if (depth <= 0 && !inCheck) return qSearch(state, depth, ply, alpha, beta);
+        if (depth <= 0 && !inCheck) {
+            return qSearch(state, depth, ply, alpha, beta);
+        }
         statistics.nodes++;
 
         if (state.isRepetitionOrFifty(this.searchPosition)) {
@@ -348,7 +353,7 @@ public class Search {
 
     public static void main(String[] args) {
         BoardPosition position = BoardPosition.fromFen(START_POS);
-        new Search(new TranspTable(), System.out).itDeep(position, 9);
+        new Search(new TranspTable(), System.out).itDeep(position, 2);
     }
 
     //         Search.stop();

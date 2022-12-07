@@ -335,7 +335,7 @@ impl MoveList {
 
     pub fn pick_next_best_move(&mut self, cur_index: usize){
         let size = self.moves.len();
-        let mut max = i32::MAX;
+        let mut max = i32::MIN;
         let mut max_index = 0;
         let mut i = cur_index;
         while i < size {
@@ -346,6 +346,17 @@ impl MoveList {
             i += 1;
         }
         self.moves.swap(cur_index, max_index);
+
+
+        //         //         int max = Integer.MIN_VALUE;
+        //         //         int maxIndex = -1;
+        //         //         for (int i = curIndex; i < this.size(); i++){
+        //         //             if (this.get(i).score() > max){
+        //         //                 max = this.get(i).score();
+        //         //                 maxIndex = i;
+        //         //             }
+        //         //         }
+        //         //         Collections.swap(this, curIndex, maxIndex);
     }
 
     pub fn to_string(&self) -> String {

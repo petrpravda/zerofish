@@ -142,4 +142,14 @@ class BoardStateTest {
                 . . . . . . . .\s
                 """, Bitboard.bitboardToString(attackedPiecesUndefended));
     }
+
+    @Test
+    void mgValueTest() {
+        BoardState state = BoardState.fromFen("8/8/8/8/8/8/8/8 w KQkq - 0 1");
+        assertEquals(0, state.mg());
+        state.setPieceAt(Piece.WHITE_ROOK, Square.getSquareFromName("d5"));
+        assertEquals(482, state.mg());
+        state.setPieceAt(Piece.BLACK_ROOK, Square.getSquareFromName("d2"));
+        assertEquals(-20, state.mg());
+    }
 }

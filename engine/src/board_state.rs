@@ -943,13 +943,24 @@ impl BoardState {
 mod tests {
     use crate::bitboard::Bitboard;
     use crate::fen::{from_fen_default, START_POS};
+    use crate::piece::{BLACK_ROOK, WHITE_ROOK};
+    use crate::square::Square;
 
     #[test]
     fn from_fen_startpos() {
-        let bitboard = Bitboard::new();
-        let state = from_fen_default(START_POS, &bitboard);
+        let state = from_fen_default(START_POS);
         let moves = state.generate_legal_moves();
         println!("{}", moves);
         // assert_eq!(state.to_string(), );
+    }
+
+    #[test]
+    fn mg_value_test() {
+        let mut state = from_fen_default("8/8/8/8/8/8/8/8 w KQkq - 0 1");
+        assert_eq!(state.mg, 0);
+        state.set_piece_at(WHITE_ROOK, Square::get_square_from_name("d5") as usize);
+        assert_eq!(state.mg, 482);
+        state.set_piece_at(BLACK_ROOK, Square::get_square_from_name("d2") as usize);
+        assert_eq!(state.mg, -20);
     }
 }
