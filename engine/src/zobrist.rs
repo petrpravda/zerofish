@@ -36,8 +36,8 @@ impl Zobrist {
     }
 }
 
-const MULTIPLIER: u64 = 0x356f678ebfe40a00;
-const INCREMENT: u64 = 0x8d811b3c80fbe984;
+const MULTIPLIER: u64 = 0x5851f42d4c957f2d;
+const INCREMENT: u64 = 0x14057b7ef767814f;
 
 pub struct RandomGenerator {
     state: u64,
@@ -49,7 +49,7 @@ impl RandomGenerator {
     }
 
     pub fn new_with_seed(seed: u64) -> Self {
-        RandomGenerator {
+        Self {
             state: seed.wrapping_mul(seed)
         }
     }
@@ -63,9 +63,43 @@ impl RandomGenerator {
         ((x >> 27) as u32).rotate_right(count)
     }
 
+    #[inline]
     pub fn rand64(&mut self) -> u64 {
         ((self.rand32() as u64) << 32) | (self.rand32() as u64)
     }
+
+    #[inline]
+    pub fn rand128(&mut self) -> u128 {
+        ((self.rand64() as u128) << 64) | (self.rand64() as u128)
+    }
+
 }
 
 
+#[cfg(test)]
+mod tests {
+    use crate::fen::{from_fen_default, START_POS};
+    use crate::piece::{BLACK_ROOK, WHITE_ROOK};
+    use crate::r#move::Move;
+    use crate::zobrist::ZOBRIST;
+
+    #[test]
+    fn hashing_changes() {
+        let mut state = from_fen_default(START_POS);
+        let hash_starting = state.hash;
+        state = state.do_move(&Move::from_uci_string("b1a3"));
+        let hash_1 = state.hash;
+        assert_ne!(hash_starting, hash_1);
+        state = state.do_move(&Move::from_uci_string("d7d5"));
+        let hash_2 = state.hash;
+        assert_ne!(hash_1, hash_2);
+    }
+
+    #[test]
+    fn unique_hashes() {
+        let zobrist_pieces = &ZOBRIST.pieces;
+        assert_ne!(zobrist_pieces[8][51], zobrist_pieces[8][35]);
+    }
+
+    // TODO check uniqueness of random numbers in pieces, distribution???
+}

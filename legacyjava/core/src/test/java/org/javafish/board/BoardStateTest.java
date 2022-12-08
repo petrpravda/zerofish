@@ -152,4 +152,15 @@ class BoardStateTest {
         state.setPieceAt(Piece.BLACK_ROOK, Square.getSquareFromName("d2"));
         assertEquals(-20, state.mg());
     }
+
+//    @Test
+//    void phasesOnlyPositive() {
+//        String[] moves = "d2d4 c7c5 d4c5 g7g5 c1g5 h7h6 c5c6 h6g5 c6b7 h8h2 b7a8q".split(" ");
+//        BoardState state = BoardState.fromFen(START_POS);
+//        for (String uciMove : moves) {
+//            Move move = Move.fromUciString(uciMove, state);
+//            state = state.doMove(move);
+//            System.out.println(state.phase);
+//        }
+//    }
 }

@@ -1,5 +1,7 @@
 package org.javafish.move;
 
+import org.javafish.board.BoardState;
+import org.javafish.board.Piece;
 import org.javafish.board.Square;
 
 import java.util.List;
@@ -95,42 +97,50 @@ public class Move {
 
     @Override
     public String toString() {
-        return uci();
+        return isNullMove() ? "NULL_MOVE" : this.uci();
     }
 
-    public static List<Move> parseUciMoves(List<String> moves) {
+    public boolean isNullMove() {
+        return (this.flags() & NULL) == NULL;
+    }
+
+    public static List<Move> parseUciMoves(List<String> moves, BoardState state) {
         return moves.stream()
-                .map(Move::fromUciString)
+                .map((String str) -> fromUciString(str, state))
                 .collect(Collectors.toList());
     }
 
-    public static Move fromUciString(String str) {
+    public static Move fromUciString(String str, BoardState state) {
         int fromSq = Square.getSquareFromName(str.substring(0, 2));
         int toSq = Square.getSquareFromName(str.substring(2, 4));
         String typeStr = "";
-        if (str.length() > 4)
+        boolean capturingPromotion = false;
+        if (str.length() > 4) {
             typeStr = str.substring(4);
+            if (state.pieceAt(toSq) != Piece.NONE) {
+                capturingPromotion = true;
+            }
+        }
 
-        Move move;
+        int flags = switch (typeStr) {
+            case "q" -> Move.PR_QUEEN;
+            case "n" -> Move.PR_KNIGHT;
+            case "b" -> Move.PR_BISHOP;
+            case "r" -> Move.PR_ROOK;
+            default -> Move.QUIET;
+        };
 
-        if (typeStr.equals("q"))
-            move = new Move(fromSq, toSq, Move.PR_QUEEN);
-        else if (typeStr.equals("n"))
-            move = new Move(fromSq, toSq, Move.PR_KNIGHT);
-        else if (typeStr.equals("b"))
-            move = new Move(fromSq, toSq, Move.PR_BISHOP);
-        else if (typeStr.equals("r"))
-            move = new Move(fromSq, toSq, Move.PR_ROOK);
-        else
-            move = new Move(fromSq, toSq, Move.QUIET);
+        if (capturingPromotion) {
+            flags |= Move.CAPTURE;
+        }
 
-        return move;
+        return new Move(fromSq, toSq, flags);
     }
 
-    public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
-        String[] moves = movesDelimitedWithSpace.split(" ");
-        return fromUciString(moves[0]);
-    }
+//    public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
+//        String[] moves = movesDelimitedWithSpace.split(" ");
+//        return fromUciString(moves[0]);
+//    }
 
     public int getPieceType() {
         return (flags() & 0b11) + 1;

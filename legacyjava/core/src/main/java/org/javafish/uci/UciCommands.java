@@ -58,9 +58,9 @@ public class UciCommands {
     }
 
     private void positionWithMovesFromStartposSoFar(List<String> args) {
-        List<Move> moves = parseUciMoves(args);
         position = BoardPosition.fromFen(START_POS);
         BoardState state = position.getState();
+        List<Move> moves = parseUciMoves(args, state);
 
         for (Move move1 : moves) {
             Move moveValidated = state.generateLegalMoves()

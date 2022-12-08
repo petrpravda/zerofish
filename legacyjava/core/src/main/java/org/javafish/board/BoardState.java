@@ -246,7 +246,7 @@ public class BoardState implements Cloneable {
         return performMove(move, this);
     }
 
-    public BoardState doMove(String uciMove) {
+    public BoardState doMove(String uciMove) { // TODO maybe not needed anymore
         return performMove(this.generateLegalMoves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
     }
 

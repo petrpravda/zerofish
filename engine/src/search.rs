@@ -166,10 +166,11 @@ impl Search {
                 // }
 
 
-
+                let uci_string = moov.uci();
                 let newBoardState = state.do_move(&moov);
                 value = -self.nega_max(&newBoardState, depth - 1, 1, -beta, -alpha, true);
 
+                println!("{} {}", uci_string, value);
                 // if (stop || Limits.checkLimits()) {
                 //     stop = true;
                 //     break;
@@ -254,22 +255,26 @@ impl Search {
             }
 
             // NULL MOVE
-            if Search::can_apply_null_window(state, depth, beta, inCheck, canApplyNull) {
-                let R = if depth > 6 { 3 } else { 2 };
-                let newBoardState = state.do_null_move();
-                let value = -self.nega_max(&newBoardState, depth - R - 1, ply, -beta, -beta + 1, false);
-                // if (stop) {
-                //     return 0;
-                // }
-                if value >= beta {
-                    self.statistics.increase_beta_cutoffs();
-                    return beta;
-                }
-            }
+            // if Search::can_apply_null_window(state, depth, beta, inCheck, canApplyNull) {
+            //     let R = if depth > 6 { 3 } else { 2 };
+            //     let newBoardState = state.do_null_move();
+            //     let value = -self.nega_max(&newBoardState, depth - R - 1, ply, -beta, -beta + 1, false);
+            //     // if (stop) {
+            //     //     return 0;
+            //     // }
+            //     if value >= beta {
+            //         self.statistics.increase_beta_cutoffs();
+            //         return beta;
+            //     }
+            // }
 
             let mut moves = state.generate_legal_moves();
+            let uci_list = moves.to_string();
+            // if ply == 2 {
+            //     println!("{}", uci_list);
+            // }
             let mut value = 0;
-            let mut bestMove: Option<Move> = None;
+            let mut bestMove: Move = Move::NULL_MOVE;
             // MoveOrder.scoreMoves(state, moves, ply);
             for indexed_moov in moves.over_sorted(&state, self.transposition_table) {
                 let moov = indexed_moov.moov;
@@ -285,6 +290,7 @@ impl Search {
                     reducedDepth += 1;
                 }
 
+                let uci_string = moov.uci();
                 let newBoardState = state.do_move(&moov);
                 value = -self.nega_max(&newBoardState, reducedDepth - 1, ply + 1, -beta, -alpha, true);
 
@@ -293,7 +299,7 @@ impl Search {
                 // }
 
                 if value > alpha {
-                    bestMove = Some(moov);
+                    bestMove = moov;
                     if value >= beta {
                         if moov.flags() == Move::QUIET {
                             //MoveOrder.addKiller(state, move, ply);
@@ -318,9 +324,10 @@ impl Search {
                 }
             }
 
-            if !bestMove.unwrap().bits == Move::NULL_MOVE.bits { // TODO && !stop) {
+            if bestMove.flags() != Move::NULL { // TODO && !stop) {
                 // TranspTable.set(state.hash(), alpha, depth, ttFlag, bestMove);
-                self.transposition_table.insert(&state, depth, alpha, bestMove.unwrap().base_move(), ttFlag)
+                let best_move_uci = bestMove.uci();
+                self.transposition_table.insert(&state, depth, alpha, bestMove.base_move(), ttFlag)
             }
 
              return alpha;
@@ -355,6 +362,7 @@ impl Search {
                     continue;
                 }
 
+                let uci_string = moov.uci();
                 let newBoardState = state.do_move(&moov);
                 let depth_m1 = depth - 1;
                 value = -self.qSearch(&newBoardState, depth_m1, ply + 1, -beta, -alpha);
@@ -451,14 +459,20 @@ impl Search {
     }
 
     fn get_pv(&self, state: &BoardState, depth: Depth) -> String {
+        // TODO simplify
+        let hash = state.hash;
         let best_entry = self.transposition_table.probe(state);
         if best_entry.is_none() || depth == 0 {
             return "".to_string();
         }
         let best_move = best_entry.unwrap().best_move();
         let moov = Move::new_from_bits(best_move as u32);
+        let uci = moov.uci();
+        let old_board_string = format!("{}{:#020x}\n{}", state.to_string(), state.hash, state.hash);
         let new_board_state = state.do_move(&moov);
-        let primary_value = format!("{} {}", moov.uci(), self.get_pv(&new_board_state, depth - 1));
+        // let board_string = new_board_state.to_string();
+        let board_string = format!("{} {}{:#020x}\n{}", uci, new_board_state.to_string(), new_board_state.hash, new_board_state.hash);
+        let primary_value = format!("{} {}", uci, self.get_pv(&new_board_state, depth - 1));
         primary_value
     }
 }

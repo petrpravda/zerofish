@@ -41,7 +41,7 @@ impl Move {
     pub const PC_QUEEN: u8 = 0b1111;
     pub const NULL: u8 = 0b0111;
 
-    pub const NULL_MOVE: Move = Move { bits: 0, sort_score: 0 };
+    pub const NULL_MOVE: Move = Move { bits: (Move::NULL as u32) << 12, sort_score: 0 };
     pub const BM_NULL: BaseMove = 0;
 
     pub fn new() -> Self { Self{bits: 0, sort_score: 0 }}
@@ -105,6 +105,10 @@ impl Move {
         PieceType::from((self.flags() & 0b11) + 1)
     }
 
+    pub fn make_piece_type_promotion_flags(piece_type: PieceType) -> u8 {
+        (piece_type as u8 - 1) | Move::PROMOTION
+    }
+
     // pub fn get_piece_type_for_side(&self, side_to_play: Side) -> PieceType {
     //     return PieceType::from(self.get_piece_type() as u8 + (side_to_play as u8 * 8));
     // }
@@ -142,36 +146,45 @@ impl Move {
     //
     // public static List<Move> parseUciMoves(List<String> moves) {
     // return moves.stream()
-    // .map(Move::fromUciString)
+    // .map(Move::from_uci_string)
     // .collect(Collectors.toList());
     // }
-    //
-    // public static Move fromUciString(String str) {
-    // int fromSq = Square.getSquareFromName(str.substring(0, 2));
-    // int toSq = Square.getSquareFromName(str.substring(2, 4));
-    // String typeStr = "";
-    // if (str.length() > 4)
-    // typeStr = str.substring(4);
-    //
-    // Move move;
-    //
-    // if (typeStr.equals("q"))
-    // move = new Move(fromSq, toSq, Move.PR_QUEEN);
-    // else if (typeStr.equals("n"))
-    // move = new Move(fromSq, toSq, Move.PR_KNIGHT);
-    // else if (typeStr.equals("b"))
-    // move = new Move(fromSq, toSq, Move.PR_BISHOP);
-    // else if (typeStr.equals("r"))
-    // move = new Move(fromSq, toSq, Move.PR_ROOK);
-    // else
-    // move = new Move(fromSq, toSq, Move.QUIET);
-    //
-    // return move;
-    // }
-    //
+
+    pub fn from_uci_string(uci: &str) -> Move {
+        let bytes = uci.as_bytes();
+        if bytes.len() < 4 {
+            panic!("Invalid uci move notation: {}", uci);
+        }
+
+        let start_col = bytes[0] - b'a';
+        let start_row = b'8' - bytes[1];
+        let start = (start_row * 8 + start_col) as i8;
+
+        let end_col = bytes[2] - b'a';
+        let end_row = b'8' - bytes[3];
+        let end = (end_row * 8 + end_col) as i8;
+
+        let promotion = if bytes.len() == 5 {
+            Some(match bytes[4] {
+                b'q' => PieceType::QUEEN,
+                b'r' => PieceType::ROOK,
+                b'b' => PieceType::BISHOP,
+                b'n' => PieceType::KNIGHT,
+                _ => {
+                    panic!("Invalid promotion piece in UCI notation: {}", uci);
+                }
+            })
+        } else {
+            None
+        };
+
+        let flags = promotion.map(|p| Move::make_piece_type_promotion_flags(p)).unwrap_or(0u8);
+        Move::new_from_flags(start as u8, end as u8, flags)
+    }
+
     // public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
     // String[] moves = movesDelimitedWithSpace.split(" ");
-    // return fromUciString(moves[0]);
+    // return from_uci_string(moves[0]);
     // }
     //
     // public boolean isCastling() {
@@ -360,7 +373,8 @@ impl MoveList {
     }
 
     pub fn to_string(&self) -> String {
-        format!("length: {}", self.moves.len())
+        let uci_moves = self.moves.iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
+        format!("[{}] {}", self.moves.len(), uci_moves)
     }
 
     pub fn over_sorted<'a>(&'a mut self, state: &'a BoardState, transposition_state: &'a TranspositionTable) -> SortedMovesIter<'a> {
