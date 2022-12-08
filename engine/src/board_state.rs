@@ -14,15 +14,15 @@ use crate::square::{BACK, DOUBLE_FORWARD, FORWARD, FORWARD_LEFT, FORWARD_RIGHT, 
 use crate::transposition::Depth;
 use crate::zobrist::ZOBRIST;
 
-const TOTAL_PHASE: u32 = 24u32;
-const PIECE_PHASES: [u32; 6] = [0, 1, 1, 2, 4, 0];
+const TOTAL_PHASE: i32 = 24i32;
+const PIECE_PHASES: [i32; 6] = [0, 1, 1, 2, 4, 0];
 
 const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
 const BOARD_STATE_HISTORY_CAPACITY: usize = 30;
 
 //#[derive(Copy, Clone)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BoardState {
     pub(crate) ply: usize,
     history: [u32;BOARD_STATE_HISTORY_CAPACITY],
@@ -32,7 +32,7 @@ pub struct BoardState {
     pub hash: u64,
     pub full_move_normalized: usize,
     pub half_move_clock: usize,
-    phase: u32,
+    phase: i32,
     mg: i32,
     eg: i32,
 //    checkers: u64,
@@ -210,6 +210,9 @@ impl BoardState {
         fn move_piece_quiet(&mut self, from_sq: u8, to_sq: u8){
             //update incremental evaluation terms
             let piece = self.items[from_sq as usize];
+            // if piece == NONE {
+            //     panic!()
+            // }
             self.mg += MGS[piece as usize][to_sq as usize] - MGS[piece as usize][from_sq as usize];
             self.eg += EGS[piece as usize][to_sq as usize] - EGS[piece as usize][from_sq as usize];
 
@@ -325,7 +328,14 @@ impl BoardState {
     }
 
     pub fn do_move(&self, moov: &Move) -> BoardState {
+        // if moov.flags() == Move::NULL {
+        //     panic!()
+        // }
+
+
         let mut state = self.clone();
+        // state.do_move_inner(moov);
+        // return state;
         let zobrist = &ZOBRIST;
 
         state.full_move_normalized += 1;
@@ -394,6 +404,74 @@ impl BoardState {
 
         state
     }
+
+    // pub fn do_move_inner(&mut self, moov: &Move) {
+    //     let zobrist = &ZOBRIST;
+    //
+    //     self.full_move_normalized += 1;
+    //     self.half_move_clock += 1;
+    //     self.history[self.ply] = moov.bits;
+    //     self.ply += 1;
+    //     self.movements |= 1u64 << moov.to() | 1u64 << moov.from();
+    //
+    //     if type_of(self.items[moov.from() as usize]) == PAWN {
+    //         self.half_move_clock = 0;
+    //     }
+    //
+    //     self.clear_en_passant();
+    //
+    //     match moov.flags() {
+    //         Move::QUIET => {
+    //             self.move_piece_quiet(moov.from(), moov.to());
+    //         }
+    //         Move::DOUBLE_PUSH => {
+    //             self.move_piece_quiet(moov.from(), moov.to());
+    //             self.en_passant = 1u64 << (moov.from() as i8 + Square::direction(FORWARD, self.side_to_play));
+    //             self.hash ^= zobrist.en_passant[(self.en_passant.trailing_zeros() & 0b111) as usize];
+    //         }
+    //         Move::OO => {
+    //             if self.side_to_play == WHITE {
+    //                 self.move_piece_quiet(Square::E1, Square::G1);
+    //                 self.move_piece_quiet(Square::H1, Square::F1);
+    //             }
+    //             else {
+    //                 self.move_piece_quiet(Square::E8, Square::G8);
+    //                 self.move_piece_quiet(Square::H8, Square::F8);
+    //             }
+    //         }
+    //         Move::OOO => {
+    //             if self.side_to_play == WHITE {
+    //                 self.move_piece_quiet(Square::E1, Square::C1);
+    //                 self.move_piece_quiet(Square::A1, Square::D1);
+    //             } else {
+    //                 self.move_piece_quiet(Square::E8, Square::C8);
+    //                 self.move_piece_quiet(Square::A8, Square::D8);
+    //             }
+    //         }
+    //         Move::EN_PASSANT => {
+    //             self.move_piece_quiet(moov.from(), moov.to());
+    //             self.remove_piece((moov.to() as i8 + Square::direction(BACK, self.side_to_play)) as u8);
+    //         }
+    //         Move::PR_KNIGHT | Move::PR_BISHOP | Move::PR_ROOK | Move::PR_QUEEN=> {
+    //             self.remove_piece(moov.from());
+    //             self.set_piece_at(make_piece(self.side_to_play, moov.get_piece_type()), moov.to() as usize);
+    //         }
+    //         Move::PC_KNIGHT | Move::PC_BISHOP | Move::PC_ROOK | Move::PC_QUEEN => {
+    //             self.remove_piece(moov.from());
+    //             self.remove_piece(moov.to());
+    //             self.set_piece_at(make_piece(self.side_to_play, moov.get_piece_type()), moov.to() as usize);
+    //         }
+    //         Move::CAPTURE => {
+    //             self.half_move_clock = 0;
+    //             self.move_piece(moov.from(), moov.to());
+    //         }
+    //         _ => {
+    //             panic!()
+    //         }
+    //     }
+    //     self.side_to_play = !self.side_to_play;
+    //     self.hash ^= zobrist.side;
+    // }
 
     //     public int getSideToPlay(){
     //         return sideToPlay;
@@ -915,6 +993,7 @@ impl BoardState {
         pub fn interpolated_score(&self) -> i32 {
             let phase= ((self.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE) as i32;
             return (self.mg * (256 - phase) + self.eg * phase) / 256;
+            // self.mg
         }
 
     //     public record Params(byte[] pieces, int wKingPos, int bKingPos) {}

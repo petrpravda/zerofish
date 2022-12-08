@@ -125,12 +125,13 @@ public class Search {
 
         for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, 0, moveOrdering)) {
             Move move = indexedMove.move();
-            if (indexedMove.move().uci().equals("b1c3")) {
-                System.out.println(move.uci());
-            }
+//            if (indexedMove.move().uci().equals("b1c3")) {
+//                System.out.println(move.uci());
+//            }
 
             BoardState newBoardState = state.doMove(move);
             value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
+            System.out.printf("%s %s%n", move.uci(), value);
 
             if (stop || Limits.checkLimits()) {
                 stop = true;
@@ -353,7 +354,7 @@ public class Search {
 
     public static void main(String[] args) {
         BoardPosition position = BoardPosition.fromFen(START_POS);
-        new Search(new TranspTable(), System.out).itDeep(position, 2);
+        new Search(new TranspTable(), System.out).itDeep(position, 1);
     }
 
     //         Search.stop();

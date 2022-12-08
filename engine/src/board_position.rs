@@ -11,6 +11,7 @@ use crate::fen::from_fen_default;
 use crate::r#move::Move;
 use crate::transposition::Depth;
 
+#[derive(Debug)]
 pub struct BoardPosition {
     pub(crate) state: BoardState,
     pub(crate) historyIndex: usize,
@@ -22,12 +23,11 @@ pub struct BoardPosition {
 impl BoardPosition {
 
     pub fn from_fen(fen: &str) -> BoardPosition {
-        let result = BoardPosition {
+        BoardPosition {
             state: from_fen_default(fen),
             historyIndex: 0,
             history: vec![],
-        };
-        result
+        }
     }
 
     pub fn do_move(&mut self, moov: &Move) -> &BoardState {

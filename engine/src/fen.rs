@@ -56,6 +56,8 @@ pub fn from_fen(fen: &str, max_search_depth: usize) -> BoardState {
     let fullmove = fullmove_part.parse::<usize>().unwrap();
 
     BoardState::new(&items, side, movements, en_passant_mask, halfmove_clock, fullmove, 100)
+    //println!("{:?}", state);
+    //return state;
     // BoardState::new(&[0; 64], WHITE, 0, 0, 0, 0, 100)
 }
 
