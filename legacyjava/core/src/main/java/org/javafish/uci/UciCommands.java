@@ -9,7 +9,9 @@ import org.javafish.uci.annotation.UciArgs;
 import org.javafish.uci.annotation.UciMapping;
 import org.javafish.uci.annotation.UciQuit;
 import search.Search;
-import search.TranspTable;
+import search.SearchResult;
+import search.TranspositionTable;
+import search.SearchOldReference;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,7 +24,7 @@ import static org.javafish.board.Fen.START_POS;
 
 public class UciCommands {
 
-    private TranspTable transpositionTable = new TranspTable();
+    private TranspositionTable transpositionTable = new TranspositionTable();
     private BoardPosition position = BoardPosition.fromFen(START_POS);
 
     @UciMapping("d")
@@ -81,7 +83,7 @@ public class UciCommands {
                 int depth = Integer.parseInt(tokens[1]);
                 System.out.println(perftString(position.getState(), depth));
             } else if (tokens[0].equals("depth") && tokens.length == 2) {
-                int depth = Integer.parseInt(tokens[1]);
+                short depth = Short.parseShort(tokens[1]);
                 //BoardState state = fromPosition(boardPosition);
 //                SearchBaba search = fromBoardState(state);
 //                // search.pvMode = true;
@@ -92,7 +94,7 @@ public class UciCommands {
 //                BoardPosition boardPosition = fromFen(START_POS);
 //                BoardState state = fromPosition(boardPosition);
 
-                Search.SearchResult result = new Search(transpositionTable, System.out).itDeep(position, depth);
+                SearchResult result = new Search(transpositionTable, System.out).itDeep(position, depth);
                 String bestMoveString = String.format("bestmove %s", result.move().map(Move::toString).orElse("(none)"));
                 System.out.println(bestMoveString);
             }

@@ -1,11 +1,9 @@
 package org.javafish.board;
 
 import org.javafish.bitboard.Bitboard;
-import org.javafish.move.Move;
-import org.javafish.move.MoveList;
 import org.junit.jupiter.api.Test;
 import search.Search;
-import search.TranspTable;
+import search.TranspositionTable;
 
 import static org.javafish.board.Fen.START_POS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,7 +13,7 @@ class BoardStateTest {
     public void complexPositionTroubleWithScore() {
         // actually caused by crappy castling flags
         BoardPosition position = BoardPosition.fromFen("r2q1rk1/pbp2ppp/1pnp1n2/8/2PPp3/2P1P3/P1N2PPP/R1BQKB1R w kq - 0 10");
-        new Search(new TranspTable()).itDeep(position, 9);
+        new Search(new TranspositionTable()).itDeep(position, (short) 9);
     }
 
     @Test

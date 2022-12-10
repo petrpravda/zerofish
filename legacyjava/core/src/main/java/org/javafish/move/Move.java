@@ -158,6 +158,10 @@ public class Move {
         return this.flags() == Move.OO || this.flags() == Move.OOO;
     }
 
+    public ScoredMove scored(short scored) {
+        return new ScoredMove(this, scored);
+    }
+
 //    public int getPromotionPieceType() {
 //    }
 }

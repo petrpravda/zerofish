@@ -24,6 +24,7 @@ import static org.javafish.bitboard.Bitboard.line;
 import static org.javafish.bitboard.Bitboard.pawnAttacks;
 import static org.javafish.bitboard.Bitboard.whiteLeftPawnAttacks;
 import static org.javafish.bitboard.Bitboard.whiteRightPawnAttacks;
+import static org.javafish.board.Piece.NONE;
 import static org.javafish.board.Square.A1;
 import static org.javafish.board.Square.A8;
 import static org.javafish.board.Square.BACK;
@@ -56,7 +57,7 @@ public class BoardState implements Cloneable {
     private long[] piece_bb = new long[Piece.PIECES_COUNT];
     public int[] items = new int[64];
     private int sideToPlay;
-    private long hash;
+    public long hash;
     public int fullMoveNormalized = 0;
     public int halfMoveClock = 0;
     public int phase = TOTAL_PHASE;
@@ -71,10 +72,10 @@ public class BoardState implements Cloneable {
     public BoardState(int[] items, int sideToPlay, long movements, long enPassantMask, int halfMoveClock, int fullMoveCount, int maxSearchDepth) {
         for (int i = 0; i < 64; i++) {
             int item = items[i];
-            if (item != Piece.NONE) {
+            if (item != NONE) {
                 setPieceAt(item, i);
             } else {
-                this.items[i] = Piece.NONE;
+                this.items[i] = NONE;
             }
         }
 
@@ -152,12 +153,17 @@ public class BoardState implements Cloneable {
 
         //update board
         piece_bb[items[square]] &= ~(1L << square);
-        items[square] = Piece.NONE;
+        items[square] = NONE;
     }
 
     public void movePieceQuiet(int fromSq, int toSq){
         //update incremental evaluation terms
         int piece = items[fromSq];
+
+        if (piece == NONE) {
+            throw new IllegalArgumentException();
+        }
+
         mg += MGS[piece][toSq] - MGS[piece][fromSq];
         eg += EGS[piece][toSq] - EGS[piece][fromSq];
 
@@ -168,7 +174,7 @@ public class BoardState implements Cloneable {
         //update board
         piece_bb[piece] ^= (1L << fromSq | 1L << toSq);
         items[toSq] = piece;
-        items[fromSq] = Piece.NONE;
+        items[fromSq] = NONE;
     }
 
     public void movePiece(int fromSq, int toSq){
@@ -376,7 +382,7 @@ public class BoardState implements Cloneable {
         MoveList quiescence = workingState.generateLegalQuiescence();
         //BoardState finalWorkingState = workingState;
         List<Move> attackingMoves = quiescence.stream()
-                .filter(m -> workingState.pieceAt(m.to()) != Piece.NONE)
+                .filter(m -> workingState.pieceAt(m.to()) != NONE)
                 .toList();
         long result = 0L;
         for (Move move : attackingMoves) {
@@ -875,9 +881,9 @@ public class BoardState implements Cloneable {
         return eg;
     }
 
-    public int interpolatedScore() {
+    public short interpolatedScore() {
         int phase = (this.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE;
-        return (this.mg() * (256 - phase) + this.eg() * phase) / 256;
+        return (short) ((this.mg() * (256 - phase) + this.eg() * phase) / 256);
     }
 
     public record Params(byte[] pieces, int wKingPos, int bKingPos) {}

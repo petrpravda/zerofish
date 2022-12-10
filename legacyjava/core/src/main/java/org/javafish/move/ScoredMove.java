@@ -2,14 +2,7 @@ package org.javafish.move;
 
 import java.util.StringJoiner;
 
-public class ScoredMove {
-    final Move move;
-    final int score;
-
-    public ScoredMove(Move move, int score) {
-        this.move = move;
-        this.score = score;
-    }
+public record ScoredMove(Move move, short score) {
 
 //    public Move getMove() {
 //        return move;
@@ -25,5 +18,9 @@ public class ScoredMove {
                 .add("move=" + move)
                 .add("score=" + score)
                 .toString();
+    }
+
+    public ScoredMove betterMove(Move move, short value) {
+        return value > this.score ? move.scored(value) : this;
     }
 }

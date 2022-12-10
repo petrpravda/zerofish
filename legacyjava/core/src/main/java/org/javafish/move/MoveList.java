@@ -4,18 +4,15 @@ import org.javafish.bitboard.Bitboard;
 import org.javafish.board.BoardState;
 import org.javafish.board.Side;
 import search.MoveOrdering;
-import search.TTEntry;
-import search.TranspTable;
+import search.TranspositionTable;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.EMPTY_LIST;
 import static org.javafish.eval.PieceSquareTable.MGS;
 
 public class MoveList extends ArrayList<Move> {
@@ -78,17 +75,17 @@ public class MoveList extends ArrayList<Move> {
         }
     }
 
-    private void scoreMoves(final BoardState state, TranspTable transpositionTable) {
+        private void scoreMoves(final BoardState state, TranspositionTable transpositionTable) {
         final List<ScoredMove> result;
 
         if (this.size() == 0) {
             result = Collections.emptyList();
         } else {
-            TTEntry ttEntry = transpositionTable.probe(state.hash());
-            Move hashMove = ttEntry != null ? ttEntry.move() : null;
+            TranspositionTable.MyTtEntry ttEntry = transpositionTable.probe(state.hash(), (short) 0); // TODO provide depth
+            Move hashMove = ttEntry != null ? ttEntry.getMove() : null;
 
             result = this.stream().map(move -> {
-                        int moveScore = move.equals(hashMove) ? MoveOrdering.HashMoveScore : 0;
+                        short moveScore = (short) (move.equals(hashMove) ? MoveOrdering.HashMoveScore : 0);
 
 //            if (moveOrdering.isKiller(state, move, ply)) {
 //                move.addToScore(MoveOrdering.KillerMoveScore);
@@ -107,7 +104,7 @@ public class MoveList extends ArrayList<Move> {
                             default -> throw new IllegalStateException();
                         };
 
-                        int totalScore = moveScore + piecesScore * (state.getSideToPlay() == Side.WHITE ? 1 : -1);
+                        short totalScore = (short) (moveScore + piecesScore * (state.getSideToPlay() == Side.WHITE ? 1 : -1));
                         return new ScoredMove(move, totalScore);
                     })
                     .collect(Collectors.toCollection(ArrayList::new));
@@ -120,16 +117,16 @@ public class MoveList extends ArrayList<Move> {
         int max = Integer.MIN_VALUE;
         int maxIndex = -1;
         for (int i = curIndex; i < this.sortedList.size(); i++){
-            if (this.sortedList.get(i).score > max){
-                max = this.sortedList.get(i).score;
+            if (this.sortedList.get(i).score() > max){
+                max = this.sortedList.get(i).score();
                 maxIndex = i;
             }
         }
         Collections.swap(this.sortedList, curIndex, maxIndex);
     }
 
-    // integrate scoreMoves with iterator
-    public Iterable<Move> overSorted(final BoardState state, TranspTable transpositionTable/*, int ply, MoveOrdering moveOrdering*/) {
+    // TODO integrate scoreMoves with iterator
+    public Iterable<Move> overSorted(final BoardState state, TranspositionTable transpositionTable/*, int ply, MoveOrdering moveOrdering*/) {
         scoreMoves(state, transpositionTable/*, ply, moveOrdering*/);
         // //        moves.scoreMoves(state, transpositionTable, 0, moveOrdering);
         ////        for (int i = 0; i < moves.size(); i++){
@@ -149,7 +146,7 @@ public class MoveList extends ArrayList<Move> {
                 int i = index.get();
                 index.getAndIncrement();
                 outer.pickNextBestMove(i);
-                return outer.sortedList.get(i).move;
+                return outer.sortedList.get(i).move();
             }
         };
     }
