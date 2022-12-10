@@ -8,7 +8,7 @@ public class TTEntry {
 
     private final int score;
     private final byte depth, flag;
-    private final int bestMove;
+    private final short bestMove;
     final long key;
 
     public TTEntry(long key, int score, int depth, int flag, Move bestMove){
