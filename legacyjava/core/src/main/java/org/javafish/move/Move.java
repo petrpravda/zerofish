@@ -10,31 +10,42 @@ import java.util.stream.Collectors;
 import static org.javafish.board.Square.NO_SQUARE;
 
 public class Move {
-    public final static int QUIET = 0b0000, DOUBLE_PUSH = 0b0001, OO = 0b0010, OOO = 0b0011,
-        CAPTURE = 0b0100,  EN_PASSANT = 0b0101, PROMOTION = 0b1000,
-        PR_KNIGHT = 0b1000, PR_BISHOP = 0b1001, PR_ROOK = 0b1010, PR_QUEEN = 0b1011,
-        PC_KNIGHT = 0b1100, PC_BISHOP = 0b1101, PC_ROOK = 0b1110, PC_QUEEN = 0b1111, NULL = 0b0111;
+    public final static short
+            QUIET =       (short) 0b0000000000000000,
+            DOUBLE_PUSH = (short) 0b0001000000000000,
+            OO =          (short) 0b0010000000000000,
+            OOO =         (short) 0b0011000000000000,
+            CAPTURE =     (short) 0b0100000000000000,
+            EN_PASSANT =  (short) 0b0101000000000000,
+            PROMOTION =   (short) 0b1000000000000000,
+            PR_KNIGHT =   (short) 0b1000000000000000,
+            PR_BISHOP =   (short) 0b1001000000000000,
+            PR_ROOK =     (short) 0b1010000000000000,
+            PR_QUEEN =    (short) 0b1011000000000000,
+            PC_KNIGHT =   (short) 0b1100000000000000,
+            PC_BISHOP =   (short) 0b1101000000000000,
+            PC_ROOK =     (short) 0b1110000000000000,
+            PC_QUEEN =    (short) 0b1111000000000000,
+            FLAGS_MASK =  (short) 0b1111000000000000,
+            NULL =        (short) 0b0111000000000000;
 
-    public final static Move NULL_MOVE = new Move(NO_SQUARE, NO_SQUARE, Move.NULL);
-    private final int bits;
-    private int sortScore;
+    public final static Move NULL_MOVE = new Move(0, 0, Move.NULL);
+    private final short bits;
 
-    public Move(){
-        bits = 0;
-        sortScore = 0;
-    }
+//    public Move(){
+//        bits = 0;
+//    }
 
-    public Move(int m){
+    public Move(short m){
         bits = m;
-        sortScore = 0;
     }
 
     public Move(int from, int to){
-        bits = (from << 6) | to;
+        bits = (short) ((from << 6) | to);
     }
 
     public Move(int from, int to, int flags){
-        bits = (flags << 12) | (from << 6) | to;
+        bits = (short) (flags | (from << 6) | to);
     }
 
     public int to(){
@@ -50,28 +61,21 @@ public class Move {
 //    }
 
     public int flags() {
-        return (bits >>> 12) & 0xf;
+        return bits & FLAGS_MASK;
     }
 
-    public int bits(){
+    public short bits(){
         return bits;
     }
 
-    public int score(){
-        return sortScore;
-    }
 
 //    public boolean isCapture() {
 //        return ((bits >>> 12 ) & CAPTURE) != 0;
 //    }
 
     public boolean isPromotion() {
-        return ((bits >>> 12 ) & PROMOTION) != 0;
+        return (bits & PROMOTION) != 0;
     }
-
-//    public static Move nullMove(){
-//        return new Move(Square.NO_SQUARE, Square.NO_SQUARE, Move.NULL);
-//    }
 
     @Override
     public boolean equals(Object other) {
@@ -91,9 +95,9 @@ public class Move {
         return Square.getName(this.from()) + Square.getName(this.to()) + promo;
     }
 
-    public void addToScore(int score){
-        sortScore += score;
-    }
+//    public void addToScore(int score){
+//        sortScore += score;
+//    }
 
     @Override
     public String toString() {
@@ -101,7 +105,7 @@ public class Move {
     }
 
     public boolean isNullMove() {
-        return (this.flags() & NULL) == NULL;
+        return this.flags() == NULL;
     }
 
     public static List<Move> parseUciMoves(List<String> moves, BoardState state) {
@@ -143,7 +147,7 @@ public class Move {
 //    }
 
     public int getPieceType() {
-        return (flags() & 0b11) + 1;
+        return ((flags() >>> 12) & 0b11) + 1;
     }
 
     public int getPieceTypeForSide(int sideToPlay) {

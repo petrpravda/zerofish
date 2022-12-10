@@ -68,7 +68,6 @@ public class Search {
 
     public SearchResult itDeep(BoardPosition position, int searchDepth){
         this.searchPosition = position.forSearchDepth(searchDepth);
-        // Limits.calcTime(board.getSideToPlay(), board.gamePly());
         Limits.startTime = System.nanoTime();
         selDepth = 0;
         stop = false;
@@ -76,7 +75,6 @@ public class Search {
         int beta = INF;
         int depth = 1;
         SearchResult result = new SearchResult(Optional.empty(), 0);
-        // MoveOrder.ageHistory();
 
         // Deepen until end conditions
         while (depth <= searchDepth) {
@@ -89,18 +87,14 @@ public class Search {
 
             result = negaMaxRoot(position.getState(), depth, alpha, beta);
 
-            // Failed low, adjust window
             if (result.score <= alpha) {
+                // Failed low, adjust window
                 alpha = -INF;
-            }
-
-            // Failed high, adjust window
-            else if (result.score >= beta){
+            } else if (result.score >= beta){
+                // Failed high, adjust window
                 beta = INF;
-            }
-
-            // Adjust the window around the new score and increase the depth
-            else {
+            } else {
+                // Adjust the window around the new score and increase the depth
                 printInfo(position.getState(), result, depth);
                 alpha = result.score - ASPIRATION_WINDOW;
                 beta = result.score + ASPIRATION_WINDOW;
@@ -113,31 +107,14 @@ public class Search {
     }
 
     public SearchResult negaMaxRoot(BoardState state, int depth, int alpha, int beta){
-        int value;
         MoveList moves = state.generateLegalMoves();
-//        boolean inCheck = state.checkers() != 0;
-//        if (inCheck) ++depth;
-        if (moves.size() == 1) {
-            return new SearchResult(Optional.of(moves.get(0)), 0);
-        }
 
         Move bestMove = null;
-
-        for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, 0, moveOrdering)) {
-            Move move = indexedMove.move();
-//            if (indexedMove.move().uci().equals("b1c3")) {
-//                System.out.println(move.uci());
-//            }
-
+        for (Move move : moves.overSorted(state, transpositionTable)) {
             BoardState newBoardState = state.doMove(move);
-            value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
-            System.out.printf("%s %s%n", move.uci(), value);
-
-            if (stop || Limits.checkLimits()) {
-                stop = true;
-                break;
-            }
-            if (value > alpha){
+            int value = -negaMax(newBoardState, depth - 1, 1, -beta, -alpha, true);
+            if (value > alpha) {
+                // move is better than any so far known move to us
                 bestMove = move;
                 if (value >= beta){
                     transpositionTable.set(state.hash(), beta, depth, TTEntry.LOWER_BOUND, bestMove);
@@ -147,10 +124,10 @@ public class Search {
                 transpositionTable.set(state.hash(), alpha, depth, TTEntry.UPPER_BOUND, bestMove);
             }
         }
-        if (bestMove == null && moves.size() >= 1) {
-            bestMove = moves.get(0);
-            transpositionTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
-        }
+//        if (bestMove == null && moves.size() >= 1) {
+//            bestMove = moves.get(0);
+//            transpositionTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
+//        }
 
         return new SearchResult(Optional.ofNullable(bestMove), alpha);
     }
@@ -218,13 +195,14 @@ public class Search {
         MoveList moves = state.generateLegalMoves();
         int value;
         Move bestMove = Move.NULL_MOVE;
-        for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, ply, moveOrdering)) {
-            Move move = indexedMove.move();
-            int i = indexedMove.index();
+        int i = 0;
+        for (Move move : moves.overSorted(state, transpositionTable)) {
+//            Move move = indexedMove.move();
+//            int i = indexedMove.index();
 
             // LATE MOVE REDUCTION
             reducedDepth = depth;
-            if (canApplyLMR(depth, move, i)) {
+            if (canApplyLMR(depth, move, i++)) {
                 reducedDepth -= LMR_TABLE[Math.min(depth, 63)][Math.min(i, 63)];
             }
 
@@ -284,8 +262,7 @@ public class Search {
             alpha = value;
 
         MoveList moves = state.generateLegalQuiescence();
-        for (IndexedMove indexedMove : moves.overSorted(state, transpositionTable, ply, moveOrdering)) {
-            Move move = indexedMove.move();
+        for (Move move : moves.overSorted(state, transpositionTable)) {
 
             // Skip if underpromotion.
             if (move.isPromotion() && move.flags() != Move.PR_QUEEN && move.flags() != Move.PC_QUEEN)
@@ -354,7 +331,7 @@ public class Search {
 
     public static void main(String[] args) {
         BoardPosition position = BoardPosition.fromFen(START_POS);
-        new Search(new TranspTable(), System.out).itDeep(position, 1);
+        new Search(new TranspTable(), System.out).itDeep(position, 8);
     }
 
     //         Search.stop();

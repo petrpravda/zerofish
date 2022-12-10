@@ -8,14 +8,19 @@ import search.TTEntry;
 import search.TranspTable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
+import static java.util.Collections.EMPTY_LIST;
 import static org.javafish.eval.PieceSquareTable.MGS;
 
 public class MoveList extends ArrayList<Move> {
 
+    private List<ScoredMove> sortedList;
     public MoveList(){}
 
 //    public MoveList(MoveList halfMoves){
@@ -73,82 +78,65 @@ public class MoveList extends ArrayList<Move> {
         }
     }
 
-    private void scoreMoves(final BoardState state, TranspTable transpositionTable, int ply, MoveOrdering moveOrdering) {
-        if (this.size() == 0)
-            return;
+    private void scoreMoves(final BoardState state, TranspTable transpositionTable) {
+        final List<ScoredMove> result;
 
-        Move hashMove = null;
-        TTEntry ttEntry = transpositionTable.probe(state.hash());
-        if (ttEntry != null) {
-            hashMove = ttEntry.move();
-        }
+        if (this.size() == 0) {
+            result = Collections.emptyList();
+        } else {
+            TTEntry ttEntry = transpositionTable.probe(state.hash());
+            Move hashMove = ttEntry != null ? ttEntry.move() : null;
 
-        for (Move move : this) {
-            if (move.equals(hashMove)) {
-                move.addToScore(MoveOrdering.HashMoveScore);
-            }
+            result = this.stream().map(move -> {
+                        int moveScore = move.equals(hashMove) ? MoveOrdering.HashMoveScore : 0;
+
 //            if (moveOrdering.isKiller(state, move, ply)) {
 //                move.addToScore(MoveOrdering.KillerMoveScore);
 //            }
-            int piece = state.items[move.from()];
+                        int piece = state.items[move.from()];
+                        int piecesScore = switch (move.flags()) {
+                            case Move.PC_BISHOP, Move.PC_KNIGHT, Move.PC_ROOK, Move.PC_QUEEN ->
+                                    MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()]
+                                            - MGS[state.items[move.to()]][move.to()];
+                            case Move.PR_BISHOP, Move.PR_KNIGHT, Move.PR_ROOK, Move.PR_QUEEN ->
+                                    MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()];
+                            case Move.CAPTURE ->
+                                    MGS[piece][move.to()] - MGS[piece][move.from()] - MGS[state.items[move.to()]][move.to()];
+                            case Move.QUIET, Move.EN_PASSANT, Move.DOUBLE_PUSH, Move.OO, Move.OOO ->
+                                    MGS[piece][move.to()] - MGS[piece][move.from()];
+                            default -> throw new IllegalStateException();
+                        };
 
-            switch (move.flags()) {
-                case Move.PC_BISHOP:
-                case Move.PC_KNIGHT:
-                case Move.PC_ROOK:
-                case Move.PC_QUEEN:
-                    int score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()]
-                            - MGS[state.items[move.to()]][move.to()];
-                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-                    move.addToScore(score);
-                    break;
-
-                case Move.PR_BISHOP:
-                case Move.PR_KNIGHT:
-                case Move.PR_ROOK:
-                case Move.PR_QUEEN:
-                    score = MGS[move.getPieceTypeForSide(state.getSideToPlay())][move.to()] - MGS[piece][move.from()];
-                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-                    move.addToScore(score);
-                    break;
-                case Move.CAPTURE:
-                    score = MGS[piece][move.to()] - MGS[piece][move.from()] - MGS[state.items[move.to()]][move.to()];
-                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-                    move.addToScore(score);
-                    break;
-                case Move.QUIET:
-                case Move.EN_PASSANT:
-                case Move.DOUBLE_PUSH:
-                case Move.OO:
-                case Move.OOO:
-                    score = MGS[piece][move.to()] - MGS[piece][move.from()];
-                    score *= state.getSideToPlay() == Side.WHITE ? 1 : -1;
-                    move.addToScore(score);
-                    break;
-            }
+                        int totalScore = moveScore + piecesScore * (state.getSideToPlay() == Side.WHITE ? 1 : -1);
+                        return new ScoredMove(move, totalScore);
+                    })
+                    .collect(Collectors.toCollection(ArrayList::new));
         }
+
+        this.sortedList = result;
     }
 
     public void pickNextBestMove(int curIndex){
         int max = Integer.MIN_VALUE;
         int maxIndex = -1;
-        for (int i = curIndex; i < this.size(); i++){
-            if (this.get(i).score() > max){
-                max = this.get(i).score();
+        for (int i = curIndex; i < this.sortedList.size(); i++){
+            if (this.sortedList.get(i).score > max){
+                max = this.sortedList.get(i).score;
                 maxIndex = i;
             }
         }
-        Collections.swap(this, curIndex, maxIndex);
+        Collections.swap(this.sortedList, curIndex, maxIndex);
     }
 
-    public Iterable<IndexedMove> overSorted(final BoardState state, TranspTable transpositionTable, int ply, MoveOrdering moveOrdering) {
-        scoreMoves(state, transpositionTable, ply, moveOrdering);
+    // integrate scoreMoves with iterator
+    public Iterable<Move> overSorted(final BoardState state, TranspTable transpositionTable/*, int ply, MoveOrdering moveOrdering*/) {
+        scoreMoves(state, transpositionTable/*, ply, moveOrdering*/);
         // //        moves.scoreMoves(state, transpositionTable, 0, moveOrdering);
         ////        for (int i = 0; i < moves.size(); i++){
         ////            moves.pickNextBestMove(i);
         ////            Move move = moves.get(i);
         AtomicInteger index = new AtomicInteger();
-        int count = this.size();
+        int count = this.sortedList.size();
         MoveList outer = this;
         return () -> new Iterator<>() {
             @Override
@@ -157,11 +145,11 @@ public class MoveList extends ArrayList<Move> {
             }
 
             @Override
-            public IndexedMove next() {
+            public Move next() {
                 int i = index.get();
                 index.getAndIncrement();
                 outer.pickNextBestMove(i);
-                return new IndexedMove(outer.get(i), i);
+                return outer.sortedList.get(i).move;
             }
         };
     }
