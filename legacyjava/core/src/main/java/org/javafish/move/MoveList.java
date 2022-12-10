@@ -5,17 +5,15 @@ import org.javafish.board.BoardState;
 import org.javafish.board.Side;
 import search.MoveOrdering;
 import search.TTEntry;
-import search.TranspTable;
+import search.TranspositionTable;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.EMPTY_LIST;
 import static org.javafish.eval.PieceSquareTable.MGS;
 
 public class MoveList extends ArrayList<Move> {
@@ -78,7 +76,7 @@ public class MoveList extends ArrayList<Move> {
         }
     }
 
-    private void scoreMoves(final BoardState state, TranspTable transpositionTable) {
+    private void scoreMoves(final BoardState state, TranspositionTable transpositionTable) {
         final List<ScoredMove> result;
 
         if (this.size() == 0) {
@@ -129,7 +127,7 @@ public class MoveList extends ArrayList<Move> {
     }
 
     // integrate scoreMoves with iterator
-    public Iterable<Move> overSorted(final BoardState state, TranspTable transpositionTable/*, int ply, MoveOrdering moveOrdering*/) {
+    public Iterable<Move> overSorted(final BoardState state, TranspositionTable transpositionTable/*, int ply, MoveOrdering moveOrdering*/) {
         scoreMoves(state, transpositionTable/*, ply, moveOrdering*/);
         // //        moves.scoreMoves(state, transpositionTable, 0, moveOrdering);
         ////        for (int i = 0; i < moves.size(); i++){

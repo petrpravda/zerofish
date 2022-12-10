@@ -481,8 +481,11 @@ public class BoardState implements Cloneable {
 //        return true;
 //    }
 //
-    public boolean isRepetitionOrFifty(BoardPosition position){
-        final long lastMoveBits = this.ply > 0 ? this.history[this.ply - 1] : position.history[position.historyIndex - 1];
+    public boolean isRepetitionOrFifty(/*BoardPosition position*/){
+        if (this.ply < 1) {
+            return false;
+        }
+        final long lastMoveBits = /*this.ply > 0 ?*/ this.history[this.ply - 1]; // : position.history[position.historyIndex - 1];
         int count = 0;
         int index = this.ply - 1;
         while (index >= 0) {
@@ -490,12 +493,12 @@ public class BoardState implements Cloneable {
                 count++;
             }
         }
-        index = position.historyIndex - 1;
-        while (index >= 0) {
-            if (position.history[index--] == lastMoveBits) {
-                count++;
-            }
-        }
+//        index = position.historyIndex - 1;
+//        while (index >= 0) {
+//            if (position.history[index--] == lastMoveBits) {
+//                count++;
+//            }
+//        }
         return count > 2 || this.halfMoveClock >= 100;
     }
 

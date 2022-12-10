@@ -4,7 +4,7 @@ import org.javafish.move.Move;
 
 import java.util.HashMap;
 
-public class TranspTable {
+public class TranspositionTable {
     private final HashMap<Long, TTEntry> table = new HashMap<>();
 
     public void set(long key, int score, int depth, int flag, Move bestMove){

@@ -5,7 +5,6 @@ import org.javafish.board.BoardState;
 import org.javafish.move.Move;
 import org.javafish.move.MoveList;
 import org.javafish.board.BoardPosition;
-import org.javafish.move.MoveList.IndexedMove;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -22,7 +21,7 @@ public class Search {
     private final static int LMR_MIN_DEPTH = 2;
     private final static int LMR_MOVES_WO_REDUCTION = 1;
     private final static int ASPIRATION_WINDOW = 25;
-    private final TranspTable transpositionTable;
+    private final TranspositionTable transpositionTable;
     private final Statistics statistics;
     private final MoveOrdering moveOrdering = new MoveOrdering();
 
@@ -44,11 +43,11 @@ public class Search {
 
     private BoardPosition searchPosition;
 
-    public Search(TranspTable transpositionTable) {
+    public Search(TranspositionTable transpositionTable) {
         this(transpositionTable, new PrintStream(new ByteArrayOutputStream()));
     }
 
-    public Search(TranspTable transpositionTable, PrintStream out) {
+    public Search(TranspositionTable transpositionTable, PrintStream out) {
         this.transpositionTable = transpositionTable;
         this.statistics = new Statistics();
         this.streamOut = out;
@@ -86,6 +85,7 @@ public class Search {
 
 
             result = negaMaxRoot(position.getState(), depth, alpha, beta);
+            //int score = negaMax(position.getState(), depth, 1, alpha, beta, true);
 
             if (result.score <= alpha) {
                 // Failed low, adjust window
@@ -94,6 +94,7 @@ public class Search {
                 // Failed high, adjust window
                 beta = INF;
             } else {
+                //result = new SearchResult(Optional.of(transpositionTable.probe(position.getState().hash()).move()), score);
                 // Adjust the window around the new score and increase the depth
                 printInfo(position.getState(), result, depth);
                 alpha = result.score - ASPIRATION_WINDOW;
@@ -134,9 +135,7 @@ public class Search {
 
     public int negaMax(BoardState state, int depth, int ply, int alpha, int beta, boolean canApplyNull){
         int mateValue = INF - ply;
-        boolean inCheck;
         int ttFlag = TTEntry.UPPER_BOUND;
-        int reducedDepth;
 
         if (stop || Limits.checkLimits()) {
             stop = true;
@@ -144,20 +143,20 @@ public class Search {
         }
 
         // MATE DISTANCE PRUNING
-        if (alpha < -mateValue) alpha = -mateValue;
-        if (beta > mateValue - 1) beta = mateValue - 1;
+//        if (alpha < -mateValue) alpha = -mateValue;
+//        if (beta > mateValue - 1) beta = mateValue - 1;
         if (alpha >= beta) {
             statistics.leafs++;
             return alpha;
         }
 
-        inCheck = state.isKingAttacked();
+        boolean inCheck = state.isKingAttacked();
         if (depth <= 0 && !inCheck) {
             return qSearch(state, depth, ply, alpha, beta);
         }
         statistics.nodes++;
 
-        if (state.isRepetitionOrFifty(this.searchPosition)) {
+        if (state.isRepetitionOrFifty()) {
             statistics.leafs++;
             return 0;
         }
@@ -201,7 +200,7 @@ public class Search {
 //            int i = indexedMove.index();
 
             // LATE MOVE REDUCTION
-            reducedDepth = depth;
+            int reducedDepth = depth;
             if (canApplyLMR(depth, move, i++)) {
                 reducedDepth -= LMR_TABLE[Math.min(depth, 63)][Math.min(i, 63)];
             }
@@ -216,10 +215,6 @@ public class Search {
             if (value > alpha){
                 bestMove = move;
                 if (value >= beta) {
-                    if (move.flags() == Move.QUIET) {
-                        // moveOrdering.addKiller(state, move, ply);
-                        //MoveOrder.addHistory(move, depth);
-                    }
                     statistics.betaCutoffs++;
                     ttFlag = TTEntry.LOWER_BOUND;
                     alpha = beta;
@@ -230,12 +225,9 @@ public class Search {
             }
         }
 
-        // Check if we are in checkmate or stalemate.
         if (moves.size() == 0){
-            if (inCheck)
-                alpha = -mateValue;
-            else
-                alpha = 0;
+            // reflect checkmate or stalemate
+            alpha = inCheck ? -mateValue : 0;
         }
 
         if (!bestMove.equals(Move.NULL_MOVE) && !stop) transpositionTable.set(state.hash(), alpha, depth, ttFlag, bestMove);
@@ -331,7 +323,7 @@ public class Search {
 
     public static void main(String[] args) {
         BoardPosition position = BoardPosition.fromFen(START_POS);
-        new Search(new TranspTable(), System.out).itDeep(position, 8);
+        new Search(new TranspositionTable(), System.out).itDeep(position, 10);
     }
 
     //         Search.stop();

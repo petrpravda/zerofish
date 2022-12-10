@@ -9,7 +9,7 @@ import org.javafish.uci.annotation.UciArgs;
 import org.javafish.uci.annotation.UciMapping;
 import org.javafish.uci.annotation.UciQuit;
 import search.Search;
-import search.TranspTable;
+import search.TranspositionTable;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,7 +22,7 @@ import static org.javafish.board.Fen.START_POS;
 
 public class UciCommands {
 
-    private TranspTable transpositionTable = new TranspTable();
+    private TranspositionTable transpositionTable = new TranspositionTable();
     private BoardPosition position = BoardPosition.fromFen(START_POS);
 
     @UciMapping("d")
