@@ -246,9 +246,9 @@ public class BoardState implements Cloneable {
         return performMove(move, this);
     }
 
-    public BoardState doMove(String uciMove) { // TODO maybe not needed anymore
-        return performMove(this.generateLegalMoves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
-    }
+//    public BoardState doMove(String uciMove) { // TODO maybe not needed anymore
+//        return performMove(this.generateLegalMoves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
+//    }
 
     public BoardState doNullMove() {
         return performNullMove(this);
@@ -291,8 +291,7 @@ public class BoardState implements Cloneable {
                 if (state.sideToPlay == Side.WHITE){
                     state.movePieceQuiet(E1, G1);
                     state.movePieceQuiet(H1, F1);
-                }
-                else {
+                } else {
                     state.movePieceQuiet(E8, G8);
                     state.movePieceQuiet(H8, F8);
                 }
@@ -301,8 +300,7 @@ public class BoardState implements Cloneable {
                 if (state.sideToPlay == Side.WHITE){
                     state.movePieceQuiet(E1, C1);
                     state.movePieceQuiet(A1, D1);
-                }
-                else {
+                } else {
                     state.movePieceQuiet(E8, C8);
                     state.movePieceQuiet(A8, D8);
                 }
@@ -850,12 +848,9 @@ public class BoardState implements Cloneable {
     }
 
     private void clearEnPassant() {
-        // TODO zjednodusit
-        long previous_state = this.enPassant;
-
-        if (previous_state != 0L) {
+        if (this.enPassant != 0L) {
+            this.hash ^= Zobrist.EN_PASSANT[(Long.numberOfTrailingZeros(this.enPassant) & 0b111)];
             this.enPassant = 0L;
-            this.hash ^= Zobrist.EN_PASSANT[(Bitboard.lsb(previous_state) & 0b111)];
         }
     }
 
@@ -883,23 +878,23 @@ public class BoardState implements Cloneable {
         return (this.mg() * (256 - phase) + this.eg() * phase) / 256;
     }
 
-    public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
-
-    public Params toParams() {
-        byte[] result = new byte[80]; // 8 * 5 * 2
-        int index = 0;
-        for (int side = Side.WHITE; side <= Side.BLACK; side++) {
-            for (int piece = PieceType.PAWN; piece <= PieceType.QUEEN; piece++) {
-                long bitboard = this.bitboardOf(side, piece);
-                for (int i = 0; i < 8; i++) {
-                    result[index++] = (byte)((bitboard & 0xFF00000000000000L) >> 56);
-                    bitboard <<= 8;
-                }
-            }
-
-        }
-        return new Params(result,
-            Long.numberOfTrailingZeros(bitboardOf(Side.WHITE, PieceType.KING)),
-            Long.numberOfTrailingZeros(bitboardOf(Side.BLACK, PieceType.KING)));
-    }
+//    public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
+//
+//    public Params toParams() {
+//        byte[] result = new byte[80]; // 8 * 5 * 2
+//        int index = 0;
+//        for (int side = Side.WHITE; side <= Side.BLACK; side++) {
+//            for (int piece = PieceType.PAWN; piece <= PieceType.QUEEN; piece++) {
+//                long bitboard = this.bitboardOf(side, piece);
+//                for (int i = 0; i < 8; i++) {
+//                    result[index++] = (byte)((bitboard & 0xFF00000000000000L) >> 56);
+//                    bitboard <<= 8;
+//                }
+//            }
+//
+//        }
+//        return new Params(result,
+//            Long.numberOfTrailingZeros(bitboardOf(Side.WHITE, PieceType.KING)),
+//            Long.numberOfTrailingZeros(bitboardOf(Side.BLACK, PieceType.KING)));
+//    }
 }

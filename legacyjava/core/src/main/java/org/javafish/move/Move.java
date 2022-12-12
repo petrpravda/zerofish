@@ -7,8 +7,6 @@ import org.javafish.board.Square;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.javafish.board.Square.NO_SQUARE;
-
 public class Move {
     public final static short
             QUIET =       (short) 0b0000000000000000,

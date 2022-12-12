@@ -16,24 +16,24 @@ class BoardStateTest {
         new Search(new TranspositionTable()).itDeep(position, 9);
     }
 
-    @Test
-    void toParamsWhiteOnTheMove() {
-        BoardState state = BoardState.fromFen(START_POS);
-        BoardState.Params params = state.toParams();
-        assertEquals(4, params.wKingPos());
-        assertEquals(60, params.bKingPos());
-        byte[] pieces = params.pieces();
-        assertEquals("11111111", getBinaryString(pieces[Side.WHITE * 48 + PieceType.PAWN * 8 + 6]));
-        assertEquals("1000010", getBinaryString(pieces[Side.WHITE * 48 + PieceType.KNIGHT * 8 + 7]));
-        assertEquals("100100", getBinaryString(pieces[Side.WHITE * 48 + PieceType.BISHOP * 8 + 7]));
-        assertEquals("10000001", getBinaryString(pieces[Side.WHITE * 48 + PieceType.ROOK * 8 + 7]));
-        assertEquals("1000", getBinaryString(pieces[Side.WHITE * 48 + PieceType.QUEEN * 8 + 7]));
-        assertEquals("11111111", getBinaryString(pieces[Side.BLACK * 48 + PieceType.PAWN * 8 + 1 - 8]));
-        assertEquals("1000010", getBinaryString(pieces[Side.BLACK * 48 + PieceType.KNIGHT * 8 + 0 - 8]));
-        assertEquals("100100", getBinaryString(pieces[Side.BLACK * 48 + PieceType.BISHOP * 8 + 0 - 8]));
-        assertEquals("10000001", getBinaryString(pieces[Side.BLACK * 48 + PieceType.ROOK * 8 + 0 - 8]));
-        assertEquals("1000", getBinaryString(pieces[Side.BLACK * 48 + PieceType.QUEEN * 8 + 0 - 8]));
-    }
+//    @Test
+//    void toParamsWhiteOnTheMove() {
+//        BoardState state = BoardState.fromFen(START_POS);
+//        BoardState.Params params = state.toParams();
+//        assertEquals(4, params.wKingPos());
+//        assertEquals(60, params.bKingPos());
+//        byte[] pieces = params.pieces();
+//        assertEquals("11111111", getBinaryString(pieces[Side.WHITE * 48 + PieceType.PAWN * 8 + 6]));
+//        assertEquals("1000010", getBinaryString(pieces[Side.WHITE * 48 + PieceType.KNIGHT * 8 + 7]));
+//        assertEquals("100100", getBinaryString(pieces[Side.WHITE * 48 + PieceType.BISHOP * 8 + 7]));
+//        assertEquals("10000001", getBinaryString(pieces[Side.WHITE * 48 + PieceType.ROOK * 8 + 7]));
+//        assertEquals("1000", getBinaryString(pieces[Side.WHITE * 48 + PieceType.QUEEN * 8 + 7]));
+//        assertEquals("11111111", getBinaryString(pieces[Side.BLACK * 48 + PieceType.PAWN * 8 + 1 - 8]));
+//        assertEquals("1000010", getBinaryString(pieces[Side.BLACK * 48 + PieceType.KNIGHT * 8 + 0 - 8]));
+//        assertEquals("100100", getBinaryString(pieces[Side.BLACK * 48 + PieceType.BISHOP * 8 + 0 - 8]));
+//        assertEquals("10000001", getBinaryString(pieces[Side.BLACK * 48 + PieceType.ROOK * 8 + 0 - 8]));
+//        assertEquals("1000", getBinaryString(pieces[Side.BLACK * 48 + PieceType.QUEEN * 8 + 0 - 8]));
+//    }
 
 
 //    @Test

@@ -1,4 +1,6 @@
-pub const MGS_SRC: [[u16; 64]; 6] = [
+use crate::transposition::Value;
+
+pub const MGS_SRC: [[Value; 64]; 6] = [
     [63, 63, 63, 63, 63, 63, 63, 63,
         147, 147, 153, 147, 149, 149, 161, 161,
         99, 113, 131, 129, 125, 119, 111, 116,
@@ -49,7 +51,7 @@ pub const MGS_SRC: [[u16; 64]; 6] = [
         1519, 1525, 1491, 1514, 1484, 1498, 1519, 1505, ]];
 
 
-pub const EGS_SRC: [[u16; 64]; 6] = [
+pub const EGS_SRC: [[Value; 64]; 6] = [
     [60, 60, 60, 60, 60, 60, 60, 60,
         230, 212, 206, 206, 206, 210, 230, 230,
         56, 156, 134, 137, 147, 157, 165, 165,
@@ -99,11 +101,11 @@ pub const EGS_SRC: [[u16; 64]; 6] = [
         1456, 1472, 1490, 1490, 1486, 1488, 1466, 1449,
         1423, 1449, 1461, 1457, 1458, 1459, 1449, 1429, ]];
 
-pub const MGS: [[i32; 64]; 14] = prepare_value_tables(&MGS_SRC);
-pub const EGS: [[i32; 64]; 14] = prepare_value_tables(&EGS_SRC);
+pub const MGS: [[Value; 64]; 14] = prepare_value_tables(&MGS_SRC);
+pub const EGS: [[Value; 64]; 14] = prepare_value_tables(&EGS_SRC);
 
-const fn prepare_value_tables(source: &[[u16; 64]; 6]) -> [[i32; 64]; 14] {
-    let mut result = [[0i32; 64]; 14];
+const fn prepare_value_tables(source: &[[Value; 64]; 6]) -> [[Value; 64]; 14] {
+    let mut result = [[0i16; 64]; 14];
 
     let mut piece: usize = 0;
     loop {
@@ -112,8 +114,8 @@ const fn prepare_value_tables(source: &[[u16; 64]; 6]) -> [[i32; 64]; 14] {
             let square_white = square ^ 0b111111;
             let square_black = square ^ 0b000111;
 
-            result[piece][square_white] = source[piece][square] as i32;
-            result[piece+8][square_black] = -(source[piece][square] as i32);
+            result[piece][square_white] = source[piece][square];
+            result[piece+8][square_black] = -source[piece][square];
 
             square += 1;
             if square == 64 {

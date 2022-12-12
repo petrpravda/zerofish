@@ -23,7 +23,7 @@ public class Search {
     private final static int ASPIRATION_WINDOW = 25;
     private final TranspositionTable transpositionTable;
     private final Statistics statistics;
-    private final MoveOrdering moveOrdering = new MoveOrdering();
+    // private final MoveOrdering moveOrdering = new MoveOrdering();
 
 
     private boolean stop;
@@ -325,11 +325,4 @@ public class Search {
         BoardPosition position = BoardPosition.fromFen(START_POS);
         new Search(new TranspositionTable(), System.out).itDeep(position, 10);
     }
-
-    //         Search.stop();
-    //        TranspTable.reset();
-    //        MoveOrder.clearKillers();
-    //        MoveOrder.clearHistory();
-    //        System.gc();
-    //        Limits.resetTime();
 }

@@ -18,7 +18,7 @@ import static org.javafish.eval.PieceSquareTable.MGS;
 
 public class MoveList extends ArrayList<Move> {
 
-    private List<ScoredMove> sortedList;
+    // private List<ScoredMove> sortedList;
     public MoveList(){}
 
 //    public MoveList(MoveList halfMoves){
@@ -37,7 +37,7 @@ public class MoveList extends ArrayList<Move> {
     public void makeC(int fromSq, long to){
         int toSq;
         while (to != 0){
-            toSq = Bitboard.lsb(to); // TODO inline
+            toSq = Bitboard.lsb(to);
             to = Bitboard.extractLsb(to);
             super.add(new Move(fromSq, toSq, Move.CAPTURE));
         }
@@ -52,18 +52,6 @@ public class MoveList extends ArrayList<Move> {
         }
     }
 
-//    public void makePR(int fromSq, long to){
-//        int toSq;
-//        while (to != 0){
-//            toSq = Bitboard.lsb(to);
-//            to = Bitboard.extractLsb(to);
-//            super.add(new Move(fromSq, toSq, Move.PR_KNIGHT));
-//            super.add(new Move(fromSq, toSq, Move.PR_BISHOP));
-//            super.add(new Move(fromSq, toSq, Move.PR_ROOK));
-//            super.add(new Move(fromSq, toSq, Move.PR_QUEEN));
-//        }
-//    }
-
     public void makePC(int fromSq, long to){
         int toSq;
         while (to != 0){
@@ -76,7 +64,7 @@ public class MoveList extends ArrayList<Move> {
         }
     }
 
-    private void scoreMoves(final BoardState state, TranspositionTable transpositionTable) {
+    private List<ScoredMove> scoreMoves(final BoardState state, TranspositionTable transpositionTable) {
         final List<ScoredMove> result;
 
         if (this.size() == 0) {
@@ -111,30 +99,25 @@ public class MoveList extends ArrayList<Move> {
                     .collect(Collectors.toCollection(ArrayList::new));
         }
 
-        this.sortedList = result;
+        return result;
     }
 
-    public void pickNextBestMove(int curIndex){
+    void pickNextBestMove(int curIndex, List<ScoredMove> sortedList) {
         int max = Integer.MIN_VALUE;
         int maxIndex = -1;
-        for (int i = curIndex; i < this.sortedList.size(); i++){
-            if (this.sortedList.get(i).score > max){
-                max = this.sortedList.get(i).score;
+        for (int i = curIndex; i < sortedList.size(); i++){
+            if (sortedList.get(i).score > max){
+                max = sortedList.get(i).score;
                 maxIndex = i;
             }
         }
-        Collections.swap(this.sortedList, curIndex, maxIndex);
+        Collections.swap(sortedList, curIndex, maxIndex);
     }
 
-    // integrate scoreMoves with iterator
     public Iterable<Move> overSorted(final BoardState state, TranspositionTable transpositionTable/*, int ply, MoveOrdering moveOrdering*/) {
-        scoreMoves(state, transpositionTable/*, ply, moveOrdering*/);
-        // //        moves.scoreMoves(state, transpositionTable, 0, moveOrdering);
-        ////        for (int i = 0; i < moves.size(); i++){
-        ////            moves.pickNextBestMove(i);
-        ////            Move move = moves.get(i);
+        List<ScoredMove> sortedList = scoreMoves(state, transpositionTable/*, ply, moveOrdering*/);
         AtomicInteger index = new AtomicInteger();
-        int count = this.sortedList.size();
+        int count = sortedList.size();
         MoveList outer = this;
         return () -> new Iterator<>() {
             @Override
@@ -146,11 +129,9 @@ public class MoveList extends ArrayList<Move> {
             public Move next() {
                 int i = index.get();
                 index.getAndIncrement();
-                outer.pickNextBestMove(i);
-                return outer.sortedList.get(i).move;
+                outer.pickNextBestMove(i, sortedList);
+                return sortedList.get(i).move;
             }
         };
     }
-
-    public record IndexedMove(Move move, int index) {}
 }

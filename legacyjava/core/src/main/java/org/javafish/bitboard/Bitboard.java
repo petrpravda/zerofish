@@ -22,10 +22,6 @@ public class Bitboard {
     public static final long LIGHT_SQUARES = 0x55AA55AA55AA55AAL;
     public static final long DARK_SQUARES = 0xAA55AA55AA55AA55L;
 
-//    WHITE_PAWN_FREEPATH = create_pawn_free_path_patterns(-1);
-//    BLACK_PAWN_FREEPATH = create_pawn_free_path_patterns(1);
-
-
     public static final long[] PAWN_DOUBLE_PUSH_LINES = {
             0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000L,
             0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000L,
@@ -196,16 +192,6 @@ public class Bitboard {
         long ls1b  = upper & -upper;
         long diff = 2*ls1b + mMs1b;
         return patterns.combined & diff;
-    }
-
-    public static long getLineAttacks(long occupied, long lower, long upper) {
-        long combined = lower | upper;
-        lower &= occupied;
-        upper &= occupied;
-        long mMs1b = 0x8000000000000000L >> Long.numberOfLeadingZeros (lower | 1);
-        long ls1b  = upper & -upper;
-        long diff = 2*ls1b + mMs1b;
-        return combined & diff;
     }
 
     public record LineAttackMask(long lower, long upper, long combined) {

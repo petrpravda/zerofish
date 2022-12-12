@@ -173,6 +173,10 @@ impl BoardState {
     //         return items[square];
     //     }
 
+        pub fn piece_at(&self, square: u8) -> Piece {
+            self.items[square as usize]
+        }
+
         pub fn piece_type_at(&self, square: u8) -> PieceType {
             return type_of(self.items[square as usize]);
         }

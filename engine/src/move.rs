@@ -2,16 +2,15 @@ use std::borrow::Borrow;
 use std::fmt;
 use crate::bitboard::BitIter;
 use crate::board_state::BoardState;
-use crate::piece::{make_piece, PieceType};
+use crate::piece::{make_piece, NONE, Piece, PieceType};
 use crate::piece_square_table::MGS;
 use crate::side::Side;
 use crate::square::Square;
-use crate::transposition::{BaseMove, TranspositionTable, Value};
+use crate::transposition::{ TranspositionTable, Value};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Move {
-    pub(crate) bits: u32,
-    sort_score: i32
+    pub bits: u16,
 }
 
 //
@@ -19,36 +18,35 @@ pub struct Move {
 // | To            |  6 | 5-0   |
 // | From          |  6 | 11-6  |
 // | Flags         |  4 | 15-12 |
-// | Score         | 32 | 63-32 |
 // +---------------+----+-------+
 //
 
 impl Move {
-    pub const QUIET: u8 = 0b0000;
-    pub const DOUBLE_PUSH: u8 = 0b0001;
-    pub const OO: u8 = 0b0010;
-    pub const OOO: u8 = 0b0011;
-    pub const CAPTURE: u8 = 0b0100;
-    pub const EN_PASSANT: u8 = 0b0101;
-    pub const PROMOTION: u8 = 0b1000;
-    pub const PR_KNIGHT: u8 = 0b1000;
-    pub const PR_BISHOP: u8 = 0b1001;
-    pub const PR_ROOK: u8 = 0b1010;
-    pub const PR_QUEEN: u8 = 0b1011;
-    pub const PC_KNIGHT: u8 = 0b1100;
-    pub const PC_BISHOP: u8 = 0b1101;
-    pub const PC_ROOK: u8 = 0b1110;
-    pub const PC_QUEEN: u8 = 0b1111;
-    pub const NULL: u8 = 0b0111;
+    pub const QUIET:       u16 = 0b0000000000000000;
+    pub const DOUBLE_PUSH: u16 = 0b0001000000000000;
+    pub const OO:          u16 = 0b0010000000000000;
+    pub const OOO:         u16 = 0b0011000000000000;
+    pub const CAPTURE:     u16 = 0b0100000000000000;
+    pub const EN_PASSANT:  u16 = 0b0101000000000000;
+    pub const PROMOTION:   u16 = 0b1000000000000000;
+    pub const PR_KNIGHT:   u16 = 0b1000000000000000;
+    pub const PR_BISHOP:   u16 = 0b1001000000000000;
+    pub const PR_ROOK:     u16 = 0b1010000000000000;
+    pub const PR_QUEEN:    u16 = 0b1011000000000000;
+    pub const PC_KNIGHT:   u16 = 0b1100000000000000;
+    pub const PC_BISHOP:   u16 = 0b1101000000000000;
+    pub const PC_ROOK:     u16 = 0b1110000000000000;
+    pub const PC_QUEEN:    u16 = 0b1111000000000000;
+    pub const FLAGS_MASK:  u16 = 0b1111000000000000;
+    pub const NULL:        u16 = 0b0111000000000000;
 
-    pub const NULL_MOVE: Move = Move { bits: (Move::NULL as u32) << 12, sort_score: 0 };
-    pub const BM_NULL: BaseMove = 0;
+    pub const NULL_MOVE: Move = Move { bits: Move::NULL };
 
-    pub fn new() -> Self { Self{bits: 0, sort_score: 0 }}
-    pub fn new_from_bits(m: u32) -> Self { Self{bits: m, sort_score: 0 }}
-    pub fn new_from_to(from: u8, to: u8) -> Self { Self{bits: (from as u32) << 6 | (to as u32), sort_score: 0 }}
-    pub fn new_from_flags(from: u8, to: u8, flags: u8) -> Self {
-        Self{bits: (flags as u32) << 12 | (from as u32) << 6 | (to as u32), sort_score: 0 }}
+    //pub fn new() -> Self { Self{bits: 0, sort_score: 0 }}
+    pub fn new_from_bits(m: u16) -> Self { Self{bits: m }}
+    pub fn new_from_to(from: u8, to: u8) -> Self { Self{bits: (from as u16) << 6 | (to as u16) }}
+    pub fn new_from_flags(from: u8, to: u8, flags: u16) -> Self {
+        Self{bits: flags | (from as u16) << 6 | (to as u16) }}
 
     pub fn to(&self) -> u8 {
         (self.bits & 0x3f) as u8
@@ -59,60 +57,46 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn flags(&self) -> u8 {
-        ((self.bits >> 12) & 0xf) as u8
+    pub fn flags(&self) -> u16 {
+        self.bits & Move::FLAGS_MASK
     }
 
-    pub fn score(&self) -> i32 {
-        self.sort_score
-    }
-
-    pub fn base_move(&self) -> BaseMove { self.bits as BaseMove }
-
-    #[inline(always)] // TODO what if I use self.flags()? is it the same speed?
+    #[inline(always)]
     pub fn is_promotion(&self) -> bool {
-        ((self.bits >> 12) as u8 & Move::PROMOTION) != 0
+        self.bits & Move::PROMOTION != 0
     }
 
-    #[inline(always)]
-    pub fn is_quiet(&self) -> bool { // TODO what if I use self.flags()? is it the same speed?
-        (self.bits >> 12) as u8 & Move::PROMOTION == 0
-    }
-
-    #[inline(always)]
-    pub fn is_capture(&self) -> bool {
-        (self.bits >> 12) as u8 & Move::CAPTURE != 0
-    }
-
-    #[inline(always)]
-    pub fn is_castling(&self) -> bool {
-        matches!(self.flags(), Move::OO | Move::OOO)
-    }
-
-    #[inline(always)]
-    pub fn is_ep(&self) -> bool {
-        self.flags() == Move::EN_PASSANT
-    }
-
-    // @Override
-    // public boolean equals(Object other) {
-    // if (other != null && getClass() == other.getClass())
-    // return this.bits == ((Move)other).bits();
-    // return false;
+    // #[inline(always)]
+    // pub fn is_quiet(&self) -> bool {
+    //     self.bits & Move::PROMOTION == 0
     // }
+
+    // #[inline(always)]
+    // pub fn is_capture(&self) -> bool {
+    //     self.bits & Move::CAPTURE != 0
+    // }
+    //
+    // #[inline(always)]
+    // pub fn is_castling(&self) -> bool {
+    //     let flags = self.flags();
+    //     flags == Move::OO || flags == Move::OOO
+    // }
+    //
+    // #[inline(always)]
+    // pub fn is_ep(&self) -> bool {
+    //     self.flags() == Move::EN_PASSANT
+    // }
+
+
 
     pub fn get_piece_type(&self) -> PieceType {
-        PieceType::from((self.flags() & 0b11) + 1)
+        PieceType::from((((self.flags() >> 12) & 0b11) + 1) as u8)
     }
 
-    pub fn make_piece_type_promotion_flags(piece_type: PieceType) -> u8 {
-        (piece_type as u8 - 1) | Move::PROMOTION
-    }
-
-    // pub fn get_piece_type_for_side(&self, side_to_play: Side) -> PieceType {
-    //     return PieceType::from(self.get_piece_type() as u8 + (side_to_play as u8 * 8));
+    // pub fn make_piece_type_promotion_flags(piece_type: PieceType) -> u8 {
+    //     (piece_type as u8 - 1) | Move::PROMOTION
     // }
-
+    //
     pub fn uci(&self) -> String {
         let promo = match self.flags() {
             Move::PC_BISHOP | Move::PR_BISHOP => "b",
@@ -121,36 +105,18 @@ impl Move {
             Move::PC_QUEEN | Move::PR_QUEEN => "q",
             _ => ""
         };
-    //     String promo = switch (this.flags()) {
-    //     case Move.PC_BISHOP, Move.PR_BISHOP -> "b";
-    //     case Move.PC_KNIGHT, Move.PR_KNIGHT -> "n";
-    //     case Move.PC_ROOK, Move.PR_ROOK -> "r";
-    //     case Move.PC_QUEEN, Move.PR_QUEEN -> "q";
-    //     default -> "";
-    // };
-    //    Square.getName(this.from()) + Square.getName(this.to()) + promo;
         format!("{}{}{}",
                Square::get_name(self.from() as usize),
                Square::get_name(self.to() as usize),
                promo)
     }
 
-    pub fn addToScore(&mut self, score: i32){
-        self.sort_score += score;
-    }
-
-    // @Override
-    // public String toString() {
-    // return uci();
-    // }
-    //
-    // public static List<Move> parseUciMoves(List<String> moves) {
-    // return moves.stream()
-    // .map(Move::from_uci_string)
-    // .collect(Collectors.toList());
+    // pub fn addToScore(&mut self, score: i32){
+    //     self.sort_score += score;
     // }
 
-    pub fn from_uci_string(uci: &str) -> Move {
+
+    pub fn from_uci_string(uci: &str, state: &BoardState) -> Move {
         let bytes = uci.as_bytes();
         if bytes.len() < 4 {
             panic!("Invalid uci move notation: {}", uci);
@@ -158,18 +124,20 @@ impl Move {
 
         let start_col = bytes[0] - b'a';
         let start_row = b'8' - bytes[1];
-        let start = (start_row * 8 + start_col) as i8;
+        let from_sq = (start_row * 8 + start_col) as u8;
 
         let end_col = bytes[2] - b'a';
         let end_row = b'8' - bytes[3];
-        let end = (end_row * 8 + end_col) as i8;
+        let to_sq = (end_row * 8 + end_col) as u8;
+
+        let capture = state.piece_at(to_sq) != NONE;
 
         let promotion = if bytes.len() == 5 {
             Some(match bytes[4] {
-                b'q' => PieceType::QUEEN,
-                b'r' => PieceType::ROOK,
-                b'b' => PieceType::BISHOP,
-                b'n' => PieceType::KNIGHT,
+                b'q' => Move::PR_QUEEN,
+                b'r' => Move::PR_ROOK,
+                b'b' => Move::PR_BISHOP,
+                b'n' => Move::PR_KNIGHT,
                 _ => {
                     panic!("Invalid promotion piece in UCI notation: {}", uci);
                 }
@@ -178,18 +146,9 @@ impl Move {
             None
         };
 
-        let flags = promotion.map(|p| Move::make_piece_type_promotion_flags(p)).unwrap_or(0u8);
-        Move::new_from_flags(start as u8, end as u8, flags)
+        let flags = promotion.map(|p| p | p | if capture { Move::CAPTURE } else { Move::QUIET }).unwrap_or(0u16);
+        Move::new_from_flags(from_sq as u8, to_sq as u8, flags)
     }
-
-    // public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
-    // String[] moves = movesDelimitedWithSpace.split(" ");
-    // return from_uci_string(moves[0]);
-    // }
-    //
-    // public boolean isCastling() {
-    // return this.flags() == Move.OO || this.flags() == Move.OOO;
-    // }
 }
 
 impl fmt::Display for Move {
@@ -252,98 +211,47 @@ impl MoveList {
     }
 
     //final BoardState state, TranspTable transposition_table, int ply, MoveOrdering moveOrdering) {
-    pub fn score_moves(&mut self, state: &BoardState, transposition_table: &TranspositionTable) {
+    pub fn score_moves(&mut self, state: &BoardState, transposition_table: &TranspositionTable) -> Vec<ScoredMove> {
         if self.moves.len() == 0 {
-            return;
+            return Vec::new()
         }
 
         let tt_entry = transposition_table.probe(state);
         let hash_move = tt_entry.map(|tt| tt.best_move());
 
-        for index in 1..self.moves.len() {
-            let moov = self.moves[index];
-
-            if hash_move.is_some() && moov.base_move() == hash_move.unwrap() {
-                //moov.addToScore(MoveOrdering::HashMoveScore);
-                self.moves[index].addToScore(MoveOrdering::HashMoveScore);
-                continue;
-            }
-
-            // if moov.is_quiet() {
-            //     // if self.is_killer(board, m, ply) {
-            //     //     moves.scores[idx] += Self::KILLER_MOVE_SCORE;
-            //     //     continue;
-            //     // }
-            //
-            //     if moov.is_castling() {
-            //         self.moves[index].addToScore(MoveOrdering::CASTLING_SCORE);
-            //         continue;
-            //     }
-            //
-            //     // moves.scores[idx] += Self::HISTORY_MOVE_OFFSET + self.history_score(m);
-            //     continue;
-            // }
-
-            // if moov.is_capture() {
-            //     if moov.is_ep() {
-            //         self.moves[index].addToScore(MoveOrdering::WINNING_CAPTURES_OFFSET);
-            //         continue;
-            //     }
-            //
-            //     moves.scores[idx] += Self::mvv_lva_score(board, m);
-            //
-            //     if Self::see(board, m, -100) {
-            //         moves.scores[idx] += Self::WINNING_CAPTURES_OFFSET;
-            //     } else {
-            //         moves.scores[idx] += Self::LOSING_CAPTURES_OFFSET;
-            //     }
-            // }
-            //
-            // moves.scores[idx] += match m.promotion() {
-            //     PieceType::Knight => Self::KNIGHT_PROMOTION_SCORE,
-            //     PieceType::Bishop => Self::BISHOP_PROMOTION_SCORE,
-            //     PieceType::Rook => Self::ROOK_PROMOTION_SCORE,
-            //     PieceType::Queen => Self::QUEEN_PROMOTION_SCORE,
-            //     PieceType::None => 0,
-            //     _ => unreachable!(),
-            // };
-
-//            if (moveOrdering.isKiller(state, move, ply)) {
-//                move.addToScore(MoveOrdering.KillerMoveScore);
-//            }
-
+        let result: Vec<ScoredMove> = self.moves.iter().map(|moov| {
+            let move_score = if hash_move.is_some() && hash_move.unwrap().bits == moov.bits
+                    { MoveOrdering::HashMoveScore } else { 0 };
             let piece = state.items[moov.from() as usize];
 //
-            match moov.flags() {
+            let pieces_score: Value = match moov.flags() {
                 Move::PC_BISHOP | Move::PC_KNIGHT | Move::PC_ROOK | Move::PC_QUEEN => {
-                    let score = (MGS[make_piece(state.side_to_play, moov.get_piece_type()) as usize][moov.to() as usize]
+                    MGS[make_piece(state.side_to_play, moov.get_piece_type()) as usize][moov.to() as usize]
                         - MGS[piece as usize][moov.from() as usize]
-                        - MGS[state.items[moov.to() as usize] as usize][moov.to() as usize])
-                        * state.side_to_play.multiplicator() as i32;
-                    self.moves[index].addToScore(score);
+                        - MGS[state.items[moov.to() as usize] as usize][moov.to() as usize]
                 },
                 Move::PR_BISHOP | Move::PR_KNIGHT | Move::PR_ROOK | Move::PR_QUEEN => {
-                    let score = (MGS[make_piece(state.side_to_play, moov.get_piece_type()) as usize][moov.to() as usize]
-                        - MGS[piece as usize][moov.from() as usize])
-                        * state.side_to_play.multiplicator() as i32;
-                    self.moves[index].addToScore(score);
+                    MGS[make_piece(state.side_to_play, moov.get_piece_type()) as usize][moov.to() as usize]
+                        - MGS[piece as usize][moov.from() as usize]
                 },
                 Move::CAPTURE => {
-                    let score = (MGS[piece as usize][moov.to() as usize]
+                    MGS[piece as usize][moov.to() as usize]
                         - MGS[piece as usize][moov.from() as usize]
-                        - MGS[state.items[moov.to() as usize] as usize][moov.to() as usize])
-                        * state.side_to_play.multiplicator() as i32;
-                    self.moves[index].addToScore(score);
+                        - MGS[state.items[moov.to() as usize] as usize][moov.to() as usize]
                 },
                 Move::QUIET | Move::EN_PASSANT | Move::DOUBLE_PUSH | Move::OO | Move::OOO => {
-                    let score = (MGS[piece as usize][moov.to() as usize]
-                        - MGS[piece as usize][moov.from() as usize])
-                        * state.side_to_play.multiplicator() as i32;
-                    self.moves[index].addToScore(score);
+                    MGS[piece as usize][moov.to() as usize]
+                        - MGS[piece as usize][moov.from() as usize]
                 },
                 _ => unreachable!(),
-            }
-        }
+            };
+
+            let total_score = move_score + pieces_score * state.side_to_play.multiplicator() as i16;
+            ScoredMove { moov: moov.clone(), score: total_score }
+        }).collect();
+
+
+        result
     }
 
     pub fn pick_next_best_move(&mut self, cur_index: usize){
@@ -378,19 +286,19 @@ impl MoveList {
     }
 
     pub fn over_sorted<'a>(&'a mut self, state: &'a BoardState, transposition_state: &'a TranspositionTable) -> SortedMovesIter<'a> {
-        &self.score_moves(state, transposition_state);
+        let scored_moves = self.score_moves(state, transposition_state);
         SortedMovesIter {
             state, // TODO check if it is really needed to keep the references
             transposition_state,
-            move_list: self.clone(),
+            move_list: scored_moves,
             index: 0,
         }
     }
 }
 
-pub struct IndexedMove {
+pub struct ScoredMove {
     pub moov: Move,
-    pub index: usize,
+    pub score: i16,
 }
 
 // pub struct IndexedMove<'a> {
@@ -401,7 +309,7 @@ pub struct IndexedMove {
 pub struct SortedMovesIter<'a> {
     state: &'a BoardState,
     transposition_state: &'a TranspositionTable,
-    move_list: MoveList,
+    move_list: Vec<ScoredMove>,
     index: usize,
 }
 
