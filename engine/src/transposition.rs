@@ -15,23 +15,25 @@ pub type Value = i16;
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub struct TTEntry {
     value: Value,
-    best_move: BaseMove,
+    best_move: Move,
     depth: Depth,
     flag: Bound,
+    pad: u16,  // just padding bits, not used at all
 }
 
 impl TTEntry {
-    pub fn new(value: Value, best_move: BaseMove, depth: Depth, flag: Bound) -> Self {
+    pub fn new(value: Value, best_move: Move, depth: Depth, flag: Bound) -> Self {
         TTEntry {
             best_move,
             depth,
             value,
             flag,
+            pad: 0,
         }
     }
 
     #[inline(always)]
-    pub fn best_move(&self) -> BaseMove {
+    pub fn best_move(&self) -> Move {
         self.best_move
     }
 
@@ -54,10 +56,11 @@ impl TTEntry {
 impl Default for TTEntry {
     fn default() -> Self {
         Self {
-            best_move: Move::BM_NULL,
+            best_move: Move::NULL_MOVE,
             depth: 0,
             value: 0,
             flag: Bound::Exact,
+            pad: 0,
         }
     }
 }
@@ -84,7 +87,7 @@ pub struct TranspositionTable {
 }
 
 impl TranspositionTable {
-    pub fn new(mb_size: usize) -> Self {
+    pub fn new(_mb_size: usize) -> Self {
         assert_eq!(std::mem::size_of::<TTEntry>(), 8);
         // let upper_limit = mb_size * 1024 * 1024 / std::mem::size_of::<AtomicEntry>() + 1;
         //let count = upper_limit.next_power_of_two() / 2;
@@ -107,7 +110,7 @@ impl TranspositionTable {
         state: &BoardState,  // TODO pass hash instead
         depth: Depth,
         value: Value,
-        best_move: BaseMove,
+        best_move: Move,
         flag: Bound,
     ) {
         self.table[self.index(state)]

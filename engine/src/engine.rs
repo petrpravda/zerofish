@@ -1,6 +1,9 @@
+use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
 use crate::fen::{from_fen_default, to_fen};
 use crate::perft::Perft;
+use crate::search::Search;
+use crate::transposition::Depth;
 
 pub enum UciMessage {
     UciCommand(String),
@@ -54,7 +57,9 @@ pub enum UciMessage {
 
 pub struct Engine {
     // bitboard: &'a Bitboard,
-    board_state: BoardState,
+    // board_state: BoardState,
+    position: BoardPosition,
+    search: Search,
 }
 
 impl Engine {
@@ -62,10 +67,17 @@ impl Engine {
     pub fn new_from_fen(fen: &str) -> Self {
         let mut engine = Engine {
 //            bitboard,
-            board_state: from_fen_default(fen),
+            position: BoardPosition::from_fen(fen),
+            search: Search::new()
+
+            //board_state: from_fen_default(fen),
         };
 
         engine
+    }
+
+    fn get_board_state(&self) -> &BoardState {
+        &self.position.state
     }
 
     pub(crate) fn process_uci_command(&mut self, uci_command: String) -> String {
@@ -80,10 +92,13 @@ impl Engine {
                     let depth = parts.get(2).map(|d| d.parse::<u16>()).map(|e| e.unwrap());
                     if parts.len() == 3 && sub_part.unwrap().eq(&"perft") {
                         // println!("PERFT, depth {}", depth.unwrap());
-                        let (result, _count) = Perft::perft_sf_string(&self.board_state, depth.unwrap());
+                        let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), depth.unwrap());
                         println!("{}", result);
-                    } else {
-
+                    } else if parts.len() == 3 && sub_part.unwrap().eq(&"depth") {
+                        let depth = parts[2].parse::<Depth>().unwrap();
+                        println!("depth {}", depth);
+                        let result = self.search.it_deep(&self.position, depth);
+                        println!("{:?}", result);
                     }
                     String::from("go")
                     // let depth = extract_option(&parts, "depth", 3);
@@ -95,8 +110,9 @@ impl Engine {
                     // let (legal_moves_string, checker_moves_string) = generateMoves(&mut self.board);
                     // //String checkers = checkerMoves.stream().map(m -> Square.getName(m.start())).collect(Collectors.joining(" "));
                     //
-                    let mut output = self.board_state.to_string();
-                    output.push_str(format!("Fen: {}\n", to_fen(&self.board_state)).as_str());
+                    let state = self.get_board_state();
+                    let mut output = state.to_string();
+                    output.push_str(format!("Fen: {}\n", to_fen(state)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
                     println!("{}", output);
@@ -111,7 +127,14 @@ impl Engine {
                 },
 
                 "position" => {
-                    // self.set_position_from_uci(&parts[1..].to_vec());
+                    // self.set_position_from_uci(&parts[1..].to_vec())che
+                    if parts.len() >= 3 && sub_part.unwrap().eq(&"fen") {
+                        // let fen = parts[2];
+                        let fen = parts[2..].to_vec().join(" ");
+                        println!("treti: {}", fen);
+                        self.position = BoardPosition::from_fen(&*fen);
+                    }
+
                     "OK".to_string()
                 },
 
@@ -230,6 +253,41 @@ impl Engine {
         println!("readyok");
         "readyok".to_string()
     }
+
+    // fn parse_position_cmd(parts: &Vec<&str>) -> String {
+    //     if parts.is_empty() {
+    //         eprintln!("position command: missing fen/startpos");
+    //     }
+    //
+    //     let pos_end = parts
+    //         .iter()
+    //         .position(|&part| part.to_lowercase().as_str() == "moves")
+    //         .unwrap_or_else(|| parts.len());
+    //
+    //     let pos_option = parts[1..pos_end].join(" ");
+    //
+    //     if pos_option.is_empty() {
+    //         String::from(START_POS)
+    //     } else {
+    //         pos_option
+    //     }
+    // }
+    //
+    // fn parse_moves(idx: usize, parts: &Vec<&str>) -> Vec<UCIMove> {
+    //     let mut moves: Vec<UCIMove> = Vec::new();
+    //
+    //     for i in (idx + 1)..parts.len() {
+    //         match UCIMove::from_uci(parts[i]) {
+    //             Some(m) => moves.push(m),
+    //             None => {
+    //                 eprintln!("could not parse move notation: {}", parts[i]);
+    //                 return moves;
+    //             }
+    //         }
+    //     }
+    //
+    //     moves
+    // }
 
     // fn set_position(&mut self, fen: String, moves: Vec<UCIMove>) {
     //     match read_fen(&mut self.board, &fen) {

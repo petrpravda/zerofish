@@ -1,14 +1,12 @@
-<< 12
->> 12
-
+- statistics
+- basic uci
+- enhanced uci for testing
 - Fen as trait
 - Elo tests
   - synchronize result tables
-- make search.rs working
-- iterator for moveOrdering
 - implement in killer moves
-- rename mowe -> moov
-- LMR is index really needed (IndexedMove)
+- LMR is index really needed
+- repetition - move history board & position
 ============================================================
 https://medium.com/@SereneBiologist/the-anatomy-of-a-chess-ai-2087d0d565
 https://towardsdatascience.com/creating-a-chess-engine-with-deep-learning-b9477ff3ee3d
@@ -21,9 +19,20 @@ https://www.youtube.com/watch?v=-ivz8yJ4l4E - heuristics
 - tricky_perfts - use multithreading
 - NNUE inspiration (links) - https://github.com/analog-hors/tantabus
 
+generate long text on chess explaining why chess analysis is helpful
+
+Chess is a complex and strategic board game that has been enjoyed by players of all skill levels for centuries. One of the key aspects of chess is the ability to analyze a position and identify the best move or sequence of moves to achieve a desired outcome. This process of chess analysis can be helpful for a number of reasons.
+
+First and foremost, chess analysis helps players to improve their game by identifying and correcting mistakes in their play. By carefully analyzing a position and considering the potential consequences of each move, players can avoid making mistakes that could cost them the game. In addition, chess analysis can help players to identify opportunities to gain an advantage over their opponent, such as by attacking their opponent's pieces or seizing control of key squares on the board.
+
+Another benefit of chess analysis is that it can help players to develop their strategic thinking skills. By considering the long-term implications of each move, players can learn to think ahead and plan several moves in advance. This can be especially useful in complex positions where there are many potential variations and it can be difficult to see the best course of action.
+
+Furthermore, chess analysis can help players to learn from the games of stronger players. By studying the games of top chess players, players can learn new strategies and tactics that they can incorporate into their own play. In addition, chess analysis can help players to better understand the strengths and weaknesses of different openings and variations, which can be useful when deciding on an opening for a game.
+
+Overall, chess analysis is an essential part of the game of chess, and it can be helpful for players of all skill levels. By carefully analyzing positions and considering the potential consequences of each move, players can improve their game, develop their strategic thinking skills, and learn from the games of stronger players.
 
 
-
+Write an inspirational speech about the status of ChatGPT.
 
 
 STS Rating v14.0

@@ -152,7 +152,7 @@ public class Search {
 
         boolean inCheck = state.isKingAttacked();
         if (depth <= 0 && !inCheck) {
-            return qSearch(state, depth, ply, alpha, beta);
+            return quiescence(state, depth, ply, alpha, beta);
         }
         statistics.nodes++;
 
@@ -235,7 +235,7 @@ public class Search {
         return alpha;
     }
 
-    public int qSearch(BoardState state, int depth, int ply, int alpha, int beta){
+    public int quiescence(BoardState state, int depth, int ply, int alpha, int beta){
         if (stop || Limits.checkLimits()){
             stop = true;
             return 0;
@@ -261,7 +261,7 @@ public class Search {
                 continue;
 
             BoardState newBoardState = state.doMove(move);
-            value = -qSearch(newBoardState, depth - 1, ply + 1, -beta, -alpha);
+            value = -quiescence(newBoardState, depth - 1, ply + 1, -beta, -alpha);
 
             if (stop)
                 return 0;

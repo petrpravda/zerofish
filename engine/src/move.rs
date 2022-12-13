@@ -1,10 +1,8 @@
-use std::borrow::Borrow;
 use std::fmt;
 use crate::bitboard::BitIter;
 use crate::board_state::BoardState;
-use crate::piece::{make_piece, NONE, Piece, PieceType};
+use crate::piece::{make_piece, NONE, PieceType};
 use crate::piece_square_table::MGS;
-use crate::side::Side;
 use crate::square::Square;
 use crate::transposition::{ TranspositionTable, Value};
 
@@ -202,8 +200,8 @@ impl MoveList {
         }
     }
 
-    pub fn add(&mut self, mowe: Move) {
-        self.moves.push(mowe);
+    pub fn add(&mut self, moov: Move) {
+        self.moves.push(moov);
     }
 
     pub fn len(&self) -> usize {
@@ -221,7 +219,7 @@ impl MoveList {
 
         let result: Vec<ScoredMove> = self.moves.iter().map(|moov| {
             let move_score = if hash_move.is_some() && hash_move.unwrap().bits == moov.bits
-                    { MoveOrdering::HashMoveScore } else { 0 };
+                    { MoveOrdering::HASH_MOVE_SCORE } else { 0 };
             let piece = state.items[moov.from() as usize];
 //
             let pieces_score: Value = match moov.flags() {
@@ -254,19 +252,53 @@ impl MoveList {
         result
     }
 
+    pub fn to_string(&self) -> String {
+        let uci_moves = self.moves.iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
+        format!("[{}] {}", self.moves.len(), uci_moves)
+    }
+
+    pub fn over_sorted(& mut self, state: & BoardState, transposition_state: & TranspositionTable) -> SortedMovesIter {
+        let scored_moves = self.score_moves(state, transposition_state);
+        SortedMovesIter {
+//            transposition_state,
+            scored_moves,
+            index: 0,
+        }
+    }
+}
+
+//#[derive(Clone)]
+pub struct ScoredMove {
+    pub moov: Move,
+    pub score: i16,
+}
+
+// pub struct IndexedMove<'a> {
+//     moov: &'a Move,
+//     index: usize,
+// }
+//
+pub struct SortedMovesIter {
+//    state: &'a BoardState,
+//    transposition_state: &'a TranspositionTable,
+    scored_moves: Vec<ScoredMove>,
+    index: usize,
+}
+
+impl SortedMovesIter {
     pub fn pick_next_best_move(&mut self, cur_index: usize){
-        let size = self.moves.len();
-        let mut max = i32::MIN;
+        let size = self.scored_moves.len();
+        let mut max = i16::MIN;
         let mut max_index = 0;
         let mut i = cur_index;
         while i < size {
-            if self.moves[i].score() > max {
-                max = self.moves[i].score();
+            if self.scored_moves[i].score > max {
+                max = self.scored_moves[i].score;
                 max_index = i;
             }
             i += 1;
         }
-        self.moves.swap(cur_index, max_index);
+        self.scored_moves.swap(cur_index, max_index);
 
 
         //         //         int max = Integer.MIN_VALUE;
@@ -280,49 +312,18 @@ impl MoveList {
         //         //         Collections.swap(this, curIndex, maxIndex);
     }
 
-    pub fn to_string(&self) -> String {
-        let uci_moves = self.moves.iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
-        format!("[{}] {}", self.moves.len(), uci_moves)
-    }
-
-    pub fn over_sorted<'a>(&'a mut self, state: &'a BoardState, transposition_state: &'a TranspositionTable) -> SortedMovesIter<'a> {
-        let scored_moves = self.score_moves(state, transposition_state);
-        SortedMovesIter {
-            state, // TODO check if it is really needed to keep the references
-            transposition_state,
-            move_list: scored_moves,
-            index: 0,
-        }
-    }
 }
 
-pub struct ScoredMove {
-    pub moov: Move,
-    pub score: i16,
-}
-
-// pub struct IndexedMove<'a> {
-//     moov: &'a Move,
-//     index: usize,
-// }
-//
-pub struct SortedMovesIter<'a> {
-    state: &'a BoardState,
-    transposition_state: &'a TranspositionTable,
-    move_list: Vec<ScoredMove>,
-    index: usize,
-}
-
-impl<'a> Iterator for SortedMovesIter<'a> {
-    type Item = IndexedMove;
-    fn next(&mut self) -> Option<IndexedMove> {
-        if self.index == self.move_list.len() {
+impl Iterator for SortedMovesIter {
+    type Item = Move;
+    fn next(&mut self) -> Option<Move> {
+        if self.index == self.scored_moves.len() {
             return None;
         }
 
-        self.move_list.pick_next_best_move(self.index);
-        let moov: &Move = &self.move_list.moves[self.index];
-        let result = Some(IndexedMove { moov: moov.clone(), index: 0 } );
+        self.pick_next_best_move(self.index);
+        let moov: &Move = &self.scored_moves[self.index].moov;
+        let result: Option<Move> = Some(moov.clone());
         self.index += 1;
         result
     }
@@ -340,16 +341,16 @@ pub struct MoveOrdering {
 }
 
 impl MoveOrdering {
-    pub const HashMoveScore: Value = 10000; // 25000?
+    pub const HASH_MOVE_SCORE: Value = 10000; // 25000?
     //const N_KILLERS: usize = 3;
-    const QUEEN_PROMOTION_SCORE: Value = 8000;
-    const ROOK_PROMOTION_SCORE: Value = 7000;
-    const BISHOP_PROMOTION_SCORE: Value = 6000;
-    const KNIGHT_PROMOTION_SCORE: Value = 5000;
-    const WINNING_CAPTURES_OFFSET: Value = 10;
-    const KILLER_MOVE_SCORE: Value = 2;
-    const CASTLING_SCORE: Value = 1;
-    const HISTORY_MOVE_OFFSET: Value = -30000;
-    const LOSING_CAPTURES_OFFSET: Value = -30001;
+    // const QUEEN_PROMOTION_SCORE: Value = 8000;
+    // const ROOK_PROMOTION_SCORE: Value = 7000;
+    // const BISHOP_PROMOTION_SCORE: Value = 6000;
+    // const KNIGHT_PROMOTION_SCORE: Value = 5000;
+    // const WINNING_CAPTURES_OFFSET: Value = 10;
+    // const KILLER_MOVE_SCORE: Value = 2;
+    // const CASTLING_SCORE: Value = 1;
+    // const HISTORY_MOVE_OFFSET: Value = -30000;
+    // const LOSING_CAPTURES_OFFSET: Value = -30001;
 }
 //    private final int[][][] killerMoves = new int[2][1000][1];

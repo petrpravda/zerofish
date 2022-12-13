@@ -39,13 +39,13 @@ impl Perft {
         let moves = state.generate_legal_moves();
         let mut total: u64 = 0;
 
-        for mowe in moves.moves {
-            let moved_state = state.do_move(&mowe);
+        for moov in moves.moves {
+            let moved_state = state.do_move(&moov);
             let count = Perft::perft(&moved_state, depth - 1);
-            // if mowe.uci().eq("b1c3") {
+            // if moov.uci().eq("b1c3") {
             //     println!("DEBUG {}", moved_state.generate_legal_moves());
             // }
-            result.push_str(&format!("{}: {}\n", &mowe.uci(), count));
+            result.push_str(&format!("{}: {}\n", &moov.uci(), count));
             total += count;
         }
 

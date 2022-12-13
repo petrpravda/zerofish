@@ -25,7 +25,7 @@ const BOARD_STATE_HISTORY_CAPACITY: usize = 30;
 #[derive(Clone, Debug)]
 pub struct BoardState {
     pub(crate) ply: usize,
-    history: [u32;BOARD_STATE_HISTORY_CAPACITY],
+    history: [u16;BOARD_STATE_HISTORY_CAPACITY],
     piece_bb: [u64; PIECES_COUNT],
     pub items: [Piece; 64],
     pub side_to_play: Side,
@@ -33,8 +33,8 @@ pub struct BoardState {
     pub full_move_normalized: usize,
     pub half_move_clock: usize,
     phase: i32,
-    mg: i32,
-    eg: i32,
+    mg: i16,
+    eg: i16,
 //    checkers: u64,
     pub(crate) movements: u64,
     pub en_passant: u64,
@@ -62,7 +62,7 @@ impl BoardState {
         if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len() as u64) }
         let mut board_state = BoardState {
             ply: 0,
-            history: [0u32;BOARD_STATE_HISTORY_CAPACITY],
+            history: [0u16;BOARD_STATE_HISTORY_CAPACITY],
             piece_bb: [0; PIECES_COUNT],
             items: [0; 64], //(*items).clone(),
             side_to_play,
@@ -185,8 +185,8 @@ impl BoardState {
 
             // //update incremental evaluation terms
             self.phase -= PIECE_PHASES[type_of(piece).index()];
-            self.mg += MGS[piece as usize][square] as i32;
-            self.eg += EGS[piece as usize][square] as i32;
+            self.mg += MGS[piece as usize][square];
+            self.eg += EGS[piece as usize][square];
 
             //set piece on board
             self.items[square] = piece;
@@ -200,8 +200,8 @@ impl BoardState {
         fn remove_piece(&mut self, square: u8){
             let piece = self.items[square as usize];
             self.phase += PIECE_PHASES[type_of(piece).index()];
-            self.mg -= MGS[piece as usize][square as usize] as i32;
-            self.eg -= EGS[piece as usize][square as usize] as i32;
+            self.mg -= MGS[piece as usize][square as usize];
+            self.eg -= EGS[piece as usize][square as usize];
 
             //update hash tables
             self.hash ^= ZOBRIST.pieces[piece as usize][square as usize];
@@ -626,7 +626,7 @@ impl BoardState {
     // //    }
 
         pub fn is_repetition_or_fifty(&self, position: &BoardPosition) -> bool {
-            let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { position.history[position.historyIndex - 1] };
+            let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { position.history[position.history_index - 1] };
             let mut count = 0;
             let mut index: i32 = (self.ply - 1) as i32;
             while index >= 0 {
@@ -635,7 +635,7 @@ impl BoardState {
                 }
                 index -= 1;
             }
-            index = position.historyIndex as i32 - 1;
+            index = position.history_index as i32 - 1;
             while index >= 0 {
                 if position.history[index as usize] == last_move_bits {
                     count += 1;
@@ -975,9 +975,9 @@ impl BoardState {
         }
     }
 
-    pub fn for_search_depth(&self, searchDepth: Depth) -> BoardState {
+    pub fn for_search_depth(&self, search_depth: Depth) -> BoardState {
         let mut result = self.clone();
-        //result.history = new long[searchDepth];
+        //result.history = new long[search_depth];
         result.ply = 0;
         return result;
     }
@@ -994,9 +994,10 @@ impl BoardState {
     //         return eg;
     //     }
     //
-        pub fn interpolated_score(&self) -> i32 {
-            let phase= ((self.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE) as i32;
-            return (self.mg * (256 - phase) + self.eg * phase) / 256;
+        pub fn interpolated_score(&self) -> i16 {
+            let phase= ((self.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE) as i16;
+//        println!("mg: {}, eg: {}, phase: {}", self.mg, self.eg, phase);
+            return (((self.mg as i32) * (256 - phase) as i32 + (self.eg as i32) * phase as i32) / 256) as i16;
             // self.mg
         }
 

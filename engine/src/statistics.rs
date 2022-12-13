@@ -9,6 +9,12 @@ pub struct Statistics {
 }
 
 impl Statistics {
+    pub fn total_nodes(&self) -> u32 {
+        self.leafs + self.qleafs
+    }
+}
+
+impl Statistics {
     pub fn new() -> Self {
         Self {
             leafs: 0,
@@ -58,7 +64,6 @@ impl Statistics {
     pub fn increase_beta_cutoffs(&mut self) {
         self.beta_cutoffs += 1;
     }
-
 }
 
 // public class Statistics {
@@ -70,7 +75,7 @@ impl Statistics {
 //     public int nodes = 0;
 //     public int qnodes = 0;
 //
-//     public int totalNodes(){
+//     public int total_nodes(){
 //         return nodes + qnodes;
 //     }
 //
