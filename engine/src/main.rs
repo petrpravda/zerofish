@@ -18,7 +18,7 @@ use zerofish::{engine_thread, uci};
 
 
 fn main() {
-    uci::start_uci_loop(&engine_thread::spawn_engine_thread());
+    uci::start_uci_loop(&engine_thread::spawn_engine_thread().0);
 
 
     // let mut search = Search::new();     //println!("{}", MGS[1][3]);

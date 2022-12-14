@@ -4,6 +4,7 @@ use std::fmt;
 
 use crate::bitboard::{Bitboard, BITBOARD, BitIter};
 use crate::board_position::BoardPosition;
+use crate::fen::to_fen;
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
 use crate::piece_square_table::{EGS, MGS};
@@ -19,7 +20,7 @@ const PIECE_PHASES: [i32; 6] = [0, 1, 1, 2, 4, 0];
 
 const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
-const BOARD_STATE_HISTORY_CAPACITY: usize = 30;
+const BOARD_STATE_HISTORY_CAPACITY: usize = 40;
 
 //#[derive(Copy, Clone)]
 #[derive(Clone, Debug)]
@@ -754,8 +755,10 @@ impl BoardState {
                 if checker_piece_type == PAWN && checkers == (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 }) {
                     // we have to consider taking the pawn en passant
                     let en_passant_square = self.en_passant.trailing_zeros();
+                    // let bubbi1 = Bitboard::pawn_attacks_from_square(en_passant_square as u8, them);
+                    // let bubbi2 = self.bitboard_of(us, PAWN);
                     for b1 in BitIter(Bitboard::pawn_attacks_from_square(en_passant_square as u8, them) & self.bitboard_of(us, PAWN) & not_pinned) {
-                        moves.add(Move::new_from_flags(b1.trailing_zeros() as u8, en_passant_square as u8, Move::EN_PASSANT));
+                        moves.add(Move::new_from_flags(b1 as u8, en_passant_square as u8, Move::EN_PASSANT));
                     }
                 }
 
@@ -1001,6 +1004,10 @@ impl BoardState {
             // self.mg
         }
 
+    pub fn to_fen(&self) -> String {
+        to_fen(&self)
+    }
+
     //     public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
     //
     //     public Params toParams() {
@@ -1036,6 +1043,13 @@ mod tests {
         let moves = state.generate_legal_moves();
         println!("{}", moves);
         // assert_eq!(state.to_string(), );
+    }
+
+    #[test]
+    fn from_failing_sts() {
+        let state = from_fen_default("2r5/p3k1p1/1p5p/4Pp2/1PPnK3/PB1R2P1/7P/8 w - f6 0 4");
+        let moves = state.generate_legal_moves();
+        println!("{}", moves);
     }
 
     #[test]

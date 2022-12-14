@@ -120,13 +120,8 @@ impl Move {
             panic!("Invalid uci move notation: {}", uci);
         }
 
-        let start_col = bytes[0] - b'a';
-        let start_row = b'8' - bytes[1];
-        let from_sq = (start_row * 8 + start_col) as u8;
-
-        let end_col = bytes[2] - b'a';
-        let end_row = b'8' - bytes[3];
-        let to_sq = (end_row * 8 + end_col) as u8;
+        let from_sq = Square::get_square_from_name(&uci[0..2]);
+        let to_sq = Square::get_square_from_name(&uci[2..4]);
 
         let capture = state.piece_at(to_sq) != NONE;
 
@@ -221,6 +216,10 @@ impl MoveList {
             let move_score = if hash_move.is_some() && hash_move.unwrap().bits == moov.bits
                     { MoveOrdering::HASH_MOVE_SCORE } else { 0 };
             let piece = state.items[moov.from() as usize];
+            // if piece == NONE {
+            //     let uci_move = moov.uci();
+            //     panic!()
+            // }
 //
             let pieces_score: Value = match moov.flags() {
                 Move::PC_BISHOP | Move::PC_KNIGHT | Move::PC_ROOK | Move::PC_QUEEN => {

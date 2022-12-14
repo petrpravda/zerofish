@@ -1,6 +1,7 @@
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
+use std::thread::JoinHandle;
 
 use crate::engine::{Engine, UciMessage};
 use crate::fen::START_POS;
@@ -32,7 +33,7 @@ impl EngineThread {
             match self.rx.recv() {
                 Ok(msg) => {
                     if !self.handle_message(msg) {
-                        return;
+                        break;
                     }
                 }
                 Err(err) => {
@@ -41,6 +42,7 @@ impl EngineThread {
                 }
             }
         }
+        println!("Exiting loop");
     }
 
     fn handle_message(&mut self, msg: UciMessage) -> bool {
@@ -50,21 +52,26 @@ impl EngineThread {
                 // println!("UciCommand: {}", uci_command);
                 let _result = self.engine.process_uci_command(uci_command);
                 //println!("UciCommand execution result:\n{}", result);
+
+                if _result.eq(&"quitting") {
+                    println!("Quitting");
+                    return false;
+                }
             }
         }
         true
     }
 }
 
-pub fn spawn_engine_thread() -> Sender<UciMessage> {
+pub fn spawn_engine_thread() -> (Sender<UciMessage>, JoinHandle<()>) {
     let (tx, rx) = mpsc::channel::<UciMessage>();
 
-    thread::spawn(move || {
+    let handle = thread::spawn(move || {
         let mut engine = EngineThread::new(rx);
         // configure_command_line_options(&mut engine.engine.board);
         engine.start_loop();
     });
 
-    tx
+    (tx, handle)
 }
 

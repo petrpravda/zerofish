@@ -8,7 +8,7 @@ use crate::statistics::Statistics;
 use crate::time::Instant;
 use crate::transposition::{Depth, TranspositionTable, Value};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct SearchResult {
     pub moov: Option<Move>,
     pub score: Value,
@@ -35,13 +35,33 @@ fn prepare_lmr_table() -> [[i32; 64]; 64] {
     result
 }
 
+pub struct SearchLimit {
+    pub depth: Depth,
+    pub max_nodes: u32,
+}
+
+impl SearchLimit {
+    fn max() -> SearchLimit {
+        Self { depth: u8::MAX, max_nodes: u32::MAX }
+    }
+
+    pub fn for_depth(depth: Depth) -> SearchLimit {
+        Self { depth, max_nodes: u32::MAX }
+    }
+
+    pub fn for_move_count(move_count: u32) -> SearchLimit {
+        Self { depth: u8::MAX, max_nodes: move_count }
+    }
+}
+
 pub struct Search {
     search_position: BoardPosition, // TODO rename to board_position
     sel_depth: Depth,
-    stop: bool,
+    stopped: bool,
     statistics: Statistics,
     transposition_table: &'static TranspositionTable,
     start_time: Instant,
+    search_limit: SearchLimit,
 }
 
 lazy_static! {
@@ -62,25 +82,27 @@ impl Search {
             search_position: BoardPosition::from_fen(START_POS),
             start_time: Instant::now(),
             sel_depth: 10,
-            stop: false,
+            stopped: false,
             statistics: Statistics::new(),
             transposition_table: &TT,
+            search_limit: SearchLimit::max(),
         }
     }
 
-    pub fn it_deep(&mut self, position: &BoardPosition, search_depth: Depth) -> SearchResult {
+    pub fn it_deep(&mut self, position: &BoardPosition, search_limit_param: SearchLimit) -> SearchResult {
         let mut result = SearchResult { moov: None, score: 0 };
 
-        self.search_position = position.for_search_depth(search_depth);
+        self.search_limit = search_limit_param;
+        self.search_position = position.for_search_depth(self.search_limit.depth);
         self.start_time = Instant::now();
         self.sel_depth = 0;
-        self.stop = false;
+        self.stopped = false;
         let mut alpha: Value = -Search::INF;
         let mut beta: Value = Search::INF;
         let mut depth: Depth = 1;
 
         // Deepen until end conditions
-        while depth <= search_depth {
+        while depth <= self.search_limit.depth && !self.stopped {
 
             // Check to see if the time has ended
             //long elapsed = System.currentTimeMillis() - Limits.startTime;
@@ -88,25 +110,25 @@ impl Search {
 //                break;
 
 
-            result = self.nega_max_root(&position.state, depth, alpha, beta);
+            let result_from_ply = self.nega_max_root(&position.state, depth, alpha, beta);
+            if !self.stopped {
+                let score = result_from_ply.score;
+                if score <= alpha {
+                    // Failed low, adjust window
+                    alpha = -Search::INF;
+                } else if score >= beta {
+                    // Failed high, adjust window
+                    beta = Search::INF;
+                } else {
+                    // Adjust the window around the new score and increase the depth
+                    self.print_info_line(&position.state, &result_from_ply, depth);
+                    alpha = score - Search::ASPIRATION_WINDOW;
+                    beta = score + Search::ASPIRATION_WINDOW;
+                    depth += 1;
+                    self.statistics.reset();
+                }
 
-            // Failed low, adjust window
-            if result.score <= alpha {
-                alpha = -Search::INF;
-            }
-
-            // Failed high, adjust window
-            else if result.score >= beta {
-                beta = Search::INF;
-            }
-
-            // Adjust the window around the new score and increase the depth
-            else {
-                self.print_info_line(&position.state, &result, depth);
-                alpha = result.score - Search::ASPIRATION_WINDOW;
-                beta = result.score + Search::ASPIRATION_WINDOW;
-                depth += 1;
-                self.statistics.reset();
+                result = result_from_ply;
             }
         }
 
@@ -132,9 +154,13 @@ impl Search {
 
 
             // let uci_string = moov.uci();
+            // let start_fen = state.to_fen();
             // let uci_best_move = best_move.map(|m| m.uci());
             let new_state = state.do_move(&moov);
             let value = -self.nega_max(&new_state, depth - 1, 1, -beta, -alpha, true);
+            if self.stopped {
+                break;
+            }
 
             //println!("{} {}", uci_string, value);
             // if (stop || Limits.checkLimits()) {
@@ -153,7 +179,7 @@ impl Search {
             }
         }
 
-        SearchResult{ moov: best_move, score: alpha }  // (Optional.ofNullable(best_move), alpha);
+        SearchResult{ moov: best_move, score: alpha }
     }
 
     pub fn nega_max(&mut self, state: &BoardState, depth: Depth, ply: u16, mut alpha: Value, mut beta: Value, can_apply_null: bool) -> Value {
@@ -162,6 +188,9 @@ impl Search {
         let mut tt_flag = Bound::Upper;
         // let mut reducedDepth = 0; // TODO is really needed?
 
+        if self.check_stopping() {
+            return 0;
+        }
         // if (stop || Limits.checkLimits()) {
         //     stop = true;
         //     return 0;
@@ -244,12 +273,13 @@ impl Search {
                 reduced_depth += 1;
             }
 
+            // let state_out = state.to_string();
+            // let uci_move = moov.uci();
             let new_state = state.do_move(&moov);
             let value = -self.nega_max(&new_state, reduced_depth - 1, ply + 1, -beta, -alpha, true);
-
-            // if (stop) {
-            //     return 0;
-            // }
+            if self.stopped {
+                return 0;
+            }
 
             if value > alpha {
                 best_move = moov;
@@ -386,5 +416,13 @@ impl Search {
         let now = Instant::now();
         let duration = now - self.start_time;
         duration.as_millis() as u64
+    }
+
+    fn check_stopping(&mut self) -> bool {
+        if self.statistics.nodes >= self.search_limit.max_nodes {
+            self.stopped = true;
+        }
+
+        self.stopped
     }
 }

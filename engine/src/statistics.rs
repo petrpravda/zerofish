@@ -5,7 +5,7 @@ pub struct Statistics {
     pub qbeta_cutoffs: u32,
     pub tt_hits: u32,
     pub nodes: u32,
-    pub qnodes: u32,
+    // pub qnodes: u32,
 }
 
 impl Statistics {
@@ -23,7 +23,7 @@ impl Statistics {
             qbeta_cutoffs: 0,
             tt_hits: 0,
             nodes: 0,
-            qnodes: 0,
+//            qnodes: 0,
         }
     }
 
@@ -34,7 +34,7 @@ impl Statistics {
         self.qbeta_cutoffs = 0;
         self.tt_hits = 0;
         self.nodes = 0;
-        self.qnodes = 0;
+        // self.qnodes = 0;
     }
 
     pub fn increment_leafs(&mut self) {
@@ -46,7 +46,7 @@ impl Statistics {
     }
 
     pub fn increment_qnodes(&mut self) {
-        self.qnodes += 1;
+        self.nodes += 1;
     }
 
     pub fn increment_qleafs(&mut self) {

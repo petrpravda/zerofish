@@ -1,6 +1,7 @@
 package org.javafish.board;
 
 import org.javafish.bitboard.Bitboard;
+import org.javafish.move.MoveList;
 import org.junit.jupiter.api.Test;
 import search.Search;
 import search.TranspositionTable;
@@ -149,6 +150,13 @@ class BoardStateTest {
         assertEquals(482, state.mg());
         state.setPieceAt(Piece.BLACK_ROOK, Square.getSquareFromName("d2"));
         assertEquals(-20, state.mg());
+    }
+
+    @Test
+    void fromFailingSts() {
+        BoardState state = BoardState.fromFen("2r5/p3k1p1/1p5p/4Pp2/1PPnK3/PB1R2P1/7P/8 w - f6 0 4");
+        MoveList moves = state.generateLegalMoves();
+        System.out.println(moves);
     }
 
 //    @Test

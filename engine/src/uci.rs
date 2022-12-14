@@ -17,8 +17,10 @@ pub fn start_uci_loop(tx: &Sender<UciMessage>) {
             .expect("Failed to read line");
 
         // TODO TBD stop
-        // TODO TBD quit
-        send_message(tx, UciMessage::UciCommand(line));
+        send_message(tx, UciMessage::UciCommand(line.clone()));
+        if line.starts_with("quit") {
+            break;
+        }
     }
 }
 

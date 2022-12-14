@@ -7,6 +7,19 @@
 - implement in killer moves
 - LMR is index really needed
 - repetition - move history board & position
+- handle panicked - error handling - pub fn process_uci_command(&mut self, uci_command: String) -> String {
+- tune const BOARD_STATE_HISTORY_CAPACITY: usize = 20;
+type Item = u32; // TODO change to u8
+- cutechess: position startpos moves d2d4
+             go wtime 287421 btime 300000 movestogo 40
+============================================================
+Processing: uci
+Processing: setoption name MultiPV value 3
+Processing: isready
+Processing: ucinewgame
+Processing: position startpos
+Processing: go nodes 10000000
+position startpos moves e2e4 d7d5
 ============================================================
 https://medium.com/@SereneBiologist/the-anatomy-of-a-chess-ai-2087d0d565
 https://towardsdatascience.com/creating-a-chess-engine-with-deep-learning-b9477ff3ee3d

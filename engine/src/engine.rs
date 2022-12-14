@@ -1,8 +1,11 @@
+use std::fs::File;
+use std::io::Write;
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
-use crate::fen::{from_fen_default, to_fen};
+use crate::fen::{START_POS, to_fen};
 use crate::perft::Perft;
-use crate::search::Search;
+use crate::r#move::Move;
+use crate::search::{Search, SearchLimit};
 use crate::transposition::Depth;
 
 pub enum UciMessage {
@@ -60,16 +63,18 @@ pub struct Engine {
     // board_state: BoardState,
     position: BoardPosition,
     search: Search,
+    file: File,
 }
 
 impl Engine {
     #[allow(unused)]
     pub fn new_from_fen(fen: &str) -> Self {
+        let mut file = File::create("zerofish.log").unwrap();
         let mut engine = Engine {
 //            bitboard,
             position: BoardPosition::from_fen(fen),
-            search: Search::new()
-
+            search: Search::new(),
+            file,
             //board_state: from_fen_default(fen),
         };
 
@@ -80,25 +85,35 @@ impl Engine {
         &self.position.state
     }
 
-    pub(crate) fn process_uci_command(&mut self, uci_command: String) -> String {
+    pub fn process_uci_command(&mut self, uci_command: String) -> String {
+        let msg = format!("Processing: {}", uci_command);
+        self.file.write(msg.as_ref()).expect("TODO: panic message");
         let parts: Vec<&str> = uci_command.split_whitespace().collect();
         let part = parts.get(0);
         let sub_part = parts.get(1);
         if part.is_some() {
             let result: String = match part.unwrap().to_lowercase().as_str() {
-                //"fen" => fen(tx),
-
+                "uci" => {
+                    println!(r#"id name {}
+id author Petr Pravda
+uciok"#, "zerofish 0.1.0 64\
+");
+                    "OK".to_string()
+                },
                 "go" => {
-                    let depth = parts.get(2).map(|d| d.parse::<u16>()).map(|e| e.unwrap());
+                    let depth = parts.get(2).map(|d| d.parse::<u32>()).map(|e| e.unwrap());
                     if parts.len() == 3 && sub_part.unwrap().eq(&"perft") {
-                        // println!("PERFT, depth {}", depth.unwrap());
-                        let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), depth.unwrap());
+                        let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), depth.unwrap() as u16);
                         println!("{}", result);
                     } else if parts.len() == 3 && sub_part.unwrap().eq(&"depth") {
+                        // TODO unify common logic for moves and depth
                         let depth = parts[2].parse::<Depth>().unwrap();
-                        println!("depth {}", depth);
-                        let result = self.search.it_deep(&self.position, depth);
-                        println!("{:?}", result);
+                        let result = self.search.it_deep(&self.position, SearchLimit::for_depth(depth));
+                        println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
+                    } else if parts.len() == 3 && sub_part.unwrap().eq(&"nodes") {
+                        let move_count = parts[2].parse::<u32>().unwrap();
+                        let result = self.search.it_deep(&self.position, SearchLimit::for_move_count(move_count));
+                        println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
                     }
                     String::from("go")
                     // let depth = extract_option(&parts, "depth", 3);
@@ -121,19 +136,30 @@ impl Engine {
 
                 "isready" => self.is_ready(),
 
+                "quit" => "quitting".to_string(),
+
                 "ucinewgame" => {
                     // self.reset();
                     "OK".to_string()
                 },
 
                 "position" => {
-                    // self.set_position_from_uci(&parts[1..].to_vec())che
                     if parts.len() >= 3 && sub_part.unwrap().eq(&"fen") {
-                        // let fen = parts[2];
                         let fen = parts[2..].to_vec().join(" ");
-                        println!("treti: {}", fen);
                         self.position = BoardPosition::from_fen(&*fen);
+                    } else if parts.contains(&"startpos") {
+                        self.position = BoardPosition::from_fen(START_POS);
                     }
+
+                    let moves = match parts.iter().position(|&part| part == "moves") {
+                        Some(idx) => Engine::parse_moves(idx, &parts, &self.position.state),
+                        None => Vec::new(),
+                    };
+
+                    for moov in moves {
+                        self.position.do_move(&moov);
+                    }
+
 
                     "OK".to_string()
                 },
@@ -254,240 +280,16 @@ impl Engine {
         "readyok".to_string()
     }
 
-    // fn parse_position_cmd(parts: &Vec<&str>) -> String {
-    //     if parts.is_empty() {
-    //         eprintln!("position command: missing fen/startpos");
-    //     }
-    //
-    //     let pos_end = parts
-    //         .iter()
-    //         .position(|&part| part.to_lowercase().as_str() == "moves")
-    //         .unwrap_or_else(|| parts.len());
-    //
-    //     let pos_option = parts[1..pos_end].join(" ");
-    //
-    //     if pos_option.is_empty() {
-    //         String::from(START_POS)
-    //     } else {
-    //         pos_option
-    //     }
-    // }
-    //
-    // fn parse_moves(idx: usize, parts: &Vec<&str>) -> Vec<UCIMove> {
-    //     let mut moves: Vec<UCIMove> = Vec::new();
-    //
-    //     for i in (idx + 1)..parts.len() {
-    //         match UCIMove::from_uci(parts[i]) {
-    //             Some(m) => moves.push(m),
-    //             None => {
-    //                 eprintln!("could not parse move notation: {}", parts[i]);
-    //                 return moves;
-    //             }
-    //         }
-    //     }
-    //
-    //     moves
-    // }
+    fn parse_moves(idx: usize, parts: &Vec<&str>, original_state: &BoardState) -> Vec<Move> {
+        let mut state = original_state.clone();
+        let mut moves: Vec<Move> = Vec::new();
 
-    // fn set_position(&mut self, fen: String, moves: Vec<UCIMove>) {
-    //     match read_fen(&mut self.board, &fen) {
-    //         Ok(_) => (),
-    //         Err(err) => println!("position cmd: {}", err),
-    //     }
-    //
-    //     for m in moves {
-    //         self.board.perform_move(m.to_move(&self.board));
-    //     }
-    // }
-    //
-    // fn prepare_eval(&mut self, fens_with_result: Vec<(String, f64)>) {
-    //     for (fen, result) in fens_with_result {
-    //         match read_fen(&mut self.board, &fen) {
-    //             Ok(_) => (),
-    //             Err(err) => println!("prepare_eval cmd: {}", err),
-    //         }
-    //
-    //         if self.board.is_in_check(WHITE) || self.board.is_in_check(BLACK) {
-    //             continue;
-    //         }
-    //
-    //         let mut pieces: [i8; 64] = [0; 64];
-    //         for i in 0..64 {
-    //             pieces[i] = self.board.get_item(i as i32);
-    //         }
-    //
-    //
-    //         self.test_positions.push(EvalBoardPos {
-    //             result,
-    //             pieces,
-    //             halfmove_count: self.board.fullmove_count(),
-    //             castling_state: self.board.get_castling_state(),
-    //             is_quiet: true
-    //         });
-    //     }
-    //
-    //     println!("prepared");
-    // }
-    //
-    // fn prepare_quiet(&mut self, fens_with_result: Vec<(String, f64)>) {
-    //     for (fen, result) in fens_with_result {
-    //         match read_fen(&mut self.board, &fen) {
-    //             Ok(_) => (),
-    //             Err(err) => println!("prepare_quiet cmd: {}", err),
-    //         }
-    //
-    //         if self.board.is_in_check(-self.board.active_player()) {
-    //             continue;
-    //         }
-    //
-    //         let play_moves = (self.rnd.rand64() % 12) as i32;
-    //         for _ in 0..play_moves {
-    //             let m = self.find_best_move(9, true);
-    //             if m == NO_MOVE {
-    //                 break;
-    //             }
-    //
-    //             self.board.perform_move(m);
-    //         }
-    //
-    //         if !self.make_quiet() {
-    //             continue;
-    //         }
-    //
-    //         let mut pieces: [i8; 64] = [0; 64];
-    //         for i in 0..64 {
-    //             pieces[i] = self.board.get_item(i as i32);
-    //         }
-    //
-    //         let pos = EvalBoardPos {
-    //             result,
-    //             pieces,
-    //             halfmove_count: self.board.halfmove_count,
-    //             castling_state: self.board.get_castling_state(),
-    //             is_quiet: true
-    //         };
-    //
-    //         self.test_positions.push(pos);
-    //     }
-    //
-    //     println!("prepared");
-    // }
-    //
-    // fn make_quiet(&mut self) -> bool {
-    //     for _ in 0..15 {
-    //         if self.board.is_in_check(-self.board.active_player()) {
-    //             return false;
-    //         }
-    //
-    //         if self.board.get_static_score().abs() > get_piece_value(Q as usize) as i32 {
-    //             return false;
-    //         }
-    //
-    //         let mut is_quiet = self.is_quiet_position();
-    //         if !is_quiet && self.make_quiet_position() && self.is_quiet_position() && self.board.get_static_score().abs() <= get_piece_value(Q as usize) as i32 {
-    //             is_quiet = true;
-    //         }
-    //
-    //         let m = self.find_best_move(6, true);
-    //         if m == NO_MOVE {
-    //             return false;
-    //         }
-    //
-    //         if is_quiet && self.is_quiet_pv(m, 4) {
-    //             return true;
-    //         }
-    //
-    //         self.board.perform_move(m);
-    //     }
-    //
-    //     false
-    // }
-    //
-    // fn eval(&mut self, k: f64) {
-    //
-    //     let mut errors: f64 = 0.0;
-    //     let k_div = k / 400.0;
-    //     for pos in self.test_positions.to_vec().iter() {
-    //         pos.apply(&mut self.board);
-    //         let score = if pos.is_quiet {
-    //             self.board.get_score()
-    //         } else {
-    //             self.quiescence_search(self.board.active_player(), MIN_SCORE, MAX_SCORE, 0) * self.board.active_player() as i32
-    //         };
-    //
-    //         let win_probability = 1.0 / (1.0 + 10.0f64.powf(-(score as f64) * k_div));
-    //         let error = pos.result - win_probability;
-    //         errors += error * error;
-    //     }
-    //
-    //     println!("result {}:{}", self.test_positions.len(), errors);
-    // }
-    //
-    // fn print_test_positions(&mut self) {
-    //
-    //     print!("testpositions ");
-    //     let mut is_first = true;
-    //     for pos in self.test_positions.to_vec().iter() {
-    //         pos.apply(&mut self.board);
-    //         self.board.reset_half_move_clock();
-    //         let fen = write_fen(&self.board);
-    //
-    //         if !is_first {
-    //             print!(";");
-    //         } else {
-    //             is_first = false;
-    //         }
-    //
-    //         print!("{}", fen);
-    //     }
-    //
-    //     println!();
-    // }
-    //
-    // fn reset_test_positions(&mut self) {
-    //     self.test_positions.clear();
-    //     println!("reset completed");
-    // }
-    //
-    // fn set_tt_size(&mut self, size_mb: i32) {
-    //     self.tt.resize(size_mb as u64, false);
-    // }
-    //
-    // fn reset(&mut self) {
-    //     self.tt.clear();
-    //     self.hh.clear();
-    // }
-    //
-    // pub fn perform_move(&mut self, m: Move) {
-    //     self.board.perform_move(m);
-    // }
-    //
-    // pub fn profile(&mut self) {
-    //     println!("Profiling ...");
-    //     self.go(10, 500, 500, 0, 0, 500, 2);
-    //     exit(0);
-    // }
-    //
-    // pub fn is_search_stopped(&self) -> bool {
-    //     false
-    // }
+        for i in (idx + 1)..parts.len() {
+            let moov = Move::from_uci_string(parts[i], &state);
+            state = state.do_move(&moov);
+            moves.push(moov);
+        }
+
+        moves
+    }
 }
-
-// pub fn generateMoves(board: &mut Board) -> (String, String) {
-//     let moves: Vec<Move> = board.generate_legal_moves();
-//     let legal_moves_string = moves.iter().fold("".to_string(), |mut i, j|
-//         {
-//             i.push_str(" ");
-//             i.push_str(&j.to_string());
-//             i
-//         });
-//
-//     let checker_moves: Vec<Move> = board.generate_checker_moves();
-//     let checker_moves_string = checker_moves.iter().fold("".to_string(), |mut i, j|
-//         {
-//             i.push_str(" ");
-//             i.push_str(&*Square::get_name(*(&j.start()) as usize));
-//             i
-//         });
-//     (legal_moves_string, checker_moves_string)
-// }

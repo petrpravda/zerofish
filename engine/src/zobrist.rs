@@ -87,10 +87,10 @@ mod tests {
     fn hashing_changes() {
         let mut state = from_fen_default(START_POS);
         let hash_starting = state.hash;
-        state = state.do_move(&Move::from_uci_string("b1a3"));
+        state = state.do_move(&Move::from_uci_string("b1a3", &state));
         let hash_1 = state.hash;
         assert_ne!(hash_starting, hash_1);
-        state = state.do_move(&Move::from_uci_string("d7d5"));
+        state = state.do_move(&Move::from_uci_string("d7d5", &state));
         let hash_2 = state.hash;
         assert_ne!(hash_1, hash_2);
     }
