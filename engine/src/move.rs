@@ -44,6 +44,9 @@ impl Move {
     pub fn new_from_bits(m: u16) -> Self { Self{bits: m }}
     pub fn new_from_to(from: u8, to: u8) -> Self { Self{bits: (from as u16) << 6 | (to as u16) }}
     pub fn new_from_flags(from: u8, to: u8, flags: u16) -> Self {
+        // if from == 36 && to == 29 {
+        //     panic!()
+        // }
         Self{bits: flags | (from as u16) << 6 | (to as u16) }}
 
     pub fn to(&self) -> u8 {
@@ -140,8 +143,57 @@ impl Move {
         };
 
         let flags = promotion.map(|p| p | p | if capture { Move::CAPTURE } else { Move::QUIET }).unwrap_or(0u16);
-        Move::new_from_flags(from_sq as u8, to_sq as u8, flags)
+        let move_with_promo = Move::new_from_flags(from_sq as u8, to_sq as u8, flags);
+        let move_with_promo_uci = move_with_promo.uci();
+        let moov = state.generate_legal_moves().moves.iter().find(|m| m.uci().eq(&move_with_promo_uci)).map(|m| m.clone()).unwrap();
+        moov
     }
+
+    // pub fn from_uci_string(uci: &str, state: &BoardState) -> Move {
+    //     let bytes = uci.as_bytes();
+    //     if bytes.len() < 4 {
+    //         panic!("Invalid uci move notation: {}", uci);
+    //     }
+    //
+    //     let from_sq = Square::get_square_from_name(&uci[0..2]);
+    //     let to_sq = Square::get_square_from_name(&uci[2..4]);
+    //
+    //     //     pub const DOUBLE_PUSH: u16 = 0b0001000000000000;
+    //     //     pub const OO:          u16 = 0b0010000000000000;
+    //     //     pub const OOO:         u16 = 0b0011000000000000;
+    //     //     pub const CAPTURE:     u16 = 0b0100000000000000;
+    //     //     pub const EN_PASSANT:  u16 = 0b0101000000000000;
+    //
+    //     let capture = if state.piece_at(to_sq) != NONE { Move::CAPTURE } else { Move::QUIET };
+    //     let promotion: u16 = if bytes.len() == 5 {
+    //         Some(match bytes[4] {
+    //             b'q' => Move::PR_QUEEN,
+    //             b'r' => Move::PR_ROOK,
+    //             b'b' => Move::PR_BISHOP,
+    //             b'n' => Move::PR_KNIGHT,
+    //             _ => {
+    //                 panic!("Invalid promotion piece in UCI notation: {}", uci);
+    //             }
+    //         })
+    //     } else {
+    //         None
+    //     }.unwrap_or( Move::QUIET);
+    //
+    //     let moving_pawn = type_of(state.items[from_sq as usize]) == PieceType::PAWN;
+    //     let moving_king = type_of(state.items[from_sq as usize]) == PieceType::KING;
+    //     let double_push = if moving_pawn && (from_sq as i8 -to_sq as i8).abs() == 16
+    //         { Move::DOUBLE_PUSH } else { Move::QUIET };
+    //     let en_passant = if state.en_passant != 0
+    //         && moving_pawn
+    //         && from_sq % 8 != to_sq % 8
+    //         && to_sq == state.en_passant.trailing_zeros() as u8
+    //         { Move::EN_PASSANT } else { Move::QUIET };
+    //     let oo = moving_king
+    //         && ((from_sq % 8) as i8 - (to_sq % 8) as i8).abs() == 2
+    //
+    //     let flags = capture | promotion | double_push | en_passant;
+    //     Move::new_from_flags(from_sq as u8, to_sq as u8, flags)
+    // }
 }
 
 impl fmt::Display for Move {
@@ -204,7 +256,7 @@ impl MoveList {
     }
 
     //final BoardState state, TranspTable transposition_table, int ply, MoveOrdering moveOrdering) {
-    pub fn score_moves(&mut self, state: &BoardState, transposition_table: &TranspositionTable) -> Vec<ScoredMove> {
+    pub fn score_moves(&self, state: &BoardState, transposition_table: &TranspositionTable) -> Vec<ScoredMove> {
         if self.moves.len() == 0 {
             return Vec::new()
         }
@@ -216,9 +268,12 @@ impl MoveList {
             let move_score = if hash_move.is_some() && hash_move.unwrap().bits == moov.bits
                     { MoveOrdering::HASH_MOVE_SCORE } else { 0 };
             let piece = state.items[moov.from() as usize];
+            //let mmove = moov.uci();
             // if piece == NONE {
+            // if state.items[moov.to() as usize] == NONE && moov.flags() == Move::CAPTURE {
             //     let uci_move = moov.uci();
-            //     panic!()
+            //     println!("ble");
+            //     // panic!()
             // }
 //
             let pieces_score: Value = match moov.flags() {
@@ -256,7 +311,7 @@ impl MoveList {
         format!("[{}] {}", self.moves.len(), uci_moves)
     }
 
-    pub fn over_sorted(& mut self, state: & BoardState, transposition_state: & TranspositionTable) -> SortedMovesIter {
+    pub fn over_sorted(&self, state: & BoardState, transposition_state: & TranspositionTable) -> SortedMovesIter {
         let scored_moves = self.score_moves(state, transposition_state);
         SortedMovesIter {
 //            transposition_state,

@@ -119,6 +119,19 @@ impl BoardState {
         result
     }
 
+    pub fn to_bitboard_string(bitboard: u64) -> String {
+        let mut result = String::new();
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let c = if (bitboard >> (rank * 8 + file) & 1) == 1 { 'X' } else { '.' };
+                result.push(c);
+                result.push(' ');
+            }
+            result.push('\n');
+        }
+        result
+    }
+
 
     //
     //     public BoardState(int[] items, int sideToPlay, long movements, long enPassantMask, int halfMoveClock, int fullMoveCount, int maxSearchDepth) {
@@ -884,6 +897,8 @@ impl BoardState {
             }
         }
 
+        // let pawni = self.bitboard_of(us, PAWN);
+        // let filter = !Bitboard::PAWN_RANKS[us as usize];
         let b1 = self.bitboard_of(us, PAWN) & not_pinned & !Bitboard::PAWN_RANKS[us as usize];
 
         if !only_quiescence {
@@ -1008,6 +1023,20 @@ impl BoardState {
         to_fen(&self)
     }
 
+    pub fn parse_moves(&self, parts: &Vec<&str>) -> Vec<Move> {
+        let mut state = self.clone();
+        let mut moves: Vec<Move> = Vec::new();
+
+        for i in 0..parts.len() {
+            let moov = Move::from_uci_string(parts[i], &state);
+            state = state.do_move(&moov);
+            moves.push(moov);
+        }
+
+        moves
+    }
+
+
     //     public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
     //
     //     public Params toParams() {
@@ -1036,6 +1065,7 @@ mod tests {
     use crate::fen::{from_fen_default, START_POS};
     use crate::piece::{BLACK_ROOK, WHITE_ROOK};
     use crate::square::Square;
+    use crate::transposition::TranspositionTable;
 
     #[test]
     fn from_fen_startpos() {
@@ -1049,6 +1079,17 @@ mod tests {
     fn from_failing_sts() {
         let state = from_fen_default("2r5/p3k1p1/1p5p/4Pp2/1PPnK3/PB1R2P1/7P/8 w - f6 0 4");
         let moves = state.generate_legal_moves();
+        println!("{}", moves);
+    }
+
+    #[test]
+    fn failing_cute_chess() {
+        let state = from_fen_default("rnbqkbnr/pppp2pp/5p2/8/5P2/8/PPP1PPPP/RN1QKBNR w KQkq - 0 4");
+        let moves = state.generate_legal_moves();
+        let tt = TranspositionTable::new(1);
+        for moov in moves.over_sorted(&state, &tt) {
+            println!("{}", moov.uci());
+        }
         println!("{}", moves);
     }
 

@@ -38,26 +38,29 @@ fn prepare_lmr_table() -> [[i32; 64]; 64] {
 pub struct SearchLimit {
     pub depth: Depth,
     pub max_nodes: u32,
+    pub moves_to_go: Option<u32>,
+
+    pub perft_depth: Option<Depth>,
 }
 
 impl SearchLimit {
     fn max() -> SearchLimit {
-        Self { depth: u8::MAX, max_nodes: u32::MAX }
+        Self { depth: u8::MAX, max_nodes: u32::MAX, perft_depth: None, moves_to_go: None }
     }
-
-    pub fn for_depth(depth: Depth) -> SearchLimit {
-        Self { depth, max_nodes: u32::MAX }
-    }
-
-    pub fn for_move_count(move_count: u32) -> SearchLimit {
-        Self { depth: u8::MAX, max_nodes: move_count }
-    }
+    //
+    // pub fn for_depth(depth: Depth) -> SearchLimit {
+    //     Self { depth, max_nodes: u32::MAX }
+    // }
+    //
+    // pub fn for_move_count(move_count: u32) -> SearchLimit {
+    //     Self { depth: u8::MAX, max_nodes: move_count }
+    // }
 }
 
 pub struct Search {
     search_position: BoardPosition, // TODO rename to board_position
     sel_depth: Depth,
-    stopped: bool,
+    pub(crate) stopped: bool,
     statistics: Statistics,
     transposition_table: &'static TranspositionTable,
     start_time: Instant,
@@ -137,7 +140,7 @@ impl Search {
 
     pub fn nega_max_root(&mut self, state: &BoardState, depth: Depth, mut alpha: Value, beta: Value) -> SearchResult{
         //let mut value = -Search::INF;
-        let mut moves = state.generate_legal_moves();
+        let moves = state.generate_legal_moves();
         // let inCheck = state.checkers() != 0;
         // if (inCheck) ++depth;
         if moves.len() == 1 {
@@ -259,7 +262,7 @@ impl Search {
             }
         }
 
-        let mut moves = state.generate_legal_moves();
+        let moves = state.generate_legal_moves();
         let mut best_move: Move = Move::NULL_MOVE;
         for (index, moov) in moves.over_sorted(&state, self.transposition_table).enumerate() {
 
@@ -334,7 +337,7 @@ impl Search {
             alpha = value;
         }
 
-        let mut moves = state.generate_legal_moves_wo(true);
+        let moves = state.generate_legal_moves_wo(true);
         for moov in moves.over_sorted(&state, self.transposition_table) {
 
             // Skip if under-promotion.
@@ -344,6 +347,9 @@ impl Search {
 
             let new_state = state.do_move(&moov);
             let depth_m1 = depth - 1;
+            // let state_str = state.to_fen();
+            // let move_str = moov.uci();
+            // let new_state_str = new_state.to_fen();
             value = -self.quiescence(&new_state, depth_m1, ply + 1, -beta, -alpha);
 
             // if (stop) {

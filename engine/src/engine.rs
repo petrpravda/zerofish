@@ -1,12 +1,11 @@
 use std::fs::File;
-use std::io::Write;
+use std::str::FromStr;
+
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
 use crate::fen::{START_POS, to_fen};
 use crate::perft::Perft;
-use crate::r#move::Move;
 use crate::search::{Search, SearchLimit};
-use crate::transposition::Depth;
 
 pub enum UciMessage {
     UciCommand(String),
@@ -62,8 +61,8 @@ pub struct Engine {
     // bitboard: &'a Bitboard,
     // board_state: BoardState,
     position: BoardPosition,
-    search: Search,
-    file: File,
+    pub(crate) search: Search,
+//    file: File,
 }
 
 impl Engine {
@@ -74,7 +73,7 @@ impl Engine {
 //            bitboard,
             position: BoardPosition::from_fen(fen),
             search: Search::new(),
-            file,
+            //file,
             //board_state: from_fen_default(fen),
         };
 
@@ -86,8 +85,8 @@ impl Engine {
     }
 
     pub fn process_uci_command(&mut self, uci_command: String) -> String {
-        let msg = format!("Processing: {}", uci_command);
-        self.file.write(msg.as_ref()).expect("TODO: panic message");
+        //let msg = format!("Processing: {}", uci_command);
+        //self.file.write(msg.as_ref()).expect("TODO: panic message");
         let parts: Vec<&str> = uci_command.split_whitespace().collect();
         let part = parts.get(0);
         let sub_part = parts.get(1);
@@ -101,20 +100,37 @@ uciok"#, "zerofish 0.1.0 64\
                     "OK".to_string()
                 },
                 "go" => {
-                    let depth = parts.get(2).map(|d| d.parse::<u32>()).map(|e| e.unwrap());
-                    if parts.len() == 3 && sub_part.unwrap().eq(&"perft") {
-                        let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), depth.unwrap() as u16);
+                    let mut search_limit: SearchLimit = SearchLimit {
+                        perft_depth: Engine::extract_parameter(&parts, "perft"),
+                        depth: Engine::extract_parameter_or(&parts, "depth", u8::MAX),
+                        max_nodes: Engine::extract_parameter_or(&parts, "nodes", u32::MAX),
+                        // go wtime 287421 btime 300000 movestogo 40
+                        moves_to_go: Engine::extract_parameter(&parts, "movestogo"),
+                    };
+
+                    if search_limit.moves_to_go.is_some() { // TODO temporary hack because of cute-chess
+                        search_limit.depth = 10;
+                    }
+
+                    if search_limit.perft_depth.is_some() {
+                        let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), search_limit.perft_depth.unwrap());
                         println!("{}", result);
-                    } else if parts.len() == 3 && sub_part.unwrap().eq(&"depth") {
-                        // TODO unify common logic for moves and depth
-                        let depth = parts[2].parse::<Depth>().unwrap();
-                        let result = self.search.it_deep(&self.position, SearchLimit::for_depth(depth));
-                        println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
-                    } else if parts.len() == 3 && sub_part.unwrap().eq(&"nodes") {
-                        let move_count = parts[2].parse::<u32>().unwrap();
-                        let result = self.search.it_deep(&self.position, SearchLimit::for_move_count(move_count));
+                    } else {
+                        let result = self.search.it_deep(&self.position, search_limit);
                         println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
                     }
+                    // let depth = parts.get(2).map(|d| d.parse::<u32>()).map(|e| e.unwrap());
+                    // if parts.len() == 3 && sub_part.unwrap().eq(&"perft") {
+                    // } else if parts.len() == 3 && sub_part.unwrap().eq(&"depth") {
+                    //     // TODO unify common logic for moves and depth
+                    //     let depth = parts[2].parse::<Depth>().unwrap();
+                    //     let result = self.search.it_deep(&self.position, SearchLimit::for_depth(depth));
+                    //     println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
+                    // } else if parts.len() == 3 && sub_part.unwrap().eq(&"nodes") {
+                    //     let move_count = parts[2].parse::<u32>().unwrap();
+                    //     let result = self.search.it_deep(&self.position, SearchLimit::for_move_count(move_count));
+                    //     println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
+                    // }
                     String::from("go")
                     // let depth = extract_option(&parts, "depth", 3);
                     //
@@ -152,7 +168,13 @@ uciok"#, "zerofish 0.1.0 64\
                     }
 
                     let moves = match parts.iter().position(|&part| part == "moves") {
-                        Some(idx) => Engine::parse_moves(idx, &parts, &self.position.state),
+                        Some(idx) => {
+                            // let (sublist_before, sublist_after) = parts.split_at(idx + 1);
+                            // let parts_after = sublist_after.to_vec();
+                            // self.position.state.parse_moves(&parts_after)
+                            let (_, parts_after) = parts.split_at(idx + 1);
+                            self.position.state.parse_moves(&parts_after.to_vec())
+                        },
                         None => Vec::new(),
                     };
 
@@ -280,16 +302,23 @@ uciok"#, "zerofish 0.1.0 64\
         "readyok".to_string()
     }
 
-    fn parse_moves(idx: usize, parts: &Vec<&str>, original_state: &BoardState) -> Vec<Move> {
-        let mut state = original_state.clone();
-        let mut moves: Vec<Move> = Vec::new();
+    fn extract_parameter<T: FromStr>(parts: &Vec<&str>, name: &str) -> Option<T> {
+        match parts.iter().position(|&item| item == name) {
+            Some(pos) => {
+                if pos + 1 >= parts.len() {
+                    return None;
+                }
 
-        for i in (idx + 1)..parts.len() {
-            let moov = Move::from_uci_string(parts[i], &state);
-            state = state.do_move(&moov);
-            moves.push(moov);
+                match T::from_str(parts[pos + 1]) {
+                    Ok(value) => Some(value),
+                    Err(_) => None,
+                }
+            }
+            None => None,
         }
+    }
 
-        moves
+    fn extract_parameter_or<T: FromStr>(parts: &Vec<&str>, name: &str, default_value: T) -> T {
+        Engine::extract_parameter(parts, name).unwrap_or(default_value)
     }
 }

@@ -47,7 +47,10 @@ impl EngineThread {
 
     fn handle_message(&mut self, msg: UciMessage) -> bool {
         match msg {
-            UciMessage::Stop => (),
+            UciMessage::Stop => {
+                println!("Stopping");
+                self.engine.search.stopped = true;
+            },
             UciMessage::UciCommand(uci_command) => {
                 // println!("UciCommand: {}", uci_command);
                 let _result = self.engine.process_uci_command(uci_command);

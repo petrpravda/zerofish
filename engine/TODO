@@ -12,6 +12,9 @@
 type Item = u32; // TODO change to u8
 - cutechess: position startpos moves d2d4
              go wtime 287421 btime 300000 movestogo 40
+             position startpos moves d2d4 e7e5 d4e5 f7f6
+- implement stop
+- scoring fix for OO & OOO
 ============================================================
 Processing: uci
 Processing: setoption name MultiPV value 3

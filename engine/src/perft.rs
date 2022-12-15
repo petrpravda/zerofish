@@ -1,4 +1,5 @@
 use crate::board_state::BoardState;
+use crate::transposition::Depth;
 
 pub struct Perft {}
 
@@ -11,7 +12,7 @@ impl Perft {
         result
     }
 
-    pub fn perft(state: &BoardState, depth: u16) -> u64 {
+    pub fn perft(state: &BoardState, depth: Depth) -> u64 {
         let moves = state.generate_legal_moves();
 
         if depth == 0 {
@@ -34,7 +35,7 @@ impl Perft {
         }
     }
 
-    pub fn perft_sf_string(state: &BoardState, depth: u16) -> (String, u64) {
+    pub fn perft_sf_string(state: &BoardState, depth: Depth) -> (String, u64) {
         let mut result = String::new();
         let moves = state.generate_legal_moves();
         let mut total: u64 = 0;
@@ -108,9 +109,9 @@ impl Perft {
 
 #[cfg(test)]
 mod tests {
-    use crate::bitboard::Bitboard;
     use crate::fen::{from_fen_default, START_POS};
     use crate::perft::Perft;
+    use crate::transposition::Depth;
 
     #[test]
     fn from_fen_startpos_depth_1() {
@@ -420,7 +421,7 @@ double check:
     fn test_tricky(_name: &str, line: &str) {
         let position = parse_line(line);
         let state = from_fen_default(&position.fen);
-        let (_perft_sf, count) = Perft::perft_sf_string(&state, position.depth);
+        let (_perft_sf, count) = Perft::perft_sf_string(&state, position.depth as Depth);
         assert_eq!(position.count, count);
     }
 

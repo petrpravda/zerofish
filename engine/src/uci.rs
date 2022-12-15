@@ -21,6 +21,9 @@ pub fn start_uci_loop(tx: &Sender<UciMessage>) {
         if line.starts_with("quit") {
             break;
         }
+        if line.starts_with("stop") {
+            println!("Stopping qwe");
+        }
     }
 }
 
