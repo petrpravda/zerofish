@@ -1,21 +1,21 @@
 - statistics
-- basic uci
 - enhanced uci for testing
-- Fen as trait
 - Elo tests
   - synchronize result tables
-- implement in killer moves
-- LMR is index really needed
+- implement killer moves
+- LMR in index really needed
 - repetition - move history board & position
 - handle panicked - error handling - pub fn process_uci_command(&mut self, uci_command: String) -> String {
 - tune const BOARD_STATE_HISTORY_CAPACITY: usize = 20;
+- engine - unify handling of command processing outcomes
 type Item = u32; // TODO change to u8
+- multipv param
 - cutechess: position startpos moves d2d4
              go wtime 287421 btime 300000 movestogo 40
              position startpos moves d2d4 e7e5 d4e5 f7f6
 - implement stop
-- scoring fix for OO & OOO
 ============================================================
+https://www.amazon.com/Game-Changer-AlphaZeros-Groundbreaking-Strategies/dp/9056918184
 Processing: uci
 Processing: setoption name MultiPV value 3
 Processing: isready

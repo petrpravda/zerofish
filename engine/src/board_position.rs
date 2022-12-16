@@ -7,7 +7,7 @@
 // use crate::r#move::Move;
 
 use crate::board_state::BoardState;
-use crate::fen::{from_fen_default, START_POS};
+use crate::fen::{Fen, FenExport, START_POS};
 use crate::r#move::Move;
 use crate::transposition::Depth;
 
@@ -20,11 +20,17 @@ pub struct BoardPosition {
 
 }
 
+impl FenExport for BoardPosition {
+    fn to_fen(&self) -> String {
+        self.state.to_fen()
+    }
+}
+
 impl BoardPosition {
 
     pub fn from_fen(fen: &str) -> BoardPosition {
         BoardPosition {
-            state: from_fen_default(fen),
+            state: Fen::from_fen_default(fen),
             history_index: 0,
             history: vec![],
         }
@@ -79,11 +85,11 @@ mod tests {
         // let to = Square::get_square_from_name("f4");   // 29
         let position_before = BoardPosition::from_moves(&"d2d4 e7e5");
         let state = position_before.state;
-        println!("{}", BoardState::to_bitboard_string(state.bitboard_of(Side::BLACK, PieceType::PAWN)));
+        println!("{}", BoardState::bitboard_string(state.bitboard_of(Side::BLACK, PieceType::PAWN)));
 
         let moov = Move::from_uci_string("d4e5", &state);
         let new_state = state.do_move(&moov);
-        println!("{}", BoardState::to_bitboard_string(new_state.bitboard_of(Side::BLACK, PieceType::PAWN)));
+        println!("{}", BoardState::bitboard_string(new_state.bitboard_of(Side::BLACK, PieceType::PAWN)));
 
         // let position = BoardPosition::from_moves(&"d2d4 e7e5 d4e5 f7f6 c1f4");
         // println!("{}", position.state.to_fen());

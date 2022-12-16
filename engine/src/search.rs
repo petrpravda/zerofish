@@ -4,6 +4,7 @@ use crate::board_state::BoardState;
 use crate::evaluation::Evaluation;
 use crate::fen::START_POS;
 use crate::r#move::{Move};
+use crate::side::Side;
 use crate::statistics::Statistics;
 use crate::time::Instant;
 use crate::transposition::{Depth, TranspositionTable, Value};
@@ -35,25 +36,54 @@ fn prepare_lmr_table() -> [[i32; 64]; 64] {
     result
 }
 
+#[derive(Debug)]
 pub struct SearchLimit {
     pub depth: Depth,
     pub max_nodes: u32,
+    pub max_ms: u32,
+}
+
+impl SearchLimit {
+    fn default() -> SearchLimit {
+        SearchLimit {
+            depth: 3,
+            max_nodes: u32::MAX,
+            max_ms: u32::MAX,
+        }
+    }
+}
+
+pub struct SearchLimitParams {
+    pub depth: Option<Depth>,
+    pub max_nodes: Option<u32>,
+    pub move_time: Option<u32>,
     pub moves_to_go: Option<u32>,
+    pub w_time: Option<u32>,
+    pub b_time: Option<u32>,
 
     pub perft_depth: Option<Depth>,
 }
 
-impl SearchLimit {
-    fn max() -> SearchLimit {
-        Self { depth: u8::MAX, max_nodes: u32::MAX, perft_depth: None, moves_to_go: None }
+impl SearchLimitParams {
+    pub fn prepare(&self, side_on_the_move: Side) -> SearchLimit {
+        let mut result = SearchLimit {
+            depth: self.depth.unwrap_or(u8::MAX),
+            max_nodes: self.max_nodes.unwrap_or(u32::MAX),
+            max_ms: self.move_time.unwrap_or(u32::MAX),
+        };
+        if self.w_time.is_some() && self.b_time.is_some() && self.moves_to_go.is_some() {
+            let time = match side_on_the_move { Side::WHITE => self.w_time.unwrap(),
+                Side::BLACK => self.b_time.unwrap() };
+            result.max_ms = time / self.moves_to_go.unwrap();
+        }
+        result
     }
-    //
-    // pub fn for_depth(depth: Depth) -> SearchLimit {
-    //     Self { depth, max_nodes: u32::MAX }
-    // }
-    //
-    // pub fn for_move_count(move_count: u32) -> SearchLimit {
-    //     Self { depth: u8::MAX, max_nodes: move_count }
+}
+
+impl SearchLimitParams {
+    // fn new() -> SearchLimitParams {
+    //     Self { depth: None, max_nodes: None, perft_depth: None, moves_to_go: None,
+    //         w_time: None, b_time: None, move_time: None }
     // }
 }
 
@@ -65,6 +95,7 @@ pub struct Search {
     transposition_table: &'static TranspositionTable,
     start_time: Instant,
     search_limit: SearchLimit,
+    time_checking_round: u32,
 }
 
 lazy_static! {
@@ -88,14 +119,15 @@ impl Search {
             stopped: false,
             statistics: Statistics::new(),
             transposition_table: &TT,
-            search_limit: SearchLimit::max(),
+            search_limit: SearchLimit::default(),
+            time_checking_round: 0,
         }
     }
 
-    pub fn it_deep(&mut self, position: &BoardPosition, search_limit_param: SearchLimit) -> SearchResult {
+    pub fn it_deep(&mut self, position: &BoardPosition, search_limit: SearchLimit) -> SearchResult {
         let mut result = SearchResult { moov: None, score: 0 };
 
-        self.search_limit = search_limit_param;
+        self.search_limit = search_limit;
         self.search_position = position.for_search_depth(self.search_limit.depth);
         self.start_time = Instant::now();
         self.sel_depth = 0;
@@ -418,15 +450,24 @@ impl Search {
         primary_value
     }
 
-    fn time_elapsed(&self) -> u64 {
+    fn time_elapsed(&self) -> u32 {
         let now = Instant::now();
         let duration = now - self.start_time;
-        duration.as_millis() as u64
+        duration.as_millis() as u32
     }
 
     fn check_stopping(&mut self) -> bool {
         if self.statistics.nodes >= self.search_limit.max_nodes {
             self.stopped = true;
+        }
+
+        self.time_checking_round += 1;
+
+        if self.time_checking_round >= 1000 {
+            self.time_checking_round = 0;
+            if self.time_elapsed() >= self.search_limit.max_ms {
+                self.stopped = true;
+            }
         }
 
         self.stopped

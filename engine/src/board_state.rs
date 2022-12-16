@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::bitboard::{Bitboard, BITBOARD, BitIter};
 use crate::board_position::BoardPosition;
-use crate::fen::to_fen;
+use crate::fen::{Fen, FenExport};
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
 use crate::piece_square_table::{EGS, MGS};
@@ -49,6 +49,12 @@ impl fmt::Display for BoardState {
     }
 }
 
+impl FenExport for BoardState {
+    fn to_fen(&self) -> String {
+        Fen::compute_fen(&self)
+    }
+}
+
 impl BoardState {
     pub fn new(
         items: &[Piece; 64],
@@ -88,7 +94,7 @@ impl BoardState {
             }
         }
 
-        if side_to_play == Side::BLACK {
+        if side_to_play == BLACK {
             board_state.hash ^= ZOBRIST.side;
         }
 
@@ -119,7 +125,7 @@ impl BoardState {
         result
     }
 
-    pub fn to_bitboard_string(bitboard: u64) -> String {
+    pub fn bitboard_string(bitboard: u64) -> String {
         let mut result = String::new();
         for rank in (0..8).rev() {
             for file in 0..8 {
@@ -499,13 +505,13 @@ impl BoardState {
     pub fn is_king_attacked(&self) -> bool {
         let us = self.side_to_play;
         let them = !us;
-        let our_king = self.bitboard_of(us, PieceType::KING).trailing_zeros();
+        let our_king = self.bitboard_of(us, KING).trailing_zeros();
 
-        if (Bitboard::pawn_attacks_from_square(our_king as u8, us) & self.bitboard_of(them, PieceType::PAWN)) != 0 {
+        if (Bitboard::pawn_attacks_from_square(our_king as u8, us) & self.bitboard_of(them, PAWN)) != 0 {
             return true;
         }
 
-        if (BITBOARD.get_knight_attacks(our_king as usize) & self.bitboard_of(them, PieceType::KNIGHT)) != 0 {
+        if (BITBOARD.get_knight_attacks(our_king as usize) & self.bitboard_of(them, KNIGHT)) != 0 {
             return true;
         }
 
@@ -660,7 +666,7 @@ impl BoardState {
         }
 
         pub fn has_non_pawn_material(&self, side: Side) -> bool {
-            for piece in make_piece(side, PieceType::KNIGHT)..=make_piece(side, PieceType::QUEEN) {
+            for piece in make_piece(side, KNIGHT)..=make_piece(side, PieceType::QUEEN) {
                 if self.bitboard_of_piece(piece) != 0 {
                     return true;
                 }
@@ -1019,10 +1025,6 @@ impl BoardState {
             // self.mg
         }
 
-    pub fn to_fen(&self) -> String {
-        to_fen(&self)
-    }
-
     pub fn parse_moves(&self, parts: &Vec<&str>) -> Vec<Move> {
         let mut state = self.clone();
         let mut moves: Vec<Move> = Vec::new();
@@ -1061,15 +1063,14 @@ impl BoardState {
 
 #[cfg(test)]
 mod tests {
-    use crate::bitboard::Bitboard;
-    use crate::fen::{from_fen_default, START_POS};
+    use crate::fen::{Fen, START_POS};
     use crate::piece::{BLACK_ROOK, WHITE_ROOK};
     use crate::square::Square;
     use crate::transposition::TranspositionTable;
 
     #[test]
     fn from_fen_startpos() {
-        let state = from_fen_default(START_POS);
+        let state = Fen::from_fen_default(START_POS);
         let moves = state.generate_legal_moves();
         println!("{}", moves);
         // assert_eq!(state.to_string(), );
@@ -1077,14 +1078,14 @@ mod tests {
 
     #[test]
     fn from_failing_sts() {
-        let state = from_fen_default("2r5/p3k1p1/1p5p/4Pp2/1PPnK3/PB1R2P1/7P/8 w - f6 0 4");
+        let state = Fen::from_fen_default("2r5/p3k1p1/1p5p/4Pp2/1PPnK3/PB1R2P1/7P/8 w - f6 0 4");
         let moves = state.generate_legal_moves();
         println!("{}", moves);
     }
 
     #[test]
     fn failing_cute_chess() {
-        let state = from_fen_default("rnbqkbnr/pppp2pp/5p2/8/5P2/8/PPP1PPPP/RN1QKBNR w KQkq - 0 4");
+        let state = Fen::from_fen_default("rnbqkbnr/pppp2pp/5p2/8/5P2/8/PPP1PPPP/RN1QKBNR w KQkq - 0 4");
         let moves = state.generate_legal_moves();
         let tt = TranspositionTable::new(1);
         for moov in moves.over_sorted(&state, &tt) {
@@ -1095,7 +1096,7 @@ mod tests {
 
     #[test]
     fn mg_value_test() {
-        let mut state = from_fen_default("8/8/8/8/8/8/8/8 w KQkq - 0 1");
+        let mut state = Fen::from_fen_default("8/8/8/8/8/8/8/8 w KQkq - 0 1");
         assert_eq!(state.mg, 0);
         state.set_piece_at(WHITE_ROOK, Square::get_square_from_name("d5") as usize);
         assert_eq!(state.mg, 482);

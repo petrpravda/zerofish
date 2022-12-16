@@ -3,9 +3,9 @@ use std::str::FromStr;
 
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
-use crate::fen::{START_POS, to_fen};
+use crate::fen::{Fen, START_POS};
 use crate::perft::Perft;
-use crate::search::{Search, SearchLimit};
+use crate::search::{Search, SearchLimitParams};
 
 pub enum UciMessage {
     UciCommand(String),
@@ -68,7 +68,7 @@ pub struct Engine {
 impl Engine {
     #[allow(unused)]
     pub fn new_from_fen(fen: &str) -> Self {
-        let mut file = File::create("zerofish.log").unwrap();
+        //let mut file = File::create("zerofish.log").unwrap();
         let mut engine = Engine {
 //            bitboard,
             position: BoardPosition::from_fen(fen),
@@ -100,41 +100,28 @@ uciok"#, "zerofish 0.1.0 64\
                     "OK".to_string()
                 },
                 "go" => {
-                    let mut search_limit: SearchLimit = SearchLimit {
+                    let mut search_limit_params: SearchLimitParams = SearchLimitParams {
                         perft_depth: Engine::extract_parameter(&parts, "perft"),
-                        depth: Engine::extract_parameter_or(&parts, "depth", u8::MAX),
-                        max_nodes: Engine::extract_parameter_or(&parts, "nodes", u32::MAX),
+                        depth: Engine::extract_parameter(&parts, "depth"),
+                        max_nodes: Engine::extract_parameter(&parts, "nodes"),
                         // go wtime 287421 btime 300000 movestogo 40
+                        move_time: Engine::extract_parameter(&parts, "movetime"),
                         moves_to_go: Engine::extract_parameter(&parts, "movestogo"),
+                        w_time: Engine::extract_parameter(&parts, "wtime"),
+                        b_time: Engine::extract_parameter(&parts, "btime"),
                     };
 
-                    if search_limit.moves_to_go.is_some() { // TODO temporary hack because of cute-chess
-                        search_limit.depth = 10;
-                    }
 
-                    if search_limit.perft_depth.is_some() {
-                        let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), search_limit.perft_depth.unwrap());
+                    if search_limit_params.perft_depth.is_some() {
+                        let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), search_limit_params.perft_depth.unwrap());
                         println!("{}", result);
                     } else {
+                        let search_limit = search_limit_params.prepare(self.position.state.side_to_play);
+                        println!("search_limit: {:?}", search_limit);
                         let result = self.search.it_deep(&self.position, search_limit);
                         println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
                     }
-                    // let depth = parts.get(2).map(|d| d.parse::<u32>()).map(|e| e.unwrap());
-                    // if parts.len() == 3 && sub_part.unwrap().eq(&"perft") {
-                    // } else if parts.len() == 3 && sub_part.unwrap().eq(&"depth") {
-                    //     // TODO unify common logic for moves and depth
-                    //     let depth = parts[2].parse::<Depth>().unwrap();
-                    //     let result = self.search.it_deep(&self.position, SearchLimit::for_depth(depth));
-                    //     println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
-                    // } else if parts.len() == 3 && sub_part.unwrap().eq(&"nodes") {
-                    //     let move_count = parts[2].parse::<u32>().unwrap();
-                    //     let result = self.search.it_deep(&self.position, SearchLimit::for_move_count(move_count));
-                    //     println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
-                    // }
                     String::from("go")
-                    // let depth = extract_option(&parts, "depth", 3);
-                    //
-                    // self.go(depth, 0, 0, 0, 0, 0, 0)
                 },
 
                 "d" => {
@@ -143,7 +130,7 @@ uciok"#, "zerofish 0.1.0 64\
                     //
                     let state = self.get_board_state();
                     let mut output = state.to_string();
-                    output.push_str(format!("Fen: {}\n", to_fen(state)).as_str());
+                    output.push_str(format!("Fen: {}\n", Fen::compute_fen(state)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
                     println!("{}", output);

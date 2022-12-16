@@ -78,14 +78,13 @@ impl RandomGenerator {
 
 #[cfg(test)]
 mod tests {
-    use crate::fen::{from_fen_default, START_POS};
-    use crate::piece::{BLACK_ROOK, WHITE_ROOK};
+    use crate::fen::{Fen, START_POS};
     use crate::r#move::Move;
     use crate::zobrist::ZOBRIST;
 
     #[test]
     fn hashing_changes() {
-        let mut state = from_fen_default(START_POS);
+        let mut state = Fen::from_fen_default(START_POS);
         let hash_starting = state.hash;
         state = state.do_move(&Move::from_uci_string("b1a3", &state));
         let hash_1 = state.hash;
