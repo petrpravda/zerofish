@@ -27,6 +27,7 @@ Not implemented yet:
 * NNUE
 * Advance Score Evaluation
 
+## Scoring
 Scoring implemented
 * Material balance: This refers to the relative value of the pieces on the board, with the objective of having more valuable pieces than your opponent.
 
@@ -40,7 +41,8 @@ Scoring not implemented
 * Weaknesses: Identifying and exploiting weaknesses in your opponent's position, such as pawn weaknesses or undefended pieces, can give you a significant advantage.
 * Initiative: Having the initiative means that you are the one dictating the pace of the game and forcing your opponent to respond to your threats.
 
-\* I'm thinking about implementing NNUE in the future, so the scoring above might get be tossed away. So the scoring is very basic currently and it's limiting the engine's strength. There is still possibility for hybrid score evaluation.
+\* I'm thinking about implementing NNUE in the future, so the scoring above might get be tossed away.
+The scoring is very basic currently, and it's limiting the engine's strength. There is still possibility for hybrid score evaluation, however.
 
 ## Description
 
@@ -71,7 +73,7 @@ Start the chess engine
 engine/target/release/zerofish
 ```
 
-## Authors
+## Author
 
 Petr Pravda  
 

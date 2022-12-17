@@ -1,4 +1,6 @@
 - implement CTRL+D
+- logging for nibbler and fix nibbler bug
+  position startpos moves e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 d8h4 b1c3 f8b4 c1e3 h4e4 d4b5 b4c3 b2c3 e8d8 d1h5 a7a6 h5g5 g8e7 f1d3 e4e5 b5d4 d8e8 e1g1 d7d5 g5h4 e5d6 a1e1 e8f8 h2h3 h7h6 e3f4 d6a3 f4c7 g7g5 h4g3 a3c3 c7e5 c6e5 g3e5
 - statistics
 - enhanced uci for testing
 - Elo tests
@@ -11,9 +13,6 @@
 - engine - unify handling of command processing outcomes
 type Item = u32; // TODO change to u8
 - multipv param
-- cutechess: position startpos moves d2d4
-             go wtime 287421 btime 300000 movestogo 40
-             position startpos moves d2d4 e7e5 d4e5 f7f6
 - implement stop
 ============================================================
 https://www.amazon.com/Game-Changer-AlphaZeros-Groundbreaking-Strategies/dp/9056918184

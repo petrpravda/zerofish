@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::Write;
 use std::str::FromStr;
 
 use crate::board_position::BoardPosition;
@@ -61,18 +63,18 @@ pub struct Engine {
     // board_state: BoardState,
     position: BoardPosition,
     pub(crate) search: Search,
-//    file: File,
+    file: Option<File>,
 }
 
 impl Engine {
     #[allow(unused)]
     pub fn new_from_fen(fen: &str) -> Self {
-        //let mut file = File::create("zerofish.log").unwrap();
+        let mut file = File::create("zerofish.log").unwrap();
         let mut engine = Engine {
 //            bitboard,
             position: BoardPosition::from_fen(fen),
             search: Search::new(),
-            //file,
+            file: Some(file),
             //board_state: from_fen_default(fen),
         };
 
@@ -84,8 +86,10 @@ impl Engine {
     }
 
     pub fn process_uci_command(&mut self, uci_command: String) -> String {
-        //let msg = format!("Processing: {}", uci_command);
-        //self.file.write(msg.as_ref()).expect("TODO: panic message");
+        if self.file.is_some() {
+            let msg = format!("Processing: {}", uci_command);
+            self.file.as_ref().unwrap().write(msg.as_ref()).expect("TODO: panic message");
+        }
         let parts: Vec<&str> = uci_command.split_whitespace().collect();
         let part = parts.get(0);
         let sub_part = parts.get(1);
@@ -103,7 +107,6 @@ uciok"#, "zerofish 0.1.0 64\
                         perft_depth: Engine::extract_parameter(&parts, "perft"),
                         depth: Engine::extract_parameter(&parts, "depth"),
                         max_nodes: Engine::extract_parameter(&parts, "nodes"),
-                        // go wtime 287421 btime 300000 movestogo 40
                         move_time: Engine::extract_parameter(&parts, "movetime"),
                         moves_to_go: Engine::extract_parameter(&parts, "movestogo"),
                         w_time: Engine::extract_parameter(&parts, "wtime"),
