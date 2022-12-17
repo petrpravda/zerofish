@@ -13,6 +13,7 @@ use crate::transposition::{Depth, TranspositionTable, Value};
 pub struct SearchResult {
     pub moov: Option<Move>,
     pub score: Value,
+    pub stop_it_deep: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -67,9 +68,9 @@ pub struct SearchLimitParams {
 impl SearchLimitParams {
     pub fn prepare(&self, side_on_the_move: Side) -> SearchLimit {
         let mut result = SearchLimit {
-            depth: self.depth.unwrap_or(u8::MAX),
-            max_nodes: self.max_nodes.unwrap_or(u32::MAX),
-            max_ms: self.move_time.unwrap_or(u32::MAX),
+            depth: self.depth.unwrap_or(u8::MAX - 1),
+            max_nodes: self.max_nodes.unwrap_or(u32::MAX - 1),
+            max_ms: self.move_time.unwrap_or(u32::MAX - 1),
         };
         if self.w_time.is_some() && self.b_time.is_some() && self.moves_to_go.is_some() {
             let time = match side_on_the_move { Side::WHITE => self.w_time.unwrap(),
@@ -125,7 +126,7 @@ impl Search {
     }
 
     pub fn it_deep(&mut self, position: &BoardPosition, search_limit: SearchLimit) -> SearchResult {
-        let mut result = SearchResult { moov: None, score: 0 };
+        let mut best_result = SearchResult { moov: None, score: 0, stop_it_deep: false };
 
         self.search_limit = search_limit;
         self.search_position = position.for_search_depth(self.search_limit.depth);
@@ -157,17 +158,20 @@ impl Search {
                 } else {
                     // Adjust the window around the new score and increase the depth
                     self.print_info_line(&position.state, &result_from_ply, depth);
+                    best_result = result_from_ply;
                     alpha = score - Search::ASPIRATION_WINDOW;
                     beta = score + Search::ASPIRATION_WINDOW;
                     depth += 1;
                     self.statistics.reset();
                 }
+            }
 
-                result = result_from_ply;
+            if best_result.stop_it_deep {
+                break;
             }
         }
 
-        return result;
+        return best_result;
     }
 
     pub fn nega_max_root(&mut self, state: &BoardState, depth: Depth, mut alpha: Value, beta: Value) -> SearchResult{
@@ -175,9 +179,9 @@ impl Search {
         let moves = state.generate_legal_moves();
         // let inCheck = state.checkers() != 0;
         // if (inCheck) ++depth;
-        if moves.len() == 1 {
-            return SearchResult{ moov: moves.moves.get(0).copied(), score: 0 }; // new SearchResult(Optional.of(moves.get(0)), 0);
-        }
+        // if moves.len() == 1 {
+        //     return SearchResult{ moov: moves.moves.get(0).copied(), score: 0 }; // new SearchResult(Optional.of(moves.get(0)), 0);
+        // }
 
         let mut best_move: Option<Move> = None;
         // self.score_moves(state, moves, 0);
@@ -207,14 +211,21 @@ impl Search {
                 if value >= beta {
                     self.transposition_table.insert(&state, depth, beta, moov, Bound::Lower);
                     //set(state.hash, beta, depth, Bound::Lower, best_move);
-                    return SearchResult{ moov: best_move, score: beta };
+                    return SearchResult{ moov: best_move, score: beta, stop_it_deep: false };
                 }
                 alpha = value;
                 self.transposition_table.insert(&state, depth, alpha, moov, Bound::Upper);
             }
         }
 
-        SearchResult{ moov: best_move, score: alpha }
+       // if moves.len() == 1 {
+       //     println!("TADY JSEM");
+       //     // bestMove = moves.get(0);
+       //     // transpositionTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
+       // }
+       //
+
+        SearchResult{ moov: best_move, score: alpha, stop_it_deep: moves.len() <= 1 }
     }
 
     pub fn nega_max(&mut self, state: &BoardState, depth: Depth, ply: u16, mut alpha: Value, mut beta: Value, can_apply_null: bool) -> Value {

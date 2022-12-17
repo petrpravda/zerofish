@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::str::FromStr;
 
 use crate::board_position::BoardPosition;
@@ -100,7 +99,7 @@ uciok"#, "zerofish 0.1.0 64\
                     "OK".to_string()
                 },
                 "go" => {
-                    let mut search_limit_params: SearchLimitParams = SearchLimitParams {
+                    let search_limit_params: SearchLimitParams = SearchLimitParams {
                         perft_depth: Engine::extract_parameter(&parts, "perft"),
                         depth: Engine::extract_parameter(&parts, "depth"),
                         max_nodes: Engine::extract_parameter(&parts, "nodes"),
@@ -305,7 +304,7 @@ uciok"#, "zerofish 0.1.0 64\
         }
     }
 
-    fn extract_parameter_or<T: FromStr>(parts: &Vec<&str>, name: &str, default_value: T) -> T {
-        Engine::extract_parameter(parts, name).unwrap_or(default_value)
-    }
+    // fn extract_parameter_or<T: FromStr>(parts: &Vec<&str>, name: &str, default_value: T) -> T {
+    //     Engine::extract_parameter(parts, name).unwrap_or(default_value)
+    // }
 }
