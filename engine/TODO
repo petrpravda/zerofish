@@ -1,6 +1,9 @@
 - implement CTRL+D
 - logging for nibbler and fix nibbler bug
   position startpos moves e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 d8h4 b1c3 f8b4 c1e3 h4e4 d4b5 b4c3 b2c3 e8d8 d1h5 a7a6 h5g5 g8e7 f1d3 e4e5 b5d4 d8e8 e1g1 d7d5 g5h4 e5d6 a1e1 e8f8 h2h3 h7h6 e3f4 d6a3 f4c7 g7g5 h4g3 a3c3 c7e5 c6e5 g3e5
+  position startpos moves e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 d8h4 b1c3 f8b4 c1e3 h4e4 d4b5 b4c3 b2c3 e8d8 d1h5 a7a6 h5g5 g8e7 f1d3 e4e5 b5d4 d8e8 e1g1 d7d5 g5h4 e5d6 a1e1 e8f8 h2h3 h7h6 e3f4 d6a3 f4c7 g7g5 h4g3 a3c3 c7e5 c6e5 g3e5 f8g8 e5f6 c8e6 e1e5 e7c6 d4f5 e6f5 e5e8 a8e8 f6c3 d5d4 c3b3 f5d3 b3d3 g8g7 c2c3 e8d8 f1b1 d8d7 g1h2 h8e8 b1b6 e8e5 a2a4 a6a5 b6b5 f7f6 c3d4 c6d4 h3h4 e5b5 a4b5 b7b6 h4h5 f6f5 d3c4 g7f8 c4c8 f8e7 c8g8 d7d6 g8g7 e7e8 g7e5 e8d7 e5g7 d7e8 g7e5 e8d7 e5g7
+
+- implement is_repetition_or_fifty
 - statistics
 - enhanced uci for testing
 - Elo tests

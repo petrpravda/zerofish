@@ -1,3 +1,6 @@
+extern crate core;
+
+use std::{env, panic};
 use zerofish::{engine_thread, uci};
 
 //use zerofish::piece_square_table::MGS;
@@ -18,7 +21,15 @@ use zerofish::{engine_thread, uci};
 
 
 fn main() {
-    uci::start_uci_loop(&engine_thread::spawn_engine_thread().0);
+    let result = panic::catch_unwind(|| {
+        env::set_var("RUST_BACKTRACE", "1");
+        uci::start_uci_loop(&engine_thread::spawn_engine_thread().0);
+    });
+
+    match result {
+        Ok(_) => {},
+        Err(e) => println!("The code panicked with: {:?}", e),
+    }
 
 
     // let mut search = Search::new();     //println!("{}", MGS[1][3]);

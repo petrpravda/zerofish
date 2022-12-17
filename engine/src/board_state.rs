@@ -646,7 +646,7 @@ impl BoardState {
     // //    }
 
         pub fn is_repetition_or_fifty(&self, position: &BoardPosition) -> bool {
-            let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { position.history[position.history_index - 1] };
+            let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { *position.history.last().unwrap_or(&0) };
             let mut count = 0;
             let mut index: i32 = (self.ply - 1) as i32;
             while index >= 0 {
@@ -655,7 +655,7 @@ impl BoardState {
                 }
                 index -= 1;
             }
-            index = position.history_index as i32 - 1;
+            index = position.history.len() as i32 - 1;
             while index >= 0 {
                 if position.history[index as usize] == last_move_bits {
                     count += 1;
@@ -1032,6 +1032,7 @@ impl BoardState {
         for i in 0..parts.len() {
             let moov = Move::from_uci_string(parts[i], &state);
             state = state.do_move(&moov);
+            state.pop_history(); // board_state doesn't have long history array typically
             moves.push(moov);
         }
 
@@ -1058,6 +1059,10 @@ impl BoardState {
     //             Long.numberOfTrailingZeros(bitboard_of(Side.WHITE, PieceType.KING)),
     //             Long.numberOfTrailingZeros(bitboard_of(Side.BLACK, PieceType.KING)));
     //     }
+    // fn pop_history(&mut self) -> Move {
+    //     self.ply -= 1;
+    //     Move::new_from_bits(self.history[self.ply])
+    // }
 }
 
 
