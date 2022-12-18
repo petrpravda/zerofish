@@ -57,6 +57,12 @@ impl OutputAdapter for StringOutputAdapter {
     }
 }
 
+impl ToString for StringOutputAdapter {
+    fn to_string(&self) -> String {
+        self.string_buffer.clone()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct EngineOptions {
     pub log_filename: Option<String>,
