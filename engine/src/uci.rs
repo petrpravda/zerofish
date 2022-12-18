@@ -12,18 +12,30 @@ pub fn start_uci_loop(tx: &Sender<UciMessage>) {
 
     loop {
         let mut line = String::new();
-        io::stdin()
-            .read_line(&mut line)
-            .expect("Failed to read line");
+        let ble = io::stdin()
+            .read_line(&mut line);
 
-        // TODO TBD stop
-        send_message(tx, UciMessage::UciCommand(line.clone()));
-        if line.starts_with("quit") {
-            break;
+        match ble {
+            Ok(0) => {
+                send_message(tx, UciMessage::Stop);
+                println!("Bye");
+                break;
+            }
+            Ok(_) => {
+                send_message(tx, UciMessage::UciCommand(line.clone()));
+                if line.starts_with("quit") {
+                    break;
+                }
+                if line.starts_with("stop") {
+                    println!("Stopping qwe");
+                }
+            }
+            Err(error) => {
+                eprintln!("Failed to read line: {}", error);
+                break;
+            }
         }
-        if line.starts_with("stop") {
-            println!("Stopping qwe");
-        }
+            //.expect("Failed to read line");
     }
 }
 

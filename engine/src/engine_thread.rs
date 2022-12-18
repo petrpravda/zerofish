@@ -15,8 +15,6 @@ pub struct EngineThread {
 
 impl EngineThread {
     pub fn new_from_fen(rx: Receiver<UciMessage>, fen: &str) -> Self {
-        // let b_instance = Bitboard::new();
-        // let bitboard: &'a Bitboard = &b_instance;
         let engine = Engine::new_from_fen(fen);
         EngineThread {
             rx,
