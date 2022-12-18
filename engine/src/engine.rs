@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::Write;
-use std::str::FromStr;
 use crate::transposition::{TranspositionTable};
 
 use crate::board_position::BoardPosition;
@@ -8,11 +7,16 @@ use crate::board_state::BoardState;
 use crate::fen::{Fen, START_POS};
 use crate::perft::Perft;
 use crate::search::{Search, SearchLimitParams};
+use crate::util::extract_parameter;
 
 pub enum UciMessage {
     UciCommand(String),
-    #[allow(dead_code)]
     Stop
+}
+
+#[derive(Debug, Clone)]
+pub struct EngineOptions {
+    pub log_filename: Option<String>,
 }
 
 // pub enum Message {
@@ -69,24 +73,16 @@ pub struct Engine {
     file: Option<File>,
 }
 
-// lazy_static! {
-//     pub static ref TT: TranspositionTable = TranspositionTable::new(1);
-// }
-
 impl Engine {
-    #[allow(unused)]
-    pub fn new_from_fen(fen: &str) -> Self {
-        let mut file = File::create("zerofish.log").unwrap();
+    pub fn new(engine_options: EngineOptions) -> Self {
+        let file = engine_options.log_filename.map(|filename| File::create(filename).unwrap());
         let transposition_table = TranspositionTable::new(1);
-        //let search = Box::from(Search::new(&'a transposition_table));
         let search = Search::new(transposition_table);
-        let mut engine = Engine {
-//            bitboard,
-            position: BoardPosition::from_fen(fen),
-            // transposition_table,
+
+        let engine = Engine {
+            position: BoardPosition::from_fen(START_POS),
             search,
-            file: Some(file),
-            //board_state: from_fen_default(fen),
+            file,
         };
 
         engine
@@ -115,13 +111,13 @@ uciok"#, "zerofish 0.1.0 64\
                 },
                 "go" => {
                     let search_limit_params: SearchLimitParams = SearchLimitParams {
-                        perft_depth: Engine::extract_parameter(&parts, "perft"),
-                        depth: Engine::extract_parameter(&parts, "depth"),
-                        max_nodes: Engine::extract_parameter(&parts, "nodes"),
-                        move_time: Engine::extract_parameter(&parts, "movetime"),
-                        moves_to_go: Engine::extract_parameter(&parts, "movestogo"),
-                        w_time: Engine::extract_parameter(&parts, "wtime"),
-                        b_time: Engine::extract_parameter(&parts, "btime"),
+                        perft_depth: extract_parameter(&parts, "perft"),
+                        depth: extract_parameter(&parts, "depth"),
+                        max_nodes: extract_parameter(&parts, "nodes"),
+                        move_time: extract_parameter(&parts, "movetime"),
+                        moves_to_go: extract_parameter(&parts, "movestogo"),
+                        w_time: extract_parameter(&parts, "wtime"),
+                        b_time: extract_parameter(&parts, "btime"),
                     };
 
 
@@ -301,24 +297,7 @@ uciok"#, "zerofish 0.1.0 64\
         println!("readyok");
         "readyok".to_string()
     }
-
-    fn extract_parameter<T: FromStr>(parts: &Vec<&str>, name: &str) -> Option<T> {
-        match parts.iter().position(|&item| item == name) {
-            Some(pos) => {
-                if pos + 1 >= parts.len() {
-                    return None;
-                }
-
-                match T::from_str(parts[pos + 1]) {
-                    Ok(value) => Some(value),
-                    Err(_) => None,
-                }
-            }
-            None => None,
-        }
-    }
-
     // fn extract_parameter_or<T: FromStr>(parts: &Vec<&str>, name: &str, default_value: T) -> T {
-    //     Engine::extract_parameter(parts, name).unwrap_or(default_value)
+    //     extract_parameter(parts, name).unwrap_or(default_value)
     // }
 }

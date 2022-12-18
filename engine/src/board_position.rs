@@ -1,23 +1,11 @@
-// use std::borrow::{Borrow, BorrowMut};
-// use std::result;
-//
-// use crate::bitboard::Bitboard;
-// use crate::board_state::BoardState;
-// use crate::fen::from_fen_default;
-// use crate::r#move::Move;
-
 use crate::board_state::BoardState;
 use crate::fen::{Fen, FenExport, START_POS};
 use crate::r#move::Move;
-use crate::transposition::Depth;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BoardPosition {
     pub state: BoardState,
-    // pub history_index: usize,
     pub history: Vec<u16>,
-    //public long[] history = new long[MAX_GAME_HISTORY_DEPTH];
-
 }
 
 impl FenExport for BoardPosition {
@@ -53,13 +41,13 @@ impl BoardPosition {
     //         return doMove(move);
     //     }
     //
-    pub fn for_search_depth(&self, search_depth: Depth) -> BoardPosition {
-        BoardPosition {
-            state: self.state.for_search_depth(search_depth),
-            // history_index: self.history_index,
-            history: self.history.clone(),
-        }
-    }
+    // pub fn for_search_depth(&self, search_depth: Depth) -> BoardPosition {
+    //     BoardPosition {
+    //         state: self.state.for_search_depth(search_depth),
+    //         // history_index: self.history_index,
+    //         history: self.history.clone(),
+    //     }
+    // }
 
     pub fn from_moves(moves_string: &str) -> Self {
         let mut position = BoardPosition::from_fen(START_POS);

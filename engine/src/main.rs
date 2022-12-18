@@ -1,7 +1,10 @@
 extern crate core;
 
+use env::args;
 use std::{env};
 use zerofish::{engine_thread, uci};
+use zerofish::engine::EngineOptions;
+use zerofish::util::extract_parameter;
 
 //use zerofish::piece_square_table::MGS;
 
@@ -21,8 +24,12 @@ use zerofish::{engine_thread, uci};
 
 
 fn main() {
+    let args_strings = args().collect::<Vec<String>>();
+    let args: Vec<&str> = args_strings.iter().map(|s| s.as_ref()).collect();
+    let log_filename = extract_parameter(&args, "--log");
+    let engine_options = EngineOptions { log_filename };
     env::set_var("RUST_BACKTRACE", "full");
-    uci::start_uci_loop(&engine_thread::spawn_engine_thread().0);
+    uci::start_uci_loop(&engine_thread::spawn_engine_thread(&engine_options).0);
 
 
     // let mut search = Search::new();     //println!("{}", MGS[1][3]);

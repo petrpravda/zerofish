@@ -125,7 +125,7 @@ impl Search {
         let mut best_result = SearchResult { moov: None, score: 0, stop_it_deep: false };
 
         self.search_limit = search_limit;
-        self.search_position = position.for_search_depth(self.search_limit.depth);
+        self.search_position = position.clone();
         self.start_time = Instant::now();
         self.sel_depth = 0;
         self.stopped = false;

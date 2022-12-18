@@ -19,6 +19,7 @@ mod time;
 mod transposition;
 mod statistics;
 mod evaluation;
+pub mod util;
 
 
 pub fn add(left: usize, right: usize) -> usize {
