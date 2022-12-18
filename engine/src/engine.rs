@@ -38,6 +38,25 @@ impl OutputAdapter for StdOutOutputAdapter {
     }
 }
 
+pub struct StringOutputAdapter {
+    string_buffer: String,
+}
+
+impl StringOutputAdapter {
+    pub fn new() -> Self {
+        Self {
+            string_buffer: String::new()
+        }
+    }
+}
+
+impl OutputAdapter for StringOutputAdapter {
+    fn writeln(&mut self, output: &str) {
+        self.string_buffer.push_str(output);
+        self.string_buffer.push('\n');
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct EngineOptions {
     pub log_filename: Option<String>,
@@ -116,7 +135,7 @@ impl Engine {
         &self.position.state
     }
 
-    pub fn process_uci_command(&mut self, uci_command: String, output_adapter: &mut dyn OutputAdapter) -> String {
+    pub fn process_uci_command(&mut self, uci_command: String, output_adapter: &mut dyn OutputAdapter) {
         if self.file.is_some() {
             let msg = format!("{}", uci_command);
             self.file.as_ref().unwrap().write(msg.as_ref()).expect("TODO: panic message");
@@ -126,13 +145,12 @@ impl Engine {
         let part = parts.get(0);
         let sub_part = parts.get(1);
         if part.is_some() {
-            let result: String = match part.unwrap().to_lowercase().as_str() {
+            match part.unwrap().to_lowercase().as_str() {
                 "uci" => {
                     output_adapter.writeln(&*format!(r#"id name {}
 id author Petr Pravda
 uciok"#, "zerofish 0.1.0 64\
 "));
-                    "OK".to_string()
                 },
                 "go" => {
                     let search_limit_params: SearchLimitParams = SearchLimitParams {
@@ -155,7 +173,6 @@ uciok"#, "zerofish 0.1.0 64\
                         let result = self.search.it_deep(&self.position, search_limit,  output_adapter);
                         output_adapter.writeln(&*format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
                     }
-                    String::from("go")
                 },
 
                 "d" => {
@@ -168,19 +185,18 @@ uciok"#, "zerofish 0.1.0 64\
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
                     output_adapter.writeln(&*output);
-                    output.to_string()
                 }
 
                 "isready" => {
                     output_adapter.writeln(&"readyok");
-                    "OK".to_string()
                 },
 
-                "quit" => "quitting".to_string(),
+                "quit" => {
+                    output_adapter.writeln("quitting");
+                },
 
                 "ucinewgame" => {
                     self.search.transposition_table.clear();
-                    "OK".to_string()
                 },
 
                 "position" => {
@@ -205,9 +221,6 @@ uciok"#, "zerofish 0.1.0 64\
                     for moov in moves {
                         self.position.do_move(&moov);
                     }
-
-
-                    "OK".to_string()
                 },
 
                 // "setoption" => {
@@ -260,17 +273,13 @@ uciok"#, "zerofish 0.1.0 64\
 
 
                 _ => {
-                    //println!("Skipping execution of: {}", uci_command);
-                    // Skip unknown commands
                     let result = format!("Unsupported command: {}", uci_command);
                     output_adapter.writeln(&*result);
-                    result
                 }
             };
-            result
         } else {
-            "Empty command".to_string()
-        }
+            output_adapter.writeln("Empty command");
+        };
     }
 
     // fn set_position_from_uci(&mut self, parts: &Vec<&str>) {

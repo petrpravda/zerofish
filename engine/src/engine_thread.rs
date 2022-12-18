@@ -54,11 +54,12 @@ impl EngineThread {
             },
             UciMessage::UciCommand(uci_command) => {
                 // println!("UciCommand: {}", uci_command);
+                let quit = uci_command.starts_with("quit");
                 let mut output_adapter = StdOutOutputAdapter::new();
-                let _result = self.engine.process_uci_command(uci_command, &mut output_adapter);
+                self.engine.process_uci_command(uci_command, &mut output_adapter);
                 //println!("UciCommand execution result:\n{}", result);
 
-                if _result.eq(&"quitting") {
+                if quit {
                     println!("Quitting");
                     return false;
                 }
