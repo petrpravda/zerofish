@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::thread::JoinHandle;
 
-use crate::engine::{Engine, EngineOptions, UciMessage};
+use crate::engine::{Engine, EngineOptions, StdOutOutputAdapter, UciMessage};
 // use crate::fen::{configure_command_line_options, START_POS};
 // use crate::transposition_table::DEFAULT_SIZE_MB;
 
@@ -54,7 +54,8 @@ impl EngineThread {
             },
             UciMessage::UciCommand(uci_command) => {
                 // println!("UciCommand: {}", uci_command);
-                let _result = self.engine.process_uci_command(uci_command);
+                let mut output_adapter = StdOutOutputAdapter::new();
+                let _result = self.engine.process_uci_command(uci_command, &mut output_adapter);
                 //println!("UciCommand execution result:\n{}", result);
 
                 if _result.eq(&"quitting") {

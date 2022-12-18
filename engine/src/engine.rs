@@ -1,6 +1,6 @@
 use std::fs::File;
 use crate::transposition::{TranspositionTable};
-use std::io::{stdout, Write};
+use std::io::{stdout, Stdout, Write};
 
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
@@ -12,6 +12,30 @@ use crate::util::extract_parameter;
 pub enum UciMessage {
     UciCommand(String),
     Stop
+}
+
+pub trait OutputAdapter {
+    fn writeln(&mut self, output: &str);
+}
+
+pub struct StdOutOutputAdapter {
+    out: Stdout,
+}
+
+impl StdOutOutputAdapter {
+    pub fn new() -> Self {
+        Self {
+            out: stdout()
+        }
+    }
+}
+
+impl OutputAdapter for StdOutOutputAdapter {
+    fn writeln(&mut self, output: &str) {
+        self.out.write(output.as_ref()).expect("Cannot write to output stream!");
+        self.out.write(b"\n").expect("Cannot write to output stream!");
+        self.out.flush().expect("Flush error");
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -71,7 +95,6 @@ pub struct Engine {
     // pub(crate) search: Box<Search<'a>>,
     pub(crate) search: Search,
     file: Option<File>,
-    out: Box<dyn Write>,
 }
 
 impl Engine {
@@ -84,7 +107,6 @@ impl Engine {
             position: BoardPosition::from_fen(START_POS),
             search,
             file,
-            out: Box::from(stdout())
         };
 
         engine
@@ -94,8 +116,7 @@ impl Engine {
         &self.position.state
     }
 
-    pub fn process_uci_command(&mut self, uci_command: String) -> String {
-        //let mut out = stdout();
+    pub fn process_uci_command(&mut self, uci_command: String, output_adapter: &mut dyn OutputAdapter) -> String {
         if self.file.is_some() {
             let msg = format!("{}", uci_command);
             self.file.as_ref().unwrap().write(msg.as_ref()).expect("TODO: panic message");
@@ -107,7 +128,7 @@ impl Engine {
         if part.is_some() {
             let result: String = match part.unwrap().to_lowercase().as_str() {
                 "uci" => {
-                    self.answer(format!(r#"id name {}
+                    output_adapter.writeln(&*format!(r#"id name {}
 id author Petr Pravda
 uciok"#, "zerofish 0.1.0 64\
 "));
@@ -127,12 +148,12 @@ uciok"#, "zerofish 0.1.0 64\
 
                     if search_limit_params.perft_depth.is_some() {
                         let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), search_limit_params.perft_depth.unwrap());
-                        self.answer(format!("{}", result));
+                        output_adapter.writeln(&*result);
                     } else {
                         let search_limit = search_limit_params.prepare(self.position.state.side_to_play);
                         // println!("search_limit: {:?}", search_limit);
-                        let result = self.search.it_deep(&self.position, search_limit, &mut self.out);
-                        self.answer(format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
+                        let result = self.search.it_deep(&self.position, search_limit,  output_adapter);
+                        output_adapter.writeln(&*format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
                     }
                     String::from("go")
                 },
@@ -146,11 +167,14 @@ uciok"#, "zerofish 0.1.0 64\
                     output.push_str(format!("Fen: {}\n", Fen::compute_fen(state)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
-                    self.answer(output.clone());
+                    output_adapter.writeln(&*output);
                     output.to_string()
                 }
 
-                "isready" => self.is_ready(),
+                "isready" => {
+                    output_adapter.writeln(&"readyok");
+                    "OK".to_string()
+                },
 
                 "quit" => "quitting".to_string(),
 
@@ -239,7 +263,7 @@ uciok"#, "zerofish 0.1.0 64\
                     //println!("Skipping execution of: {}", uci_command);
                     // Skip unknown commands
                     let result = format!("Unsupported command: {}", uci_command);
-                    self.answer(result.clone());
+                    output_adapter.writeln(&*result);
                     result
                 }
             };
@@ -294,20 +318,18 @@ uciok"#, "zerofish 0.1.0 64\
     //     result.to_string()
     // }
 
-    fn is_ready(&mut self) -> String {
-        // if self.options_modified {
-        //     self.options_modified = false;
-        //     self.board.pst.recalculate(&self.board.options);
-        // }
-        self.answer(String::from("readyok"));
-        "readyok".to_string()
-    }
+    // fn is_ready(&mut self) -> String {
+    //     // if self.options_modified {
+    //     //     self.options_modified = false;
+    //     //     self.board.pst.recalculate(&self.board.options);
+    //     // }
+    //     self.answer(String::from("readyok"));
+    //     "readyok".to_string()
+    // }
     // fn extract_parameter_or<T: FromStr>(parts: &Vec<&str>, name: &str, default_value: T) -> T {
     //     extract_parameter(parts, name).unwrap_or(default_value)
     // }
-    fn answer(&mut self, output: String) {
-        self.out.write(output.as_ref()).expect("Cannot write to output stream!");
-        self.out.write(b"\n").expect("Cannot write to output stream!");
-        self.out.flush().expect("Flush error");
-    }
+    // fn answer(&mut self, output: &str) {
+    //     output_adapter
+    // }
 }

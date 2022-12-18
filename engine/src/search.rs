@@ -1,7 +1,7 @@
-use std::io::Write;
 use lazy_static::lazy_static;
 use crate::board_position::BoardPosition;
 use crate::board_state::{BOARD_STATE_HISTORY_CAPACITY, BoardState};
+use crate::engine::OutputAdapter;
 use crate::evaluation::Evaluation;
 use crate::fen::START_POS;
 use crate::r#move::{Move};
@@ -122,7 +122,7 @@ impl Search {
         }
     }
 
-    pub fn it_deep(&mut self, position: &BoardPosition, search_limit: SearchLimit, output: &mut dyn Write) -> SearchResult {
+    pub fn it_deep(&mut self, position: &BoardPosition, search_limit: SearchLimit, output: &mut dyn OutputAdapter) -> SearchResult {
         let mut best_result = SearchResult { moov: None, score: 0, stop_it_deep: false };
 
         self.search_limit = search_limit;
@@ -450,9 +450,9 @@ impl Search {
                 moov.flags() == Move::QUIET;
     }
 
-    pub fn print_info_line(&self, state: &BoardState, search_result: &SearchResult, depth: Depth, output: &mut dyn Write) {
+    pub fn print_info_line(&self, state: &BoardState, search_result: &SearchResult, depth: Depth, output: &mut dyn OutputAdapter) {
         let time_elapsed = self.time_elapsed();
-        let info_line = format!("info currmove {} depth {} seldepth {} time {} score cp {} nodes {} nps {} pv {}\n",
+        let info_line = format!("info currmove {} depth {} seldepth {} time {} score cp {} nodes {} nps {} pv {}",
                                 search_result.moov.map(|m|m.uci()).unwrap_or(String::from("(none)")),
                                 depth,
                                 self.sel_depth,
@@ -462,8 +462,9 @@ impl Search {
                                 (self.statistics.total_nodes() as f32 / time_elapsed as f32 * 1000f32) as u32,
                                 self.get_pv(state, depth)
         );
-        output.write(info_line.as_ref()).expect("Cannot write to output stream!");
-        output.flush().expect("TODO: panic message");
+        output.writeln(&*info_line);
+        // output.write(info_line.as_ref()).expect("Cannot write to output stream!");
+        // output.flush().expect("TODO: panic message");
         //println!("{}", info_line);
     }
 
