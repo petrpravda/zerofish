@@ -20,7 +20,7 @@ const PIECE_PHASES: [i32; 6] = [0, 1, 1, 2, 4, 0];
 
 const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
-const BOARD_STATE_HISTORY_CAPACITY: usize = 40;
+pub const BOARD_STATE_HISTORY_CAPACITY: usize = 40;
 
 //#[derive(Copy, Clone)]
 #[derive(Clone, Debug)]
@@ -352,6 +352,15 @@ impl BoardState {
     }
 
     pub fn do_move(&self, moov: &Move) -> BoardState {
+        self.do_move_param(moov, false)
+    }
+
+    pub fn do_move_no_history(&self, moov: &Move) -> BoardState {
+        self.do_move_param(moov, true)
+    }
+
+    #[inline(always)]
+    pub fn do_move_param(&self, moov: &Move, ignore_history: bool) -> BoardState {
         // if moov.flags() == Move::NULL {
         //     panic!()
         // }
@@ -364,8 +373,10 @@ impl BoardState {
 
         state.full_move_normalized += 1;
         state.half_move_clock += 1;
-        state.history[state.ply] = moov.bits;
-        state.ply += 1;
+        if !ignore_history {
+            state.history[state.ply] = moov.bits;
+            state.ply += 1;
+        }
         state.movements |= 1u64 << moov.to() | 1u64 << moov.from();
 
         if type_of(state.items[moov.from() as usize]) == PAWN {
@@ -1031,8 +1042,8 @@ impl BoardState {
 
         for i in 0..parts.len() {
             let moov = Move::from_uci_string(parts[i], &state);
-            state = state.do_move(&moov);
-            state.pop_history(); // board_state doesn't have long history array typically
+            state = state.do_move_no_history(&moov);
+            //state.pop_history(); // board_state doesn't have long history array typically
             moves.push(moov);
         }
 

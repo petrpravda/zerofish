@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use crate::board_position::BoardPosition;
-use crate::board_state::BoardState;
+use crate::board_state::{BOARD_STATE_HISTORY_CAPACITY, BoardState};
 use crate::evaluation::Evaluation;
 use crate::fen::START_POS;
 use crate::r#move::{Move};
@@ -321,7 +321,7 @@ impl Search {
 
             // let state_out = state.to_string();
             // let uci_move = moov.uci();
-            let new_state = state.do_move(&moov);
+            let new_state = state.do_move_param(&moov, ply >= BOARD_STATE_HISTORY_CAPACITY as u16);
             let value = -self.nega_max(&new_state, reduced_depth - 1, ply + 1, -beta, -alpha, true);
             if self.stopped {
                 return 0;
@@ -388,7 +388,7 @@ impl Search {
                 continue;
             }
 
-            let new_state = state.do_move(&moov);
+            let new_state = state.do_move_no_history(&moov);
             let depth_m1 = depth - 1;
             // let state_str = state.to_fen();
             // let move_str = moov.uci();
@@ -454,7 +454,7 @@ impl Search {
         let moov = best_move; //Move::new_from_bits(best_move as u32);
         let uci = moov.uci();
         //let old_board_string = format!("{}{:#020x}\n{}", state.to_string(), state.hash, state.hash);
-        let new_board_state = state.do_move(&moov);
+        let new_board_state = state.do_move_no_history(&moov);
         // let board_string = new_board_state.to_string();
         //let board_string = format!("{} {}{:#020x}\n{}", uci, new_board_state.to_string(), new_board_state.hash, new_board_state.hash);
         let primary_value = format!("{} {}", uci, self.get_pv(&new_board_state, depth - 1));

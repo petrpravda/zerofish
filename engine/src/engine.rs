@@ -87,7 +87,7 @@ impl Engine {
 
     pub fn process_uci_command(&mut self, uci_command: String) -> String {
         if self.file.is_some() {
-            let msg = format!("Processing: {}", uci_command);
+            let msg = format!("{}", uci_command);
             self.file.as_ref().unwrap().write(msg.as_ref()).expect("TODO: panic message");
         }
         let parts: Vec<&str> = uci_command.split_whitespace().collect();
