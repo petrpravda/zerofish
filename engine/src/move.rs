@@ -67,29 +67,6 @@ impl Move {
         self.bits & Move::PROMOTION != 0
     }
 
-    // #[inline(always)]
-    // pub fn is_quiet(&self) -> bool {
-    //     self.bits & Move::PROMOTION == 0
-    // }
-
-    // #[inline(always)]
-    // pub fn is_capture(&self) -> bool {
-    //     self.bits & Move::CAPTURE != 0
-    // }
-    //
-    // #[inline(always)]
-    // pub fn is_castling(&self) -> bool {
-    //     let flags = self.flags();
-    //     flags == Move::OO || flags == Move::OOO
-    // }
-    //
-    // #[inline(always)]
-    // pub fn is_ep(&self) -> bool {
-    //     self.flags() == Move::EN_PASSANT
-    // }
-
-
-
     pub fn get_piece_type(&self) -> PieceType {
         PieceType::from((((self.flags() >> 12) & 0b11) + 1) as u8)
     }
@@ -111,11 +88,6 @@ impl Move {
                Square::get_name(self.to() as usize),
                promo)
     }
-
-    // pub fn addToScore(&mut self, score: i32){
-    //     self.sort_score += score;
-    // }
-
 
     pub fn from_uci_string(uci: &str, state: &BoardState) -> Move {
         let bytes = uci.as_bytes();

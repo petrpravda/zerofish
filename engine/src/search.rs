@@ -93,14 +93,10 @@ pub struct Search {
     sel_depth: Depth,
     pub(crate) stopped: bool,
     statistics: Statistics,
-    transposition_table: &'static TranspositionTable,
+    pub(crate) transposition_table: TranspositionTable,
     start_time: Instant,
     search_limit: SearchLimit,
     time_checking_round: u32,
-}
-
-lazy_static! {
-    pub static ref TT: TranspositionTable = TranspositionTable::new(1);
 }
 
 impl Search {
@@ -112,14 +108,14 @@ impl Search {
     const LMR_MOVES_WO_REDUCTION: usize = 1; // TODO which type?
     const ASPIRATION_WINDOW: Value = 25;
 
-    pub fn new() -> Self {
+    pub fn new(transposition_table: TranspositionTable) -> Self {
         Self {
             search_position: BoardPosition::from_fen(START_POS),
             start_time: Instant::now(),
             sel_depth: 10,
             stopped: false,
             statistics: Statistics::new(),
-            transposition_table: &TT,
+            transposition_table,
             search_limit: SearchLimit::default(),
             time_checking_round: 0,
         }
@@ -185,7 +181,7 @@ impl Search {
 
         let mut best_move: Option<Move> = None;
         // self.score_moves(state, moves, 0);
-        for moov in moves.over_sorted(&state, self.transposition_table) {
+        for moov in moves.over_sorted(&state, &self.transposition_table) {
             // let uciText = moov.uci();
             // if uciText.eq("b1c3") {
             //     println!("{}", moov.uci());
@@ -307,7 +303,7 @@ impl Search {
 
         let moves = state.generate_legal_moves();
         let mut best_move: Move = Move::NULL_MOVE;
-        for (index, moov) in moves.over_sorted(&state, self.transposition_table).enumerate() {
+        for (index, moov) in moves.over_sorted(&state, &self.transposition_table).enumerate() {
 
             // LATE MOVE REDUCTION
             let mut reduced_depth = depth;
@@ -361,11 +357,36 @@ impl Search {
          return alpha;
      }
 
+    ///
+    /// recursive search function that is called during a search for quiet positions (i.e. positions with few piece exchanges)
+    ///
+    /// At a high level, the function first increments a counter for the number of nodes searched
+    /// and then evaluates the current board position. If the evaluation exceeds the beta cutoff value,
+    /// the search is immediately terminated and the beta value is returned. If the evaluation is higher
+    /// than the current alpha value, the alpha value is updated to the evaluation.
+    ///
+    /// Next, the function generates a list of legal moves for the current player and iterates over them
+    /// in a order of most promising moves. For each move, the function creates a new board position by applying the move,
+    /// and then calls itself recursively with the new position
+    ///
+    /// If the value returned by the recursive call is greater than the current alpha value,
+    /// the alpha value is updated to the returned value. If the returned value exceeds the beta value,
+    /// the search is immediately terminated and the beta value is returned.
+    ///
+    /// Finally, after all moves have been searched, the function returns the current alpha value,
+    /// which represents the highest score that the current player can achieve without allowing the opponent to exceed the beta cutoff.
+    ///
+    /// # Arguments
+    ///
+    /// * `state`: board state
+    /// * `depth`:
+    /// * `ply`:
+    /// * `alpha`:
+    /// * `beta`:
+    ///
+    /// returns: i16
+    ///
     pub fn quiescence(&mut self, state: &BoardState, depth: i32, ply: Depth, mut alpha: Value, beta: Value) -> Value {
-        // if (stop || Limits.checkLimits()){
-        //     stop = true;
-        //     return 0;
-        // }
         self.sel_depth = self.sel_depth.max(ply);
         self.statistics.increment_qnodes();
 
@@ -381,7 +402,7 @@ impl Search {
         }
 
         let moves = state.generate_legal_moves_wo(true);
-        for moov in moves.over_sorted(&state, self.transposition_table) {
+        for moov in moves.over_sorted(&state, &self.transposition_table) {
 
             // Skip if under-promotion.
             if moov.is_promotion() && moov.flags() != Move::PR_QUEEN && moov.flags() != Move::PC_QUEEN {
@@ -482,5 +503,9 @@ impl Search {
         }
 
         self.stopped
+    }
+
+    pub fn reset_tt(&mut self) {
+        self.transposition_table.clear();
     }
 }

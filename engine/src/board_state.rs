@@ -64,9 +64,8 @@ impl BoardState {
         half_move_clock: usize,
         full_move_count: usize,
         max_search_depth: usize,
-        //bitboard: &'a Bitboard,
     ) -> Self {
-        if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len() as u64) }
+        // if items.len() != 64 { panic!("Expected array with 64 items. Received {} items.", items.len() as u64) }
         let mut board_state = BoardState {
             ply: 0,
             history: [0u16;BOARD_STATE_HISTORY_CAPACITY],
@@ -79,10 +78,8 @@ impl BoardState {
             phase: TOTAL_PHASE,
             mg: 0,
             eg: 0,
-//            checkers: 0,
             movements,
             en_passant,
-//            bitboard
         };
 
         for i in 0..64 {
@@ -138,204 +135,121 @@ impl BoardState {
         result
     }
 
+    pub fn piece_at(&self, square: u8) -> Piece {
+        self.items[square as usize]
+    }
 
-    //
-    //     public BoardState(int[] items, int sideToPlay, long movements, long enPassantMask, int halfMoveClock, int fullMoveCount, int maxSearchDepth) {
-    //         for (int i = 0; i < 64; i++) {
-    //             int item = items[i];
-    //             if (item != Piece.NONE) {
-    //                 set_piece_at(item, i);
-    //             } else {
-    //                 this.items[i] = Piece.NONE;
-    //             }
-    //         }
-    //
-    //         this.sideToPlay = sideToPlay;
-    //
-    //         if (sideToPlay == Side.BLACK)
-    //             this.hash ^= Zobrist.SIDE;
-    //
-    //         this.enPassant = enPassantMask;
-    //         if (this.enPassant != 0) {
-    //             this.hash ^= Zobrist.EN_PASSANT[(int) (this.enPassant & 0b111)];
-    //         }
-    //
-    //         this.movements = movements;
-    //
-    //         this.halfMoveClock = halfMoveClock;
-    //         this.full_move_normalized = (fullMoveCount - 1) * 2 + (sideToPlay == Side.WHITE ? 0 : 1);
-    //         this.history = new long[maxSearchDepth];
-    //         this.ply = 0;
-    //     }
-    //
-    //     public static BoardState fromFen(String fen) {
-    //         return Fen.fromFen(fen, null);
-    //     }
-    //
-    //     public static BoardState fromFen(String fen, int maxSearchDepth) {
-    //         return Fen.fromFen(fen, maxSearchDepth);
-    //     }
-    //
-    //     @Override
-    //     protected BoardState clone() {
-    //         try {
-    //             BoardState result = (BoardState) super.clone();
-    //             result.piece_bb = this.piece_bb.clone();
-    //             result.items = this.items.clone();
-    //             result.history = this.history.clone();
-    //             return result;
-    //         } catch (CloneNotSupportedException e) {
-    //             throw new IllegalStateException(e);
-    //         }
-    //     }
-    //
-    //     public int pieceAt(int square){
-    //         return items[square];
-    //     }
+    pub fn piece_type_at(&self, square: u8) -> PieceType {
+        return type_of(self.items[square as usize]);
+    }
 
-        pub fn piece_at(&self, square: u8) -> Piece {
-            self.items[square as usize]
+    pub fn set_piece_at(&mut self, piece: Piece, square: usize) {
+        // //update incremental evaluation terms
+        self.phase -= PIECE_PHASES[type_of(piece).index()];
+        self.mg += MGS[piece as usize][square];
+        self.eg += EGS[piece as usize][square];
+
+        //set piece on board
+        self.items[square] = piece;
+        self.piece_bb[piece as usize] |= 1u64 << square;
+
+        // //update hashes
+        self.hash ^= ZOBRIST.pieces[piece as usize][square as usize];
+    }
+
+    fn remove_piece(&mut self, square: u8){
+        let piece = self.items[square as usize];
+        self.phase += PIECE_PHASES[type_of(piece).index()];
+        self.mg -= MGS[piece as usize][square as usize];
+        self.eg -= EGS[piece as usize][square as usize];
+
+        //update hash tables
+        self.hash ^= ZOBRIST.pieces[piece as usize][square as usize];
+
+        //update board
+        self.piece_bb[self.items[square as usize] as usize] &= !(1u64 << square);
+        self.items[square as usize] = NONE;
+    }
+
+    fn move_piece_quiet(&mut self, from_sq: u8, to_sq: u8){
+        //update incremental evaluation terms
+        let piece = self.items[from_sq as usize];
+        // if piece == NONE {
+        //     panic!()
+        // }
+        self.mg += MGS[piece as usize][to_sq as usize] - MGS[piece as usize][from_sq as usize];
+        self.eg += EGS[piece as usize][to_sq as usize] - EGS[piece as usize][from_sq as usize];
+
+        //update hashes
+        let zobrist = &ZOBRIST;
+        self.hash ^= zobrist.pieces[piece as usize][from_sq as usize]
+            ^ zobrist.pieces[piece as usize][to_sq as usize];
+
+        //update board
+        self.piece_bb[piece as usize] ^= 1u64 << from_sq | 1u64 << to_sq;
+        self.items[to_sq as usize] = piece;
+        self.items[from_sq as usize] = NONE;
+    }
+
+    pub fn move_piece(&mut self, from_sq: u8, to_sq: u8){
+        self.remove_piece(to_sq);
+        self.move_piece_quiet(from_sq, to_sq);
+    }
+
+    pub fn bitboard_of_piece(&self, piece: Piece) -> u64 {
+        return self.piece_bb[piece as usize];
+    }
+
+    pub fn bitboard_of(&self, side: Side, piece_type: PieceType) -> u64 {
+        self.piece_bb[make_piece(side, piece_type) as usize]
+    }
+
+    pub fn diagonal_sliders(&self, side: Side) -> u64 {
+        match side {
+            WHITE => self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize],
+            _ => self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize]
         }
+    }
 
-        pub fn piece_type_at(&self, square: u8) -> PieceType {
-            return type_of(self.items[square as usize]);
+    pub fn orthogonal_sliders(&self, side: Side) -> u64 {
+        match side {
+            WHITE => self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize],
+            _ => self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]
         }
+    }
 
-        pub fn set_piece_at(&mut self, piece: Piece, square: usize) {
-
-            // //update incremental evaluation terms
-            self.phase -= PIECE_PHASES[type_of(piece).index()];
-            self.mg += MGS[piece as usize][square];
-            self.eg += EGS[piece as usize][square];
-
-            //set piece on board
-            self.items[square] = piece;
-            self.piece_bb[piece as usize] |= 1u64 << square;
-
-            // //update hashes
-            // hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
-            self.hash ^= ZOBRIST.pieces[piece as usize][square as usize];
+    pub fn all_pieces_for_side(&self, side: Side) -> u64 {
+        return match side {
+            WHITE => self.piece_bb[WHITE_PAWN as usize] | self.piece_bb[WHITE_KNIGHT as usize] |
+                self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_ROOK as usize] |
+                self.piece_bb[WHITE_QUEEN as usize] | self.piece_bb[WHITE_KING as usize],
+            _ =>
+                self.piece_bb[BLACK_PAWN as usize] | self.piece_bb[BLACK_KNIGHT as usize] |
+                self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_ROOK as usize] |
+                self.piece_bb[BLACK_QUEEN as usize] | self.piece_bb[BLACK_KING as usize]
         }
+    }
 
-        fn remove_piece(&mut self, square: u8){
-            let piece = self.items[square as usize];
-            self.phase += PIECE_PHASES[type_of(piece).index()];
-            self.mg -= MGS[piece as usize][square as usize];
-            self.eg -= EGS[piece as usize][square as usize];
+    pub fn all_pieces(&self) -> u64 {
+        self.all_pieces_for_side(WHITE) | self.all_pieces_for_side(BLACK)
+    }
 
-            //update hash tables
-            self.hash ^= ZOBRIST.pieces[piece as usize][square as usize];
-
-            //update board
-            self.piece_bb[self.items[square as usize] as usize] &= !(1u64 << square);
-            self.items[square as usize] = NONE;
-        }
-
-        fn move_piece_quiet(&mut self, from_sq: u8, to_sq: u8){
-            //update incremental evaluation terms
-            let piece = self.items[from_sq as usize];
-            // if piece == NONE {
-            //     panic!()
-            // }
-            self.mg += MGS[piece as usize][to_sq as usize] - MGS[piece as usize][from_sq as usize];
-            self.eg += EGS[piece as usize][to_sq as usize] - EGS[piece as usize][from_sq as usize];
-
-            //update hashes
-            let zobrist = &ZOBRIST;
-            self.hash ^= zobrist.pieces[piece as usize][from_sq as usize]
-                ^ zobrist.pieces[piece as usize][to_sq as usize];
-
-            //update board
-            self.piece_bb[piece as usize] ^= 1u64 << from_sq | 1u64 << to_sq;
-            self.items[to_sq as usize] = piece;
-            self.items[from_sq as usize] = NONE;
-        }
-
-        pub fn move_piece(&mut self, from_sq: u8, to_sq: u8){
-            self.remove_piece(to_sq);
-            self.move_piece_quiet(from_sq, to_sq);
-        }
-
-    //     public long hash(){
-    //         return hash;
-    //     }
-    //
-        pub fn bitboard_of_piece(&self, piece: Piece) -> u64 {
-            return self.piece_bb[piece as usize];
-        }
-
-        pub fn bitboard_of(&self, side: Side, piece_type: PieceType) -> u64 {
-            self.piece_bb[make_piece(side, piece_type) as usize]
-        }
-
-    //     public long checkers(){
-    //         return checkers;
-    //     }
-    //
-        pub fn diagonal_sliders(&self, side: Side) -> u64 {
-            match side {
-                WHITE => self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize],
-                _ => self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize]
+    pub fn attackers_from(&self, square: u8, occ: u64, side: Side) -> u64 {
+        match side {
+            WHITE => {
+                (Bitboard::pawn_attacks_from_square(square as u8, BLACK) & self.piece_bb[WHITE_PAWN as usize]) |
+                    (BITBOARD.get_knight_attacks(square as usize) & self.piece_bb[WHITE_KNIGHT as usize]) |
+                    (BITBOARD.get_bishop_attacks(square as usize, occ) & (self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize])) |
+                    (BITBOARD.get_rook_attacks(square as usize, occ) & (self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize]))
+            }
+            _ => {
+                (Bitboard::pawn_attacks_from_square(square as u8, WHITE) & self.piece_bb[BLACK_PAWN as usize]) |
+                    (BITBOARD.get_knight_attacks(square as usize) & self.piece_bb[BLACK_KNIGHT as usize]) |
+                    (BITBOARD.get_bishop_attacks(square as usize, occ) & (self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize])) |
+                    (BITBOARD.get_rook_attacks(square as usize, occ) & (self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]))
             }
         }
-
-        pub fn orthogonal_sliders(&self, side: Side) -> u64 {
-            match side {
-                WHITE => self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize],
-                _ => self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]
-            }
-        }
-
-        pub fn all_pieces_for_side(&self, side: Side) -> u64 {
-            return match side {
-                WHITE => self.piece_bb[WHITE_PAWN as usize] | self.piece_bb[WHITE_KNIGHT as usize] |
-                    self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_ROOK as usize] |
-                    self.piece_bb[WHITE_QUEEN as usize] | self.piece_bb[WHITE_KING as usize],
-                _ =>
-                    self.piece_bb[BLACK_PAWN as usize] | self.piece_bb[BLACK_KNIGHT as usize] |
-                    self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_ROOK as usize] |
-                    self.piece_bb[BLACK_QUEEN as usize] | self.piece_bb[BLACK_KING as usize]
-            }
-        }
-
-        pub fn all_pieces(&self) -> u64 {
-            self.all_pieces_for_side(WHITE) | self.all_pieces_for_side(BLACK)
-        }
-
-        pub fn attackers_from(&self, square: u8, occ: u64, side: Side) -> u64 {
-            match side {
-                WHITE => {
-                    (Bitboard::pawn_attacks_from_square(square as u8, BLACK) & self.piece_bb[WHITE_PAWN as usize]) |
-                        (BITBOARD.get_knight_attacks(square as usize) & self.piece_bb[WHITE_KNIGHT as usize]) |
-                        (BITBOARD.get_bishop_attacks(square as usize, occ) & (self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize])) |
-                        (BITBOARD.get_rook_attacks(square as usize, occ) & (self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize]))
-                }
-                _ => {
-                    (Bitboard::pawn_attacks_from_square(square as u8, WHITE) & self.piece_bb[BLACK_PAWN as usize]) |
-                        (BITBOARD.get_knight_attacks(square as usize) & self.piece_bb[BLACK_KNIGHT as usize]) |
-                        (BITBOARD.get_bishop_attacks(square as usize, occ) & (self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize])) |
-                        (BITBOARD.get_rook_attacks(square as usize, occ) & (self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]))
-                }
-            }
-        }
-
-    //     public long attackersFromIncludingKings(int square, long occ, int side){
-    //         return side == Side.WHITE ? (pawn_attacks(square, Side.BLACK) & piece_bb[Piece.WHITE_PAWN]) |
-    //                 (get_king_attacks(square) & piece_bb[Piece.WHITE_KING]) |
-    //                 (get_knight_attacks(square) & piece_bb[Piece.WHITE_KNIGHT]) |
-    //                 (getBishopAttacks(square, occ) & (piece_bb[Piece.WHITE_BISHOP] | piece_bb[Piece.WHITE_QUEEN])) |
-    //                 (getRookAttacks(square, occ) & (piece_bb[Piece.WHITE_ROOK] | piece_bb[Piece.WHITE_QUEEN])) :
-    //
-    //                 (pawn_attacks(square, Side.WHITE) & piece_bb[Piece.BLACK_PAWN]) |
-    //                 (get_king_attacks(square) & piece_bb[Piece.BLACK_KING]) |
-    //                 (get_knight_attacks(square) & piece_bb[Piece.BLACK_KNIGHT]) |
-    //                 (getBishopAttacks(square, occ) & (piece_bb[Piece.BLACK_BISHOP] | piece_bb[Piece.BLACK_QUEEN])) |
-    //                 (getRookAttacks(square, occ) & (piece_bb[Piece.BLACK_ROOK] | piece_bb[Piece.BLACK_QUEEN]));
-    //     }
-    //
-    //     public BoardState do_move(String uciMove) {
-    //         return performMove(this.generate_legal_moves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
-    //     }
+    }
 
     pub fn do_null_move(&self) -> BoardState {
         BoardState::perform_null_move(self)
@@ -361,14 +275,7 @@ impl BoardState {
 
     #[inline(always)]
     pub fn do_move_param(&self, moov: &Move, ignore_history: bool) -> BoardState {
-        // if moov.flags() == Move::NULL {
-        //     panic!()
-        // }
-
-
         let mut state = self.clone();
-        // state.do_move_inner(moov);
-        // return state;
         let zobrist = &ZOBRIST;
 
         state.full_move_normalized += 1;
@@ -439,79 +346,6 @@ impl BoardState {
 
         state
     }
-
-    // pub fn do_move_inner(&mut self, moov: &Move) {
-    //     let zobrist = &ZOBRIST;
-    //
-    //     self.full_move_normalized += 1;
-    //     self.half_move_clock += 1;
-    //     self.history[self.ply] = moov.bits;
-    //     self.ply += 1;
-    //     self.movements |= 1u64 << moov.to() | 1u64 << moov.from();
-    //
-    //     if type_of(self.items[moov.from() as usize]) == PAWN {
-    //         self.half_move_clock = 0;
-    //     }
-    //
-    //     self.clear_en_passant();
-    //
-    //     match moov.flags() {
-    //         Move::QUIET => {
-    //             self.move_piece_quiet(moov.from(), moov.to());
-    //         }
-    //         Move::DOUBLE_PUSH => {
-    //             self.move_piece_quiet(moov.from(), moov.to());
-    //             self.en_passant = 1u64 << (moov.from() as i8 + Square::direction(FORWARD, self.side_to_play));
-    //             self.hash ^= zobrist.en_passant[(self.en_passant.trailing_zeros() & 0b111) as usize];
-    //         }
-    //         Move::OO => {
-    //             if self.side_to_play == WHITE {
-    //                 self.move_piece_quiet(Square::E1, Square::G1);
-    //                 self.move_piece_quiet(Square::H1, Square::F1);
-    //             }
-    //             else {
-    //                 self.move_piece_quiet(Square::E8, Square::G8);
-    //                 self.move_piece_quiet(Square::H8, Square::F8);
-    //             }
-    //         }
-    //         Move::OOO => {
-    //             if self.side_to_play == WHITE {
-    //                 self.move_piece_quiet(Square::E1, Square::C1);
-    //                 self.move_piece_quiet(Square::A1, Square::D1);
-    //             } else {
-    //                 self.move_piece_quiet(Square::E8, Square::C8);
-    //                 self.move_piece_quiet(Square::A8, Square::D8);
-    //             }
-    //         }
-    //         Move::EN_PASSANT => {
-    //             self.move_piece_quiet(moov.from(), moov.to());
-    //             self.remove_piece((moov.to() as i8 + Square::direction(BACK, self.side_to_play)) as u8);
-    //         }
-    //         Move::PR_KNIGHT | Move::PR_BISHOP | Move::PR_ROOK | Move::PR_QUEEN=> {
-    //             self.remove_piece(moov.from());
-    //             self.set_piece_at(make_piece(self.side_to_play, moov.get_piece_type()), moov.to() as usize);
-    //         }
-    //         Move::PC_KNIGHT | Move::PC_BISHOP | Move::PC_ROOK | Move::PC_QUEEN => {
-    //             self.remove_piece(moov.from());
-    //             self.remove_piece(moov.to());
-    //             self.set_piece_at(make_piece(self.side_to_play, moov.get_piece_type()), moov.to() as usize);
-    //         }
-    //         Move::CAPTURE => {
-    //             self.half_move_clock = 0;
-    //             self.move_piece(moov.from(), moov.to());
-    //         }
-    //         _ => {
-    //             panic!()
-    //         }
-    //     }
-    //     self.side_to_play = !self.side_to_play;
-    //     self.hash ^= zobrist.side;
-    // }
-
-    //     public int getSideToPlay(){
-    //         return sideToPlay;
-    //     }
-    //
 
     pub fn is_king_attacked(&self) -> bool {
         let us = self.side_to_play;
@@ -656,42 +490,34 @@ impl BoardState {
     // //        return true;
     // //    }
 
-        pub fn is_repetition_or_fifty(&self, position: &BoardPosition) -> bool {
-            let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { *position.history.last().unwrap_or(&0) };
-            let mut count = 0;
-            let mut index: i32 = (self.ply - 1) as i32;
-            while index >= 0 {
-                if self.history[index as usize] == last_move_bits {
-                    count += 1;
-                }
-                index -= 1;
+    pub fn is_repetition_or_fifty(&self, position: &BoardPosition) -> bool {
+        let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { *position.history.last().unwrap_or(&0) };
+        let mut count = 0;
+        let mut index: i32 = (self.ply - 1) as i32;
+        while index >= 0 {
+            if self.history[index as usize] == last_move_bits {
+                count += 1;
             }
-            index = position.history.len() as i32 - 1;
-            while index >= 0 {
-                if position.history[index as usize] == last_move_bits {
-                    count += 1;
-                }
-                index -= 1;
-            }
-            return count > 2 || self.half_move_clock >= 100;
+            index -= 1;
         }
-
-        pub fn has_non_pawn_material(&self, side: Side) -> bool {
-            for piece in make_piece(side, KNIGHT)..=make_piece(side, PieceType::QUEEN) {
-                if self.bitboard_of_piece(piece) != 0 {
-                    return true;
-                }
+        index = position.history.len() as i32 - 1;
+        while index >= 0 {
+            if position.history[index as usize] == last_move_bits {
+                count += 1;
             }
-            return false;
+            index -= 1;
         }
+        return count > 2 || self.half_move_clock >= 100;
+    }
 
-    //     public MoveList generate_legal_moves(){
-    //         return this.generate_legal_moves(false);
-    //     }
-    //
-    //     public MoveList generateLegalQuiescence(){
-    //         return generate_legal_moves(true);
-    //     }
+    pub fn has_non_pawn_material(&self, side: Side) -> bool {
+        for piece in make_piece(side, KNIGHT)..=make_piece(side, PieceType::QUEEN) {
+            if self.bitboard_of_piece(piece) != 0 {
+                return true;
+            }
+        }
+        return false;
+    }
 
     pub fn generate_legal_moves(&self) -> MoveList {
         self.generate_legal_moves_wo(false)
@@ -817,9 +643,8 @@ impl BoardState {
 
             if self.en_passant != 0u64 {
                 let en_passant_square = self.en_passant.trailing_zeros();
-                let b2 = Bitboard::pawn_attacks_from_square(en_passant_square as u8, them) & self.bitboard_of(us, PAWN);
-                // b2 holds pawns that can do an ep capture
-                for s in BitIter(b2 & not_pinned) {
+                let pawn_attacks = Bitboard::pawn_attacks_from_square(en_passant_square as u8, them) & self.bitboard_of(us, PAWN);
+                for square in BitIter(pawn_attacks & not_pinned) {
                     // s hold square from which pawn attack to epsq can be done
                     // s = Long.numberOfTrailingZeros(b1);
                     // b1 = Bitboard.extractLsb(b1);
@@ -834,7 +659,7 @@ impl BoardState {
                             | (BITBOARD.get_bishop_attacks(our_king, qqq | us_bb) & their_bishops_and_queens);
 
                     if candidates == 0 {
-                        moves.add(Move::new_from_flags(s as u8, en_passant_square as u8, Move::EN_PASSANT));
+                        moves.add(Move::new_from_flags(square as u8, en_passant_square as u8, Move::EN_PASSANT));
                     }
                 }
             }
@@ -940,41 +765,41 @@ impl BoardState {
         let b2 = (match us { WHITE => Bitboard::white_left_pawn_attacks(b1), _ => Bitboard::black_right_pawn_attacks(b1) }) & capture_mask;
         let diagonal_attacks_2 = (match us { WHITE => Bitboard::white_right_pawn_attacks(b1), _ => Bitboard::black_left_pawn_attacks(b1) }) & capture_mask;
 
-        for s in BitIter(b2) {
-            moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::CAPTURE));
+        for square in BitIter(b2) {
+            moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_LEFT, us)) as u8, square as u8, Move::CAPTURE));
         }
 
-        for s in BitIter(diagonal_attacks_2) {
-            moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::CAPTURE));
+        for square in BitIter(diagonal_attacks_2) {
+            moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, square as u8, Move::CAPTURE));
         }
 
         let b1 = self.bitboard_of(us, PAWN) & not_pinned & Bitboard::PAWN_RANKS[us as usize];
         if b1 != 0 {
             if !only_quiescence {
                 let b2 = match us { WHITE => b1 << 8, _ => b1 >> 8 } & quiet_mask;
-                for s in BitIter(b2) {
-                    moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_QUEEN));
-                    moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_KNIGHT));
-                    moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_ROOK));
-                    moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD, us)) as u8, s as u8, Move::PR_BISHOP));
+                for square in BitIter(b2) {
+                    moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD, us)) as u8, square as u8, Move::PR_QUEEN));
+                    moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD, us)) as u8, square as u8, Move::PR_KNIGHT));
+                    moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD, us)) as u8, square as u8, Move::PR_ROOK));
+                    moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD, us)) as u8, square as u8, Move::PR_BISHOP));
                 }
             }
 
             let diagonal_attacks_1 = (match us { WHITE => Bitboard::white_left_pawn_attacks(b1), _ => Bitboard::black_right_pawn_attacks(b1) }) & capture_mask;
             let diagonal_attacks_2 = (match us { WHITE => Bitboard::white_right_pawn_attacks(b1), _ => Bitboard::black_left_pawn_attacks(b1) }) & capture_mask;
 
-            for s in BitIter(diagonal_attacks_1) {
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_QUEEN));
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_KNIGHT));
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_ROOK));
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_LEFT, us)) as u8, s as u8, Move::PC_BISHOP));
+            for square in BitIter(diagonal_attacks_1) {
+                moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_LEFT, us)) as u8, square as u8, Move::PC_QUEEN));
+                moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_LEFT, us)) as u8, square as u8, Move::PC_KNIGHT));
+                moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_LEFT, us)) as u8, square as u8, Move::PC_ROOK));
+                moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_LEFT, us)) as u8, square as u8, Move::PC_BISHOP));
             }
 
-            for s in BitIter(diagonal_attacks_2) {
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_QUEEN));
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_KNIGHT));
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_ROOK));
-                moves.add(Move::new_from_flags((s as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, s as u8, Move::PC_BISHOP));
+            for square in BitIter(diagonal_attacks_2) {
+                moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, square as u8, Move::PC_QUEEN));
+                moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, square as u8, Move::PC_KNIGHT));
+                moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, square as u8, Move::PC_ROOK));
+                moves.add(Move::new_from_flags((square as i8 - Square::direction(FORWARD_RIGHT, us)) as u8, square as u8, Move::PC_BISHOP));
             }
         }
 
@@ -1017,25 +842,26 @@ impl BoardState {
         return result;
     }
 
-    //     public String toFen() {
-    //         return Fen.toFen(this);
-    //     }
-    //
-    //     public int mg() {
-    //         return mg;
-    //     }
-    //
-    //     public int eg() {
-    //         return eg;
-    //     }
-    //
-        pub fn interpolated_score(&self) -> i16 {
-            let phase= ((self.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE) as i16;
+    pub fn interpolated_score(&self) -> i16 {
+        let phase= ((self.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE) as i16;
 //        println!("mg: {}, eg: {}, phase: {}", self.mg, self.eg, phase);
-            return (((self.mg as i32) * (256 - phase) as i32 + (self.eg as i32) * phase as i32) / 256) as i16;
-            // self.mg
-        }
+        return (((self.mg as i32) * (256 - phase) as i32 + (self.eg as i32) * phase as i32) / 256) as i16;
+        // self.mg
+    }
 
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `parts`:
+    ///
+    /// returns: Vec<Move, Global>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///
+    /// ```
     pub fn parse_moves(&self, parts: &Vec<&str>) -> Vec<Move> {
         let mut state = self.clone();
         let mut moves: Vec<Move> = Vec::new();
@@ -1043,7 +869,6 @@ impl BoardState {
         for i in 0..parts.len() {
             let moov = Move::from_uci_string(parts[i], &state);
             state = state.do_move_no_history(&moov);
-            //state.pop_history(); // board_state doesn't have long history array typically
             moves.push(moov);
         }
 

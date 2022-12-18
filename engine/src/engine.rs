@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 use std::str::FromStr;
+use crate::transposition::{TranspositionTable};
 
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
@@ -61,19 +62,29 @@ pub enum UciMessage {
 pub struct Engine {
     // bitboard: &'a Bitboard,
     // board_state: BoardState,
+    // transposition_table: TranspositionTable,
     position: BoardPosition,
+    // pub(crate) search: Box<Search<'a>>,
     pub(crate) search: Search,
     file: Option<File>,
 }
+
+// lazy_static! {
+//     pub static ref TT: TranspositionTable = TranspositionTable::new(1);
+// }
 
 impl Engine {
     #[allow(unused)]
     pub fn new_from_fen(fen: &str) -> Self {
         let mut file = File::create("zerofish.log").unwrap();
+        let transposition_table = TranspositionTable::new(1);
+        //let search = Box::from(Search::new(&'a transposition_table));
+        let search = Search::new(transposition_table);
         let mut engine = Engine {
 //            bitboard,
             position: BoardPosition::from_fen(fen),
-            search: Search::new(),
+            // transposition_table,
+            search,
             file: Some(file),
             //board_state: from_fen_default(fen),
         };
@@ -144,7 +155,7 @@ uciok"#, "zerofish 0.1.0 64\
                 "quit" => "quitting".to_string(),
 
                 "ucinewgame" => {
-                    // self.reset();
+                    self.search.transposition_table.clear();
                     "OK".to_string()
                 },
 
