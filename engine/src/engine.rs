@@ -1,6 +1,6 @@
 use std::fs::File;
-use std::io::Write;
 use crate::transposition::{TranspositionTable};
+use std::io::{stdout, Write};
 
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
@@ -71,6 +71,7 @@ pub struct Engine {
     // pub(crate) search: Box<Search<'a>>,
     pub(crate) search: Search,
     file: Option<File>,
+    out: Box<dyn Write>,
 }
 
 impl Engine {
@@ -83,6 +84,7 @@ impl Engine {
             position: BoardPosition::from_fen(START_POS),
             search,
             file,
+            out: Box::from(stdout())
         };
 
         engine
@@ -93,20 +95,22 @@ impl Engine {
     }
 
     pub fn process_uci_command(&mut self, uci_command: String) -> String {
+        //let mut out = stdout();
         if self.file.is_some() {
             let msg = format!("{}", uci_command);
             self.file.as_ref().unwrap().write(msg.as_ref()).expect("TODO: panic message");
         }
+        // println!("{}", uci_command);
         let parts: Vec<&str> = uci_command.split_whitespace().collect();
         let part = parts.get(0);
         let sub_part = parts.get(1);
         if part.is_some() {
             let result: String = match part.unwrap().to_lowercase().as_str() {
                 "uci" => {
-                    println!(r#"id name {}
+                    self.answer(format!(r#"id name {}
 id author Petr Pravda
 uciok"#, "zerofish 0.1.0 64\
-");
+"));
                     "OK".to_string()
                 },
                 "go" => {
@@ -123,12 +127,12 @@ uciok"#, "zerofish 0.1.0 64\
 
                     if search_limit_params.perft_depth.is_some() {
                         let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), search_limit_params.perft_depth.unwrap());
-                        println!("{}", result);
+                        self.answer(format!("{}", result));
                     } else {
                         let search_limit = search_limit_params.prepare(self.position.state.side_to_play);
-                        println!("search_limit: {:?}", search_limit);
-                        let result = self.search.it_deep(&self.position, search_limit);
-                        println!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)")));
+                        // println!("search_limit: {:?}", search_limit);
+                        let result = self.search.it_deep(&self.position, search_limit, &mut self.out);
+                        self.answer(format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
                     }
                     String::from("go")
                 },
@@ -142,7 +146,7 @@ uciok"#, "zerofish 0.1.0 64\
                     output.push_str(format!("Fen: {}\n", Fen::compute_fen(state)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
-                    println!("{}", output);
+                    self.answer(output.clone());
                     output.to_string()
                 }
 
@@ -235,6 +239,7 @@ uciok"#, "zerofish 0.1.0 64\
                     //println!("Skipping execution of: {}", uci_command);
                     // Skip unknown commands
                     let result = format!("Unsupported command: {}", uci_command);
+                    self.answer(result.clone());
                     result
                 }
             };
@@ -294,10 +299,15 @@ uciok"#, "zerofish 0.1.0 64\
         //     self.options_modified = false;
         //     self.board.pst.recalculate(&self.board.options);
         // }
-        println!("readyok");
+        self.answer(String::from("readyok"));
         "readyok".to_string()
     }
     // fn extract_parameter_or<T: FromStr>(parts: &Vec<&str>, name: &str, default_value: T) -> T {
     //     extract_parameter(parts, name).unwrap_or(default_value)
     // }
+    fn answer(&mut self, output: String) {
+        self.out.write(output.as_ref()).expect("Cannot write to output stream!");
+        self.out.write(b"\n").expect("Cannot write to output stream!");
+        self.out.flush().expect("Flush error");
+    }
 }

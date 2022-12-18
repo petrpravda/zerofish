@@ -43,13 +43,13 @@ impl SquarePosition {
 pub struct BitIter(pub u64);
 
 impl Iterator for BitIter {
-    type Item = u32; // TODO change to u8
-    fn next(&mut self) -> Option<u32> {
+    type Item = u8;
+    fn next(&mut self) -> Option<u8> {
         if self.0 == 0 {
             return None;
         }
 
-        let pos = self.0.trailing_zeros();
+        let pos = self.0.trailing_zeros() as u8;
         self.0 ^= 1 << pos as u64;
         Some(pos)
     }

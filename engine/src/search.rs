@@ -1,3 +1,4 @@
+use std::io::Write;
 use lazy_static::lazy_static;
 use crate::board_position::BoardPosition;
 use crate::board_state::{BOARD_STATE_HISTORY_CAPACITY, BoardState};
@@ -121,7 +122,7 @@ impl Search {
         }
     }
 
-    pub fn it_deep(&mut self, position: &BoardPosition, search_limit: SearchLimit) -> SearchResult {
+    pub fn it_deep(&mut self, position: &BoardPosition, search_limit: SearchLimit, output: &mut dyn Write) -> SearchResult {
         let mut best_result = SearchResult { moov: None, score: 0, stop_it_deep: false };
 
         self.search_limit = search_limit;
@@ -153,7 +154,7 @@ impl Search {
                     beta = Search::INF;
                 } else {
                     // Adjust the window around the new score and increase the depth
-                    self.print_info_line(&position.state, &result_from_ply, depth);
+                    self.print_info_line(&position.state, &result_from_ply, depth, output);
                     best_result = result_from_ply;
                     alpha = score - Search::ASPIRATION_WINDOW;
                     beta = score + Search::ASPIRATION_WINDOW;
@@ -449,9 +450,9 @@ impl Search {
                 moov.flags() == Move::QUIET;
     }
 
-    pub fn print_info_line(&self, state: &BoardState, search_result: &SearchResult, depth: Depth) {
+    pub fn print_info_line(&self, state: &BoardState, search_result: &SearchResult, depth: Depth, output: &mut dyn Write) {
         let time_elapsed = self.time_elapsed();
-        let info_line = format!("info currmove {} depth {} seldepth {} time {} score cp {} nodes {} nps {} pv {}",
+        let info_line = format!("info currmove {} depth {} seldepth {} time {} score cp {} nodes {} nps {} pv {}\n",
                                 search_result.moov.map(|m|m.uci()).unwrap_or(String::from("(none)")),
                                 depth,
                                 self.sel_depth,
@@ -461,7 +462,9 @@ impl Search {
                                 (self.statistics.total_nodes() as f32 / time_elapsed as f32 * 1000f32) as u32,
                                 self.get_pv(state, depth)
         );
-        println!("{}", info_line);
+        output.write(info_line.as_ref()).expect("Cannot write to output stream!");
+        output.flush().expect("TODO: panic message");
+        //println!("{}", info_line);
     }
 
     fn get_pv(&self, state: &BoardState, depth: Depth) -> String {
