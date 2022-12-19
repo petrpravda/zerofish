@@ -53,6 +53,11 @@ impl Side {
             -1
         }
     }
+
+    #[inline(always)]
+    pub fn iter(start: Self, end: Self) -> impl Iterator<Item = Self> {
+        (start as u8..=end as u8).map(Self::from)
+    }
 }
 
 impl From<u8> for Side {

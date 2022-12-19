@@ -68,57 +68,9 @@ pub struct EngineOptions {
     pub log_filename: Option<String>,
 }
 
-// pub enum Message {
-//     NewGame,
-//     SetPosition(String, Vec<UCIMove>),
-//     SetTranspositionTableSize(i32),
-//     Go {
-//         depth: i32,
-//         wtime: i32,
-//         btime: i32,
-//         winc: i32,
-//         binc: i32,
-//         movetime: i32,
-//         movestogo: i32,
-//     },
-//     Perft(i32),
-//     IsReady,
-//     Stop,
-//     PrepareEval(Vec<(String, f64)>),
-//     PrepareQuiet(Vec<(String, f64)>),
-//     Eval(f64),
-//     Fen,
-//     PrintTestPositions,
-//     ResetTestPositions,
-//     Profile,
-//     SetOption(String, i32),
-//     SetArrayOption(String, i32, i32),
-//     Quit,
-//     Display,
-// }
-
-// #[derive(Copy, Clone)]
-// pub struct EvalBoardPos {
-//     result: f64,
-//     pieces: [i8; 64],
-//     halfmove_count: u16,
-//     castling_state: u8,
-//     is_quiet: bool
-// }
-
-// impl EvalBoardPos {
-//     pub fn apply(&self, board: &mut Board) {
-//         board.eval_set_position(&self.pieces, self.halfmove_count, self.castling_state);
-//     }
-// }
-
 pub struct Engine {
-    // bitboard: &'a Bitboard,
-    // board_state: BoardState,
-    // transposition_table: TranspositionTable,
-    position: BoardPosition,
-    // pub(crate) search: Box<Search<'a>>,
-    pub(crate) search: Search,
+    pub position: BoardPosition,
+    pub search: Search,
     file: Option<File>,
 }
 
@@ -202,7 +154,7 @@ uciok"#, "zerofish 0.1.0 64\
                 },
 
                 "ucinewgame" => {
-                    self.search.transposition_table.clear();
+                    self.uci_new_game();
                 },
 
                 "position" => {
@@ -286,6 +238,11 @@ uciok"#, "zerofish 0.1.0 64\
         } else {
             output_adapter.writeln("Empty command");
         };
+    }
+
+    pub fn uci_new_game(&mut self) {
+        self.search.transposition_table.clear();
+        self.position = BoardPosition::from_fen(START_POS);
     }
 
     // fn set_position_from_uci(&mut self, parts: &Vec<&str>) {

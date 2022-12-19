@@ -75,6 +75,17 @@ impl PieceType {
   pub fn iter(start: Self, end: Self) -> impl Iterator<Item = Self> {
     (start as u8..=end as u8).map(Self::from)
   }
+
+  pub fn code(self) -> String {
+    match self {
+      PieceType::PAWN => String::from("p"),
+      PieceType::KNIGHT => String::from("n"),
+      PieceType::BISHOP => String::from("b"),
+      PieceType::ROOK => String::from("r"),
+      PieceType::QUEEN => String::from("q"),
+      PieceType::KING => String::from("k"),
+    }
+  }
 }
 
 impl From<u8> for PieceType {
