@@ -28,7 +28,7 @@ jobs:
       env:
         CARGO_TARGET_DIR: engine/target/release
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: zerofish-linux
         path: zerofish_x86_64-linux
