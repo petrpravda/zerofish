@@ -2,9 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags: "v*"
 
 env:
   CARGO_TERM_COLOR: always
@@ -43,6 +41,7 @@ jobs:
         ls -al
         sha256sum zerofish-* > checksums.txt
         echo "$tag_name" > release_description.txt
+        cat release_notes.md >> release_description.txt
         hub release create --draft \
                            -a "checksums.txt#Checksums" \
                            -a "zerofish-${tag_name}_x86_64-linux#Zerofish - Linux (x86_64)" \
