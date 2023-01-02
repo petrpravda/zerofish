@@ -22,8 +22,8 @@ jobs:
         cargo build --release --target x86_64-unknown-linux-musl --manifest-path engine/Cargo.toml --release
     - name: Create release artifact
       run: |
-        ls -al engine/target/x86_64-unknown-linux-musl/release/release
-        cp engine/target/x86_64-unknown-linux-musl/release/release/zerofish zerofish_x86_64-linux
+        ls -al engine/target/x86_64-unknown-linux-musl/release
+        cp engine/target/x86_64-unknown-linux-musl/release/zerofish zerofish_x86_64-linux
       env:
         CARGO_TARGET_DIR: engine/target/release
     - name: Upload artifacts
