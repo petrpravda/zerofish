@@ -17,12 +17,13 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --verbose --manifest-path engine/Cargo.toml
+      run: cargo build --verbose --manifest-path engine/Cargo.toml --release
     - name: Run tests
       run: cargo test --verbose --manifest-path engine/Cargo.toml
     - name: Create release artifact
       run: |
         mkdir -p release
+        ls -al engine/target/release
         cp engine/target/release/zerofish release/zerofish
       env:
         CARGO_TARGET_DIR: engine/target/release
