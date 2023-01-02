@@ -40,6 +40,7 @@ jobs:
         ls -l
         chmod +x zerofish_x86_64-linux
         mv zerofish_x86_64-linux zerofish-${tag_name}_x86_64-linux
+        ls -al
         sha256sum zerofish-* > checksums.txt
         echo "$tag_name" > release_description.txt
         hub release create --draft \
