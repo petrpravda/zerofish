@@ -23,7 +23,8 @@ jobs:
     - name: Create release artifact
       run: |
         ls -al engine/target/x86_64-unknown-linux-musl/release
-        cp engine/target/x86_64-unknown-linux-musl/release/zerofish zerofish_x86_64-linux
+        cp engine/target/x86_64-unknown-linux-musl/release/zerofish zerofish_x86_64-${tag_name}-linux
+        ls -al
       env:
         CARGO_TARGET_DIR: engine/target/release
     - name: Upload artifacts
@@ -40,4 +41,4 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
-        file_pattern: release/*      
+        file_pattern: zerofish_x86_64*      
