@@ -20,11 +20,8 @@ jobs:
       run: |
         rustup target add x86_64-unknown-linux-musl
         cargo build --release --target x86_64-unknown-linux-musl --manifest-path engine/Cargo.toml --release
-#    - name: Run tests
-#      run: cargo test --verbose --manifest-path engine/Cargo.toml
     - name: Create release artifact
       run: |
-#        mkdir -p release
         ls -al engine/target/x86_64-unknown-linux-musl/release/release
         cp engine/target/x86_64-unknown-linux-musl/release/release/zerofish zerofish_x86_64-linux
       env:
