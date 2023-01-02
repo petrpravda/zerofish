@@ -77,9 +77,12 @@ engine/target/release/zerofish
 
 Petr Pravda  
 
+## Releases 
+[link](https://github.com/petrpravda/zerofish/releases/)
+
 ## Version History
 
-* 0.1
+* 0.1.0
     * Initial Release
 
 ## License
