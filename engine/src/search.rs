@@ -1,3 +1,4 @@
+use std::time::Instant;
 use lazy_static::lazy_static;
 use crate::board_position::BoardPosition;
 use crate::board_state::{BOARD_STATE_HISTORY_CAPACITY, BoardState};
@@ -7,7 +8,6 @@ use crate::fen::START_POS;
 use crate::r#move::{Move};
 use crate::side::Side;
 use crate::statistics::Statistics;
-use crate::time::Instant;
 use crate::transposition::{Depth, TranspositionTable, Value};
 
 #[derive(Debug, Copy, Clone)]

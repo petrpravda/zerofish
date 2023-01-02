@@ -4,16 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [profile.release]
-strip = true
-opt-level = "z"  # Optimize for size.
-lto = true
-panic = "abort"
+#strip = true
+#opt-level = "z"  # Optimize for size.
+#lto = true
+#panic = "abort"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 lazy_static = "1.4.0"
-wasm-bindgen = "0.2.83"
-
-[dependencies.js-sys]
-version = "0.3.60"

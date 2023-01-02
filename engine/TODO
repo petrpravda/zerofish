@@ -106,6 +106,7 @@ curl https://wasmtime.dev/install.sh -sSf | bash
 ~/.wasmtime/bin/wasmtime -V
 ~/.wasmtime/bin/wasmtime ./target/wasm32-wasi/release/zerofish.wasm
 wasmer ./target/wasm32-wasi/release/zerofish.wasm
+  parallelism: https://github.com/rustwasm/wasm-bindgen/tree/main/examples/raytrace-parallel
 =================================================
 https://www.jsdelivr.com/package/npm/stockfish?path=src
 https://cdn.jsdelivr.net/npm/stockfish@15/src/stockfish.js

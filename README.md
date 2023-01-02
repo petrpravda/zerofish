@@ -60,10 +60,10 @@ At the time, I'm porting the previous engine (legacyjava) into Rust language (fo
 
 Get source files
 ```
-git clone https://github.com/petrpravda/0fish.git
+git clone https://github.com/petrpravda/zerofish.git
 ```
 
-Go to 0fish directory and make executable with
+Go to zerofish directory and make executable with
 ```
 cargo build --manifest-path=engine/Cargo.toml --release
 ```
