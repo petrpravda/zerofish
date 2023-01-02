@@ -33,12 +33,17 @@ jobs:
         name: zerofish-linux
         path: zerofish_x86_64-linux
     - name: Create release
-      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-        file_pattern: zerofish_x86_64*      
+      run: |
+        tag_name="${GITHUB_REF##*/}"
+        ls -l
+        chmod +x zerofish_x86_64-linux
+        mv zerofish_x86_64-linux zerofish-${tag_name}_x86_64-linux
+        sha256sum velvet-* > checksums.txt
+        echo "$tag_name" > release_description.txt
+        cat artifacts/release_notes.md >> release_description.txt
+        hub release create --draft \
+                           -a "checksums.txt#Checksums" \
+                           -a "zerofish-${tag_name}_x86_64-linux#Zerofish - Linux (x86_64)" \
+                           -F release_description.txt "$tag_name"
