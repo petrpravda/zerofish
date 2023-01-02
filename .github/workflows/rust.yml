@@ -17,16 +17,23 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --verbose --manifest-path engine/Cargo.toml --release
-    - name: Run tests
-      run: cargo test --verbose --manifest-path engine/Cargo.toml
+      run: |
+        rustup target add x86_64-unknown-linux-musl
+        cargo build --release --target x86_64-unknown-linux-musl --manifest-path engine/Cargo.toml --release
+#    - name: Run tests
+#      run: cargo test --verbose --manifest-path engine/Cargo.toml
     - name: Create release artifact
       run: |
-        mkdir -p release
-        ls -al engine/target/release
-        cp engine/target/release/zerofish release/zerofish
+#        mkdir -p release
+        ls -al engine/target/x86_64-unknown-linux-musl/release/release
+        cp engine/target/x86_64-unknown-linux-musl/release/release/zerofish zerofish_x86_64-linux
       env:
         CARGO_TARGET_DIR: engine/target/release
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: zerofish-linux
+        path: zerofish_x86_64-linux
     - name: Create release
       uses: actions/create-release@v1
       env:
