@@ -8,8 +8,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  build-linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,19 +29,32 @@ jobs:
       with:
         name: zerofish-linux
         path: zerofish_x86_64-linux
-    - name: Create release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        tag_name="${GITHUB_REF##*/}"
-        ls -l
-        chmod +x zerofish_x86_64-linux
-        mv zerofish_x86_64-linux zerofish-${tag_name}_x86_64-linux
-        ls -al
-        sha256sum zerofish-* > checksums.txt
-        echo "$tag_name" > release_description.txt
-        cat release_notes.md >> release_description.txt
-        hub release create --draft \
-                           -a "checksums.txt#Checksums" \
-                           -a "zerofish-${tag_name}_x86_64-linux#Zerofish - Linux (x86_64)" \
-                           -F release_description.txt "$tag_name"
+
+  release:
+    needs: [build-linux]
+    name: Publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: zerofish-linux
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag_name="${GITHUB_REF##*/}"
+          ls -l
+          chmod +x zerofish_x86_64-linux
+          mv zerofish_x86_64-linux zerofish-${tag_name}_x86_64-linux
+          ls -al
+          sha256sum zerofish-* > checksums.txt
+          echo "$tag_name" > release_description.txt
+          cat release_notes.md >> release_description.txt
+          hub release create --draft \
+                             -a "checksums.txt#Checksums" \
+                             -a "zerofish-${tag_name}_x86_64-linux#Zerofish - Linux (x86_64)" \
+                             -F release_description.txt "$tag_name"
