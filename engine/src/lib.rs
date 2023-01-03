@@ -15,7 +15,7 @@ pub mod zobrist;
 pub mod piece_square_table;
 pub mod search;
 pub mod board_position;
-mod time;
+pub mod time;
 mod transposition;
 mod statistics;
 mod evaluation;

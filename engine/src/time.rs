@@ -3,6 +3,7 @@
 use std::convert::{TryInto};
 use std::ops::{Add, Sub, AddAssign, SubAssign};
 use std::time::SystemTime;
+use crate::search::Search;
 
 
 // use wasm_bindgen::prelude::*;
@@ -30,49 +31,28 @@ use std::time::SystemTime;
 // impl SubAssign<Duration> for Instant { fn sub_assign(&mut self, other: Duration) { *self = *self - other; } }
 
 
-pub struct MySystem {
-
+pub trait TimeCounter {
+    fn current_time_millis() -> u64;
 }
+
 #[cfg(not(target_arch = "wasm32"))]
-impl MySystem {
-    pub fn current_time_millis() -> u64 {
-        let n = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_micros();
+impl TimeCounter for Search {
+    fn current_time_millis() -> u64 {
+        let n = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
         (n & 0xFFFFFFFFFFFFFFFF) as u64
     }
 }
 
-// #[cfg(target_arch = "wasm32")]
-// #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// pub struct Instant(u64);
-//
-// #[cfg(target_arch = "wasm32")]
-// impl Instant {
-//     pub fn now() -> Self {
-//         let date = Date::new_0();
-//         let time = date.get_time();
-//         Self((time * 1000.0) as u64)
-//     }
-//     pub fn duration_since(&self, earlier: Instant) -> Duration { Duration::from_micros(self.0 - earlier.0) }
-//     pub fn elapsed(&self) -> Duration { Self::now().duration_since(*self) }
-//     pub fn checked_add(&self, duration: Duration) -> Option<Self> {
-//         match duration.as_micros().try_into() {
-//             Ok(duration) => self.0.checked_add(duration).map(|i| Self(i)),
-//             Err(_) => None,
-//         }
-//     }
-//     pub fn checked_sub(&self, duration: Duration) -> Option<Self> {
-//         match duration.as_micros().try_into() {
-//             Ok(duration) => self.0.checked_sub(duration).map(|i| Self(i)),
-//             Err(_) => None,
-//         }
-//     }
-// }
-//
-// #[cfg(target_arch = "wasm32")]
-// impl MySystem {
-//     pub fn current_time_millis() -> u64 {
-//         let date = Date::new_0();
-//         let time = date.get_time();
-//         (time * 1000.0) as u64
-//     }
-// }
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use js_sys::Date;
+
+#[cfg(target_arch = "wasm32")]
+impl TimeCounter for Search {
+    fn current_time_millis() -> u64 {
+        let date = Date::new_0();
+        let time = date.get_time();
+        (time * 1000.0) as u64
+    }
+}

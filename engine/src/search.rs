@@ -1,4 +1,3 @@
-use std::time::Instant;
 use lazy_static::lazy_static;
 use crate::board_position::BoardPosition;
 use crate::board_state::{BOARD_STATE_HISTORY_CAPACITY, BoardState};
@@ -8,6 +7,7 @@ use crate::fen::START_POS;
 use crate::r#move::{Move};
 use crate::side::Side;
 use crate::statistics::Statistics;
+use crate::time::TimeCounter;
 use crate::transposition::{Depth, TranspositionTable, Value};
 
 #[derive(Debug, Copy, Clone)]
@@ -95,7 +95,7 @@ pub struct Search {
     pub(crate) stopped: bool,
     statistics: Statistics,
     pub(crate) transposition_table: TranspositionTable,
-    start_time: Instant,
+    start_time: u64,
     search_limit: SearchLimit,
     time_checking_round: u32,
 }
@@ -112,7 +112,7 @@ impl Search {
     pub fn new(transposition_table: TranspositionTable) -> Self {
         Self {
             search_position: BoardPosition::from_fen(START_POS),
-            start_time: Instant::now(),
+            start_time: Search::current_time_millis(),
             sel_depth: 10,
             stopped: false,
             statistics: Statistics::new(),
@@ -127,7 +127,7 @@ impl Search {
 
         self.search_limit = search_limit;
         self.search_position = position.clone();
-        self.start_time = Instant::now();
+        self.start_time = Search::current_time_millis();
         self.sel_depth = 0;
         self.stopped = false;
         let mut alpha: Value = -Search::INF;
@@ -487,9 +487,9 @@ impl Search {
     }
 
     fn time_elapsed(&self) -> u32 {
-        let now = Instant::now();
+        let now = Search::current_time_millis();
         let duration = now - self.start_time;
-        duration.as_millis() as u32
+        duration as u32
     }
 
     fn check_stopping(&mut self) -> bool {

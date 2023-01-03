@@ -1,4 +1,4 @@
-- testing binaries2
+- windows GHA release
 - enhanced uci for testing
 - Elo tests
   - synchronize result tables
