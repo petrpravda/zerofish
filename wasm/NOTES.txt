@@ -1,0 +1,52 @@
+# wasm-pack build wasm --release --target web
+wasm-pack build wasm --no-typescript --release --target no-modules
+wasm-pack build wasm --no-typescript --dev --target no-modules
+wasm-pack build wasm --no-typescript --dev --target no-modules; cp wasm/pkg/zerofish_wasm* wasm/web/public/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The web_sys crate provides a Worker type that represents a web worker in Rust. You can use this type to create a new web worker and communicate with it from Rust.
+
+To create a new web worker, you can use the Worker::new function:
+
+Copy code
+use web_sys::Worker;
+
+let worker = Worker::new("worker.js").unwrap();
+This creates a new web worker that will execute the JavaScript code in the specified file. You can then use the post_message method on the Worker object to send a message to the worker:
+
+Copy code
+let message = JsValue::from("Hello from Rust!");
+let transfer = vec![];
+let _ = worker.post_message(&message, transfer.as_ref());
+To receive messages from the worker, you can set up an event listener for the message event on the Worker object:
+
+Copy code
+use wasm_bindgen::Closure;
+
+extern "C" fn message_handler(event: web_sys::MessageEvent) -> () {
+    let data = event.data();
+    // ...
+}
+
+let handler = Closure::wrap(Box::new(message_handler) as Box<dyn FnMut(_)>);
+worker.set_onmessage(Some(handler.as_ref().unchecked_ref()));
+handler.forget();
+This creates a Rust closure that will be called when a message is received from the worker, and sets it as the event handler for the message event. The data property of the MessageEvent object contains the message data.
+
+You can also use the terminate method on the Worker object to stop the worker, and the onmessageerror event to ha
