@@ -6,8 +6,10 @@ async function run() {
     await wasm_bindgen('./zerofish_wasm_bg.wasm');
     let engineContext = newEngineContext(self);
     console.log(`engineContext: ${engineContext}`);
-    const res1 = executeUciCommand('d', engineContext);
-    console.info(res1);
+    // const res1 = executeUciCommand('d', engineContext);
+    executeUciCommand('d', engineContext);
+    executeUciCommand('go depth 10', engineContext);
+    //console.info(res1);
     self.postMessage({msg: 'started'});
     //sendMessage();
     //post_message_to_worker(self);
