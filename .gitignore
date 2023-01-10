@@ -17,3 +17,5 @@
 
 /wasm/web/public/zerofish_wasm_bg.wasm
 /wasm/web/public/zerofish_wasm.js
+/wasm/web/public/zerofish.js
+/wasm/web/public/zerofish.wasm

@@ -3,7 +3,7 @@ mod web_worker_adapter;
 
 use std::rc::Rc;
 use std::sync::Mutex;
-use zerofish::engine::{StringOutputAdapter};
+use zerofish::engine::{OutputAdapter, StringOutputAdapter};
 use wasm_bindgen::prelude::*;
 use web_sys::Worker;
 use crate::web_worker_adapter::WebWorkerOutputAdapter;
@@ -18,7 +18,9 @@ pub struct EngineContext {
 #[wasm_bindgen]
 impl EngineContext {
     pub fn new(worker: &Worker) -> Self {
-//        let engine = Engine::new(EngineOptions{ log_filename: None });
+        let mut output_adapter = WebWorkerOutputAdapter::new(worker);
+        output_adapter.writeln("Zerofish 0.1 64 WASM Singlethreaded");
+
         EngineContext{
             wrapper: Rc::new(Mutex::new(EngineWrapper::new())),
             worker: Rc::new(worker.clone()),

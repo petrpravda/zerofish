@@ -13,11 +13,9 @@
 //
 
 if (typeof window !== "undefined") {
-    const worker = new Worker('worker.js');
+    const worker = new Worker('zerofish.js');
     //console.info(worker);
     worker.onmessage = function(event) {
-        console.log('Received message from worker:', event.data);
+        console.log(event.data);
     }
-    // this.worker.onmessage = this.handleMsg;
-    // ENGINE = this;
 }
