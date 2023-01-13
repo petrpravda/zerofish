@@ -241,8 +241,12 @@ uciok"#, "zerofish 0.1.0 64\
     }
 
     pub fn uci_new_game(&mut self) {
+        self.uci_new_game_from_fen(START_POS);
+    }
+
+    pub fn uci_new_game_from_fen(&mut self, fen: &str) {
         self.search.transposition_table.clear();
-        self.position = BoardPosition::from_fen(START_POS);
+        self.position = BoardPosition::from_fen(fen);
     }
 
     // fn set_position_from_uci(&mut self, parts: &Vec<&str>) {
