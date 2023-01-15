@@ -87,14 +87,14 @@ impl PieceType {
     }
   }
 
-  pub fn from_code(code: char) -> Option<PieceType> {
+  pub fn from_san_code(code: char) -> Option<PieceType> {
     match code {
-      'p' => Some(PieceType::PAWN),
-      'n' => Some(PieceType::KNIGHT),
-      'b' => Some(PieceType::BISHOP),
-      'r' => Some(PieceType::ROOK),
-      'q' => Some(PieceType::QUEEN),
-      'k' => Some(PieceType::KING),
+      'P' => Some(PieceType::PAWN),
+      'N' => Some(PieceType::KNIGHT),
+      'B' => Some(PieceType::BISHOP),
+      'R' => Some(PieceType::ROOK),
+      'Q' => Some(PieceType::QUEEN),
+      'K' => Some(PieceType::KING),
       _ => None
     }
   }
