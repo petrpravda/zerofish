@@ -249,6 +249,13 @@ uciok"#, "zerofish 0.1.0 64\
         self.position = BoardPosition::from_fen(fen);
     }
 
+    pub fn do_pgn_moves(&mut self, pgn_moves: &str) {
+        let moves = pgn_moves.split_whitespace();
+        for moov in moves {
+            println!("{}", moov);
+        }
+    }
+
     // fn set_position_from_uci(&mut self, parts: &Vec<&str>) {
     //     let fen = parse_position_cmd(parts);
     //

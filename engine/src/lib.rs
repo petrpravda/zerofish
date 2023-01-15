@@ -20,6 +20,7 @@ mod transposition;
 mod statistics;
 mod evaluation;
 pub mod util;
+pub mod pgn;
 
 
 pub fn add(left: usize, right: usize) -> usize {

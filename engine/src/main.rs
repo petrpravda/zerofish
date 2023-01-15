@@ -3,7 +3,7 @@ extern crate core;
 use env::args;
 use std::{env};
 use zerofish::{engine_thread, uci};
-use zerofish::engine::EngineOptions;
+use zerofish::engine::{EngineOptions};
 use zerofish::util::extract_parameter;
 
 //use zerofish::piece_square_table::MGS;
@@ -31,6 +31,11 @@ fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     uci::start_uci_loop(&engine_thread::spawn_engine_thread(&engine_options).0);
 
+
+
+    // let mut engine = Engine::new(EngineOptions { log_filename:  None});
+    // engine.do_pgn_moves("d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 c5");
+    // println!("{}", engine.position.to_fen());
 
     // let mut search = Search::new();     //println!("{}", MGS[1][3]);
     // let position = BoardPosition::from_fen(START_POS);

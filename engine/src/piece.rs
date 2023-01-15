@@ -86,6 +86,18 @@ impl PieceType {
       PieceType::KING => String::from("k"),
     }
   }
+
+  pub fn from_code(code: char) -> Option<PieceType> {
+    match code {
+      'p' => Some(PieceType::PAWN),
+      'n' => Some(PieceType::KNIGHT),
+      'b' => Some(PieceType::BISHOP),
+      'r' => Some(PieceType::ROOK),
+      'q' => Some(PieceType::QUEEN),
+      'k' => Some(PieceType::KING),
+      _ => None
+    }
+  }
 }
 
 impl From<u8> for PieceType {

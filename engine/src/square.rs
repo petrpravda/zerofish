@@ -42,9 +42,19 @@ impl Square {
         return rank << 3 | file;
     }
 
+    #[inline(always)]
+    pub fn get_file(square: usize) -> char {
+        char::from((square as u8 & 0b111) + 97)
+    }
+
+    #[inline(always)]
+    pub fn get_rank(square: usize) -> char {
+        char::from(((square as u8 & 0b111111) >> 3) + 49)
+    }
+
     pub fn get_name(square: usize) -> String {
-        let file = char::from((square as u8 & 0b111) + 97);
-        let rank = char::from(((square as u8 & 0b111111) >> 3) + 49);
+        let file = Square::get_file(square);
+        let rank = Square::get_rank(square);
         let chars = [file, rank];
         chars.iter().collect::<String>()
     }
@@ -56,6 +66,7 @@ impl Square {
     pub fn get_rank_index(square: u8) -> u8 {
         square >> 3
     }
+
 
     pub fn get_diagonal_index(square: u8) -> u8 {
         7 + Square::get_rank_index(square) - Square::get_file_index(square)
