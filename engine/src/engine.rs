@@ -6,6 +6,8 @@ use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
 use crate::fen::{Fen, START_POS};
 use crate::perft::Perft;
+use crate::pgn::Pgn;
+use crate::r#move::Move;
 use crate::search::{Search, SearchLimitParams};
 use crate::util::extract_parameter;
 
@@ -249,11 +251,17 @@ uciok"#, "zerofish 0.1.0 64\
         self.position = BoardPosition::from_fen(fen);
     }
 
-    pub fn do_pgn_moves(&mut self, pgn_moves: &str) {
+    pub fn parse_pgn_moves(&self, pgn_moves: &str) -> Vec<String> {
+        let mut state = self.get_board_state().clone(); // TODO deal with history size
+        let mut move_vec= Vec::new();
         let moves = pgn_moves.split_whitespace();
         for moov in moves {
-            println!("{}", moov);
+            let uci = Pgn::one_san_to_uci(moov, &state);
+            let parsed_move = Move::from_uci_string(&uci, &state);
+            state = state.do_move(&parsed_move);
+            move_vec.push(uci);
         }
+        move_vec
     }
 
     // fn set_position_from_uci(&mut self, parts: &Vec<&str>) {
@@ -314,5 +322,53 @@ uciok"#, "zerofish 0.1.0 64\
     // }
     // fn answer(&mut self, output: &str) {
     //     output_adapter
+    // }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::engine::{Engine, EngineOptions};
+    use crate::fen::{Fen, START_POS};
+    use crate::piece::{BLACK_ROOK, WHITE_ROOK};
+    use crate::square::Square;
+    use crate::transposition::TranspositionTable;
+
+    #[test]
+    fn parse_pgn_moves() {
+        let options = EngineOptions { log_filename:  None};
+        let engine = Engine::new(options);
+        let moves = engine.parse_pgn_moves("d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 c5");
+        for moov in moves {
+            println!("{}", moov);
+        }
+    }
+
+    // #[test]
+    // fn from_failing_sts() {
+    //     let state = Fen::from_fen_default("2r5/p3k1p1/1p5p/4Pp2/1PPnK3/PB1R2P1/7P/8 w - f6 0 4");
+    //     let moves = state.generate_legal_moves();
+    //     println!("{}", moves);
+    // }
+    //
+    // #[test]
+    // fn failing_cute_chess() {
+    //     let state = Fen::from_fen_default("rnbqkbnr/pppp2pp/5p2/8/5P2/8/PPP1PPPP/RN1QKBNR w KQkq - 0 4");
+    //     let moves = state.generate_legal_moves();
+    //     let tt = TranspositionTable::new(1);
+    //     for moov in moves.over_sorted(&state, &tt) {
+    //         println!("{}", moov.uci());
+    //     }
+    //     println!("{}", moves);
+    // }
+    //
+    // #[test]
+    // fn mg_value_test() {
+    //     let mut state = Fen::from_fen_default("8/8/8/8/8/8/8/8 w KQkq - 0 1");
+    //     assert_eq!(state.mg, 0);
+    //     state.set_piece_at(WHITE_ROOK, Square::get_square_from_name("d5") as usize);
+    //     assert_eq!(state.mg, 482);
+    //     state.set_piece_at(BLACK_ROOK, Square::get_square_from_name("d2") as usize);
+    //     assert_eq!(state.mg, -20);
     // }
 }
