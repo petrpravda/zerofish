@@ -252,13 +252,13 @@ uciok"#, "zerofish 0.1.0 64\
     }
 
     pub fn parse_pgn_moves(&self, pgn_moves: &str) -> Vec<String> {
-        let mut state = self.get_board_state().clone(); // TODO deal with history size
+        let mut state = self.get_board_state().clone();
         let mut move_vec= Vec::new();
         let moves = pgn_moves.split_whitespace();
         for moov in moves {
             let uci = Pgn::one_san_to_uci(moov, &state);
             let parsed_move = Move::from_uci_string(&uci, &state);
-            state = state.do_move(&parsed_move);
+            state = state.do_move_no_history(&parsed_move);
             move_vec.push(uci);
         }
         move_vec
