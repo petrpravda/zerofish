@@ -5,6 +5,7 @@ use std::fmt;
 use crate::bitboard::{Bitboard, BITBOARD, BitIter};
 use crate::board_position::BoardPosition;
 use crate::fen::{Fen, FenExport};
+use crate::pgn::Pgn;
 use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
 use crate::piece_square_table::{EGS, MGS};
@@ -874,6 +875,20 @@ impl BoardState {
 
         moves
     }
+
+    pub fn parse_pgn_moves(&self, pgn_moves: &str) -> Vec<String> {
+        let mut state = self.clone();
+        let mut move_vec= Vec::new();
+        let moves = pgn_moves.split_whitespace();
+        for moov in moves {
+            let uci = Pgn::one_san_to_uci(moov, &state);
+            let parsed_move = Move::from_uci_string(&uci, &state);
+            state = state.do_move_no_history(&parsed_move);
+            move_vec.push(uci);
+        }
+        move_vec
+    }
+
 
 
     //     public record Params(byte[] pieces, int wKingPos, int bKingPos) {}

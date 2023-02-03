@@ -6,8 +6,6 @@ use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
 use crate::fen::{Fen, START_POS};
 use crate::perft::Perft;
-use crate::pgn::Pgn;
-use crate::r#move::Move;
 use crate::search::{Search, SearchLimitParams};
 use crate::util::extract_parameter;
 
@@ -252,16 +250,17 @@ uciok"#, "zerofish 0.1.0 64\
     }
 
     pub fn parse_pgn_moves(&self, pgn_moves: &str) -> Vec<String> {
-        let mut state = self.get_board_state().clone();
-        let mut move_vec= Vec::new();
-        let moves = pgn_moves.split_whitespace();
-        for moov in moves {
-            let uci = Pgn::one_san_to_uci(moov, &state);
-            let parsed_move = Move::from_uci_string(&uci, &state);
-            state = state.do_move_no_history(&parsed_move);
-            move_vec.push(uci);
-        }
-        move_vec
+        self.get_board_state().parse_pgn_moves(pgn_moves)
+        // let mut state = self.get_board_state().clone();
+        // let mut move_vec= Vec::new();
+        // let moves = pgn_moves.split_whitespace();
+        // for moov in moves {
+        //     let uci = Pgn::one_san_to_uci(moov, &state);
+        //     let parsed_move = Move::from_uci_string(&uci, &state);
+        //     state = state.do_move_no_history(&parsed_move);
+        //     move_vec.push(uci);
+        // }
+        // move_vec
     }
 
     // fn set_position_from_uci(&mut self, parts: &Vec<&str>) {
@@ -329,10 +328,6 @@ uciok"#, "zerofish 0.1.0 64\
 #[cfg(test)]
 mod tests {
     use crate::engine::{Engine, EngineOptions};
-    use crate::fen::{Fen, START_POS};
-    use crate::piece::{BLACK_ROOK, WHITE_ROOK};
-    use crate::square::Square;
-    use crate::transposition::TranspositionTable;
 
     #[test]
     fn parse_pgn_moves() {

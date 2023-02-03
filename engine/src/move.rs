@@ -67,6 +67,11 @@ impl Move {
         self.bits & Move::PROMOTION != 0
     }
 
+    #[inline(always)]
+    pub fn is_capture(&self) -> bool {
+        self.bits & Move::CAPTURE != 0
+    }
+
     pub fn get_piece_type(&self) -> PieceType {
         PieceType::from((((self.flags() >> 12) & 0b11) + 1) as u8)
     }
