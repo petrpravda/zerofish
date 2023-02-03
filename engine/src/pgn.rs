@@ -141,7 +141,7 @@ impl Pgn {
 //         result
 //     }
 //
-    fn one_uci_to_san(uci_move: &String, board: &mut BoardState) -> String {
+    pub fn one_uci_to_san(uci_move: &String, board: &mut BoardState) -> String {
         //println!("uci_move: {}", uci_move);
         let uci_moves = board.generate_legal_moves();
         //uci_moves.iter().for_each(|m|println!("list: {}", m.to_string()));
