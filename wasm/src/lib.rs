@@ -3,40 +3,43 @@ mod web_worker_adapter;
 
 use std::rc::Rc;
 use std::sync::Mutex;
-use zerofish::engine::{OutputAdapter, StringOutputAdapter};
+use zerofish::engine::{OutputAdapter};
 use wasm_bindgen::prelude::*;
-use web_sys::Worker;
+use web_sys::{Worker};
 use crate::web_worker_adapter::WebWorkerOutputAdapter;
 use crate::engine_wrapper::{EngineWrapper};
 
 #[wasm_bindgen]
 pub struct EngineContext {
     pub(crate) wrapper: Rc<Mutex<EngineWrapper>>,
-    pub(crate) worker: Rc<Worker>,
 }
 
 #[wasm_bindgen]
 impl EngineContext {
-    pub fn new(worker: &Worker) -> Self {
-        let mut output_adapter = WebWorkerOutputAdapter::new(worker);
-        output_adapter.writeln("Zerofish 0.1 64 WASM Singlethreaded");
+    pub fn new(worker: &Worker, stop_signalling: &js_sys::Int32Array) -> Self {
+        let mut output_adapter = WebWorkerOutputAdapter::new(worker, stop_signalling);
+        output_adapter.writeln("Zerofish 0.1 64 WASM Singlethreaded ..."); // TODO remove ...
 
         EngineContext{
-            wrapper: Rc::new(Mutex::new(EngineWrapper::new())),
-            worker: Rc::new(worker.clone()),
+            wrapper: Rc::new(Mutex::new(EngineWrapper::new(output_adapter))),
+//            output_adapter,
         }
     }
 }
 
 #[wasm_bindgen(js_name = newEngineContext)]
-pub fn new_engine_context(worker: &Worker) -> EngineContext {
-    EngineContext::new(worker)
+pub fn new_engine_context(worker: &Worker, stop_signalling: &js_sys::Int32Array) -> EngineContext {
+    EngineContext::new(worker, stop_signalling)
 }
 
 #[wasm_bindgen(js_name = executeUciCommand)]
-pub fn execute_uci_command(uci_command: String, engine_context: &EngineContext) -> String {
-    let mut output_adapter = WebWorkerOutputAdapter::new(&engine_context.worker);
-    engine_context.wrapper.lock().unwrap().engine.process_uci_command(uci_command, &mut output_adapter);
+pub fn execute_uci_command(uci_command: String, engine_context: &mut EngineContext) -> String {
+    // let zzz = stop_signalling.ge
+    //let int32_array = js_sys::Int32Array::new(&array_buffer);
+    // let value = stop_signalling.get_index(0);
+
+    // let mut output_adapter = WebWorkerOutputAdapter::new(&engine_context.worker);
+    engine_context.wrapper.lock().unwrap().engine.process_uci_command(uci_command);
 
     // let message = JsValue::from(output_adapter.to_string());
     // // let result = engine_context.worker.post_message(&message);
@@ -51,7 +54,8 @@ pub fn execute_uci_command(uci_command: String, engine_context: &EngineContext) 
     //     }
     // }
 
-    output_adapter.to_string()
+    //output_adapter.to_string()
+    "TBD".to_string()
 }
 
 // #[wasm_bindgen(js_name = sendMessage)]

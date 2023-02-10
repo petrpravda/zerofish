@@ -1,7 +1,8 @@
 use std::fs::File;
 use crate::transposition::{TranspositionTable};
 use std::io::{stdout, Stdout, Write};
-
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use crate::board_position::BoardPosition;
 use crate::board_state::BoardState;
 use crate::fen::{Fen, START_POS};
@@ -16,16 +17,26 @@ pub enum UciMessage {
 
 pub trait OutputAdapter {
     fn writeln(&mut self, output: &str);
+    fn is_stop_signalled(&self) -> bool;
 }
 
 pub struct StdOutOutputAdapter {
     out: Stdout,
+    stop_signal: Arc<AtomicBool>,
 }
 
 impl StdOutOutputAdapter {
+    pub fn new_w_signal(stop_signal: Arc<AtomicBool>) -> Self {
+        Self {
+            out: stdout(),
+            stop_signal
+        }
+    }
+
     pub fn new() -> Self {
         Self {
-            out: stdout()
+            out: stdout(),
+            stop_signal: Arc::new(AtomicBool::new(false))
         }
     }
 }
@@ -35,6 +46,10 @@ impl OutputAdapter for StdOutOutputAdapter {
         self.out.write(output.as_ref()).expect("Cannot write to output stream!");
         self.out.write(b"\n").expect("Cannot write to output stream!");
         self.out.flush().expect("Flush error");
+    }
+
+    fn is_stop_signalled(&self) -> bool {
+        self.stop_signal.load(Ordering::SeqCst)
     }
 }
 
@@ -54,6 +69,10 @@ impl OutputAdapter for StringOutputAdapter {
     fn writeln(&mut self, output: &str) {
         self.string_buffer.push_str(output);
         self.string_buffer.push('\n');
+    }
+
+    fn is_stop_signalled(&self) -> bool {
+        false
     }
 }
 
@@ -75,10 +94,10 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new(engine_options: EngineOptions) -> Self {
+    pub fn new(engine_options: EngineOptions, output_adapter: Box<dyn OutputAdapter>) -> Self {
         let file = engine_options.log_filename.map(|filename| File::create(filename).unwrap());
         let transposition_table = TranspositionTable::new(1);
-        let search = Search::new(transposition_table);
+        let search = Search::new(transposition_table, output_adapter);
 
         let engine = Engine {
             position: BoardPosition::from_fen(START_POS),
@@ -93,7 +112,7 @@ impl Engine {
         &self.position.state
     }
 
-    pub fn process_uci_command(&mut self, uci_command: String, output_adapter: &mut dyn OutputAdapter) {
+    pub fn process_uci_command(&mut self, uci_command: String/*, output_adapter: &mut dyn OutputAdapter*/) {
         if self.file.is_some() {
             let msg = format!("{}", uci_command);
             self.file.as_ref().unwrap().write(msg.as_ref()).expect("TODO: panic message");
@@ -105,7 +124,7 @@ impl Engine {
         if part.is_some() {
             match part.unwrap().to_lowercase().as_str() {
                 "uci" => {
-                    output_adapter.writeln(&*format!(r#"id name {}
+                    self.search.output_adapter.writeln(&*format!(r#"id name {}
 id author Petr Pravda
 uciok"#, "zerofish 0.1.0 64\
 "));
@@ -124,12 +143,12 @@ uciok"#, "zerofish 0.1.0 64\
 
                     if search_limit_params.perft_depth.is_some() {
                         let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), search_limit_params.perft_depth.unwrap());
-                        output_adapter.writeln(&*result);
+                        self.search.output_adapter.writeln(&*result);
                     } else {
                         let search_limit = search_limit_params.prepare(self.position.state.side_to_play);
                         // println!("search_limit: {:?}", search_limit);
-                        let result = self.search.it_deep(&self.position, search_limit,  output_adapter);
-                        output_adapter.writeln(&*format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
+                        let result = self.search.it_deep(&self.position, search_limit);
+                        self.search.output_adapter.writeln(&*format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
                     }
                 },
 
@@ -142,15 +161,15 @@ uciok"#, "zerofish 0.1.0 64\
                     output.push_str(format!("Fen: {}\n", Fen::compute_fen(state)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
-                    output_adapter.writeln(&*output);
+                    self.search.output_adapter.writeln(&*output);
                 }
 
                 "isready" => {
-                    output_adapter.writeln(&"readyok");
+                    self.search.output_adapter.writeln(&"readyok");
                 },
 
                 "quit" => {
-                    output_adapter.writeln("quitting");
+                    self.search.output_adapter.writeln("quitting");
                 },
 
                 "ucinewgame" => {
@@ -232,11 +251,11 @@ uciok"#, "zerofish 0.1.0 64\
 
                 _ => {
                     let result = format!("Unsupported command: {}", uci_command);
-                    output_adapter.writeln(&*result);
+                    self.search.output_adapter.writeln(&*result);
                 }
             };
         } else {
-            output_adapter.writeln("Empty command");
+            self.search.output_adapter.writeln("Empty command");
         };
     }
 
@@ -327,12 +346,12 @@ uciok"#, "zerofish 0.1.0 64\
 
 #[cfg(test)]
 mod tests {
-    use crate::engine::{Engine, EngineOptions};
+    use crate::engine::{Engine, EngineOptions, StdOutOutputAdapter};
 
     #[test]
     fn parse_pgn_moves() {
         let options = EngineOptions { log_filename:  None};
-        let engine = Engine::new(options);
+        let engine = Engine::new(options, Box::new(StdOutOutputAdapter::new()));
         let moves = engine.parse_pgn_moves("d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 c5");
         for moov in moves {
             println!("{}", moov);

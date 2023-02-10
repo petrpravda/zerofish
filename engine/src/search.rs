@@ -1,10 +1,13 @@
+use std::boxed::Box;
+
 use lazy_static::lazy_static;
+
 use crate::board_position::BoardPosition;
 use crate::board_state::{BOARD_STATE_HISTORY_CAPACITY, BoardState};
 use crate::engine::OutputAdapter;
 use crate::evaluation::Evaluation;
 use crate::fen::START_POS;
-use crate::r#move::{Move};
+use crate::r#move::Move;
 use crate::side::Side;
 use crate::statistics::Statistics;
 use crate::time::TimeCounter;
@@ -98,6 +101,9 @@ pub struct Search {
     start_time: u64,
     search_limit: SearchLimit,
     time_checking_round: u32,
+    pub output_adapter: Box<dyn OutputAdapter>,
+    //output: Option<Box<dyn OutputAdapter>>,
+    //output: Option<Rc<RefCell<dyn OutputAdapter>>>,
 }
 
 impl Search {
@@ -109,7 +115,7 @@ impl Search {
     const LMR_MOVES_WO_REDUCTION: usize = 1; // TODO which type?
     const ASPIRATION_WINDOW: Value = 25;
 
-    pub fn new(transposition_table: TranspositionTable) -> Self {
+    pub fn new(transposition_table: TranspositionTable, output_adapter: Box<dyn OutputAdapter>) -> Self {
         Self {
             search_position: BoardPosition::from_fen(START_POS),
             start_time: Search::current_time_millis(),
@@ -119,16 +125,18 @@ impl Search {
             transposition_table,
             search_limit: SearchLimit::default(),
             time_checking_round: 0,
+            output_adapter,
         }
     }
 
-    pub fn it_deep(&mut self, position: &BoardPosition, search_limit: SearchLimit, output: &mut dyn OutputAdapter) -> SearchResult {
+    pub fn it_deep(&mut self, position: &BoardPosition, search_limit: SearchLimit) -> SearchResult {
         let mut best_result = SearchResult { moov: None, score: 0, stop_it_deep: false };
 
         self.search_limit = search_limit;
         self.search_position = position.clone();
         self.start_time = Search::current_time_millis();
         self.sel_depth = 0;
+        // self.stop_signal.store(false, Ordering::SeqCst);
         self.stopped = false;
         let mut alpha: Value = -Search::INF;
         let mut beta: Value = Search::INF;
@@ -154,7 +162,7 @@ impl Search {
                     beta = Search::INF;
                 } else {
                     // Adjust the window around the new score and increase the depth
-                    self.print_info_line(&position.state, &result_from_ply, depth, output);
+                    self.print_info_line(&position.state, &result_from_ply, depth);
                     best_result = result_from_ply;
                     alpha = score - Search::ASPIRATION_WINDOW;
                     beta = score + Search::ASPIRATION_WINDOW;
@@ -450,19 +458,31 @@ impl Search {
                 moov.flags() == Move::QUIET;
     }
 
-    pub fn print_info_line(&self, state: &BoardState, search_result: &SearchResult, depth: Depth, output: &mut dyn OutputAdapter) {
+    pub fn print_info_line(&mut self, state: &BoardState, search_result: &SearchResult, depth: Depth) {
         let time_elapsed = self.time_elapsed();
-        let info_line = format!("info currmove {} depth {} seldepth {} time {} score cp {} nodes {} nps {} pv {}",
-                                search_result.moov.map(|m|m.uci()).unwrap_or(String::from("(none)")),
-                                depth,
-                                self.sel_depth,
-                                time_elapsed,
-                                search_result.score,
-                                self.statistics.total_nodes(),
-                                (self.statistics.total_nodes() as f32 / time_elapsed as f32 * 1000f32) as u32,
-                                self.get_pv(state, depth)
+        // let info_line = format!("info currmove {} depth {} seldepth {} time {} score cp {} nodes {} nps {} pv {}",
+        //                         search_result.moov.map(|m|m.uci()).unwrap_or(String::from("(none)")),
+        //                         depth,
+        //                         self.sel_depth,
+        //                         time_elapsed,
+        //                         search_result.score,
+        //                         self.statistics.total_nodes(),
+        //                         (self.statistics.total_nodes() as f32 / time_elapsed as f32 * 1000f32) as u32,
+        //                         self.get_pv(state, depth)
+        // );
+        // info depth 9 seldepth 13 multipv 1 score cp 48 nodes 14134 nps 1413400 tbhits 0 time 10 pv e2e4 d7d5 e4d5 d8d5 d2d4 d5e6 c1e3 g8f6 g1e2 b8c6
+        let info_line = format!("info depth {} seldepth {} multipv {} score cp {} nodes {} nps {} time {} pv {}",
+                                // search_result.moov.map(|m|m.uci()).unwrap_or(String::from("(none)")),
+                                 depth,
+                                 self.sel_depth,
+                                 1,
+                                 search_result.score,
+                                 self.statistics.total_nodes(),
+                                 (self.statistics.total_nodes() as f32 / time_elapsed as f32 * 1000f32) as u32,
+                                 time_elapsed,
+                                 self.get_pv(state, depth)
         );
-        output.writeln(&*info_line);
+        self.output_adapter.writeln(&*info_line);
         // output.write(info_line.as_ref()).expect("Cannot write to output stream!");
         // output.flush().expect("TODO: panic message");
         //println!("{}", info_line);
@@ -502,6 +522,10 @@ impl Search {
         if self.time_checking_round >= 1000 {
             self.time_checking_round = 0;
             if self.time_elapsed() >= self.search_limit.max_ms {
+                self.stopped = true;
+            }
+
+            if self.output_adapter.is_stop_signalled() {
                 self.stopped = true;
             }
         }

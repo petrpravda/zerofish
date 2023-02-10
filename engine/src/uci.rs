@@ -1,5 +1,7 @@
 //use crate::engine::UciMessage;
 use std::io;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use crate::engine::UciMessage;
 // use crate::options::parse_set_option;
@@ -7,7 +9,7 @@ use crate::engine::UciMessage;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 //const AUTHOR: &str = "";
 
-pub fn start_uci_loop(tx: &Sender<UciMessage>) {
+pub fn start_uci_loop(tx: &Sender<UciMessage>, stop_signal: Arc<AtomicBool>) {
     println!("<0)))><  0fish Chess Engine v{}", VERSION);
 
     loop {
@@ -28,6 +30,7 @@ pub fn start_uci_loop(tx: &Sender<UciMessage>) {
                 }
                 if line.starts_with("stop") {
                     println!("Stopping qwe");
+                    stop_signal.store(true, Ordering::SeqCst);
                 }
             }
             Err(error) => {

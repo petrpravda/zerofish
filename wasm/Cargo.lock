@@ -156,6 +156,7 @@ dependencies = [
 name = "zerofish-wasm"
 version = "0.0.1"
 dependencies = [
+ "js-sys",
  "wasm-bindgen",
  "web-sys",
  "zerofish",

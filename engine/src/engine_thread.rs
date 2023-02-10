@@ -1,4 +1,5 @@
-use std::sync::mpsc;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, mpsc};
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::thread::JoinHandle;
@@ -21,8 +22,8 @@ impl EngineThread {
     //     }
     // }
 
-    pub fn new(rx: Receiver<UciMessage>, engine_options: EngineOptions) -> Self {
-        let engine = Engine::new(engine_options);
+    pub fn new(rx: Receiver<UciMessage>, engine_options: EngineOptions, stop_signal: Arc<AtomicBool>) -> Self {
+        let engine = Engine::new(engine_options, Box::new(StdOutOutputAdapter::new_w_signal(stop_signal)));
         EngineThread {
             rx,
             engine,
@@ -55,8 +56,8 @@ impl EngineThread {
             UciMessage::UciCommand(uci_command) => {
                 // println!("UciCommand: {}", uci_command);
                 let quit = uci_command.starts_with("quit");
-                let mut output_adapter = StdOutOutputAdapter::new();
-                self.engine.process_uci_command(uci_command, &mut output_adapter);
+                //let mut output_adapter = StdOutOutputAdapter::new();
+                self.engine.process_uci_command(uci_command);
                 //println!("UciCommand execution result:\n{}", result);
 
                 if quit {
@@ -69,12 +70,12 @@ impl EngineThread {
     }
 }
 
-pub fn spawn_engine_thread(engine_options: &EngineOptions) -> (Sender<UciMessage>, JoinHandle<()>) {
+pub fn spawn_engine_thread(engine_options: &EngineOptions, stop_signal: Arc<AtomicBool>) -> (Sender<UciMessage>, JoinHandle<()>) {
     let (tx, rx) = mpsc::channel::<UciMessage>();
     let surviving_engine_options = engine_options.clone();
 
     let handle = thread::spawn(move || {
-        let mut engine = EngineThread::new(rx, surviving_engine_options.clone());
+        let mut engine = EngineThread::new(rx, surviving_engine_options.clone(), stop_signal);
         // configure_command_line_options(&mut engine.engine.board);
         engine.start_loop();
     });

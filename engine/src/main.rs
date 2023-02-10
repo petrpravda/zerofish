@@ -2,6 +2,8 @@ extern crate core;
 
 use env::args;
 use std::{env};
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use zerofish::{engine_thread, uci};
 use zerofish::engine::{EngineOptions};
 use zerofish::util::extract_parameter;
@@ -29,7 +31,8 @@ fn main() {
     let log_filename = extract_parameter(&args, "--log");
     let engine_options = EngineOptions { log_filename };
     env::set_var("RUST_BACKTRACE", "full");
-    uci::start_uci_loop(&engine_thread::spawn_engine_thread(&engine_options).0);
+    let stop_signal = Arc::new(AtomicBool::new(false));
+    uci::start_uci_loop(&engine_thread::spawn_engine_thread(&engine_options, stop_signal.clone()).0, stop_signal.clone());
 
 
 

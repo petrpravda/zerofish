@@ -1,5 +1,7 @@
 // extern crate core;
 
+extern crate core;
+
 pub mod uci;
 pub mod engine;
 pub mod engine_thread;

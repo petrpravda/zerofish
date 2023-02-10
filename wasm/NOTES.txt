@@ -1,5 +1,5 @@
 # wasm-pack build wasm --release --target web
-wasm-pack build wasm --no-typescript --release --target no-modules; cp wasm/pkg/zerofish_wasm* wasm/web/public/
+wasm-pack build wasm --no-typescript --release --target no-modules; cp wasm/pkg/zerofish_wasm* wasm/web/public/; mv wasm/web/public/zerofish_wasm_bg.wasm wasm/web/public/zerofish.wasm
 wasm-pack build wasm --no-typescript --dev --target no-modules
 wasm-pack build wasm --no-typescript --dev --target no-modules; cp wasm/pkg/zerofish_wasm* wasm/web/public/
 
