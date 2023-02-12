@@ -18,7 +18,7 @@ pub struct EngineContext {
 impl EngineContext {
     pub fn new(worker: &Worker, stop_signalling: &js_sys::Int32Array) -> Self {
         let mut output_adapter = WebWorkerOutputAdapter::new(worker, stop_signalling);
-        output_adapter.writeln("Zerofish 0.1 64 WASM Singlethreaded ..."); // TODO remove ...
+        output_adapter.writeln("Zerofish 0.1 64 WASM Singlethreaded");
 
         EngineContext{
             wrapper: Rc::new(Mutex::new(EngineWrapper::new(output_adapter))),
