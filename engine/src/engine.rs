@@ -12,20 +12,20 @@ use crate::util::extract_parameter;
 
 pub enum UciMessage {
     UciCommand(String),
-    Stop
 }
 
-pub trait OutputAdapter {
+pub trait EnvironmentContext {
     fn writeln(&mut self, output: &str);
     fn is_stop_signalled(&self) -> bool;
+    fn set_stop_signal(&self, new_stop_signal_value: bool);
 }
 
-pub struct StdOutOutputAdapter {
+pub struct StdOutEnvironmentContext {
     out: Stdout,
     stop_signal: Arc<AtomicBool>,
 }
 
-impl StdOutOutputAdapter {
+impl StdOutEnvironmentContext {
     pub fn new_w_signal(stop_signal: Arc<AtomicBool>) -> Self {
         Self {
             out: stdout(),
@@ -41,7 +41,7 @@ impl StdOutOutputAdapter {
     }
 }
 
-impl OutputAdapter for StdOutOutputAdapter {
+impl EnvironmentContext for StdOutEnvironmentContext {
     fn writeln(&mut self, output: &str) {
         self.out.write(output.as_ref()).expect("Cannot write to output stream!");
         self.out.write(b"\n").expect("Cannot write to output stream!");
@@ -50,14 +50,19 @@ impl OutputAdapter for StdOutOutputAdapter {
 
     fn is_stop_signalled(&self) -> bool {
         self.stop_signal.load(Ordering::SeqCst)
+        // false
+    }
+
+    fn set_stop_signal(&self, new_stop_signal_value: bool) {
+        self.stop_signal.store(new_stop_signal_value, Ordering::SeqCst);
     }
 }
 
-pub struct StringOutputAdapter {
+pub struct StringEnvironmentContext {
     string_buffer: String,
 }
 
-impl StringOutputAdapter {
+impl StringEnvironmentContext {
     pub fn new() -> Self {
         Self {
             string_buffer: String::new()
@@ -65,7 +70,7 @@ impl StringOutputAdapter {
     }
 }
 
-impl OutputAdapter for StringOutputAdapter {
+impl EnvironmentContext for StringEnvironmentContext {
     fn writeln(&mut self, output: &str) {
         self.string_buffer.push_str(output);
         self.string_buffer.push('\n');
@@ -74,9 +79,12 @@ impl OutputAdapter for StringOutputAdapter {
     fn is_stop_signalled(&self) -> bool {
         false
     }
+
+    fn set_stop_signal(&self, _new_stop_signal_value: bool) {
+    }
 }
 
-impl ToString for StringOutputAdapter {
+impl ToString for StringEnvironmentContext {
     fn to_string(&self) -> String {
         self.string_buffer.clone()
     }
@@ -94,10 +102,10 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new(engine_options: EngineOptions, output_adapter: Box<dyn OutputAdapter>) -> Self {
+    pub fn new(engine_options: EngineOptions, environment_context: Box<dyn EnvironmentContext>) -> Self {
         let file = engine_options.log_filename.map(|filename| File::create(filename).unwrap());
         let transposition_table = TranspositionTable::new(1);
-        let search = Search::new(transposition_table, output_adapter);
+        let search = Search::new(transposition_table, environment_context);
 
         let engine = Engine {
             position: BoardPosition::from_fen(START_POS),
@@ -123,8 +131,11 @@ impl Engine {
         let sub_part = parts.get(1);
         if part.is_some() {
             match part.unwrap().to_lowercase().as_str() {
+                "stop" => {
+                    // has alrady been handled via signal, just let through
+                },
                 "uci" => {
-                    self.search.output_adapter.writeln(&*format!(r#"id name {}
+                    self.search.environment_context.writeln(&*format!(r#"id name {}
 id author Petr Pravda
 uciok"#, "zerofish 0.1.0 64\
 "));
@@ -143,12 +154,12 @@ uciok"#, "zerofish 0.1.0 64\
 
                     if search_limit_params.perft_depth.is_some() {
                         let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), search_limit_params.perft_depth.unwrap());
-                        self.search.output_adapter.writeln(&*result);
+                        self.search.environment_context.writeln(&*result);
                     } else {
                         let search_limit = search_limit_params.prepare(self.position.state.side_to_play);
                         // println!("search_limit: {:?}", search_limit);
                         let result = self.search.it_deep(&self.position, search_limit);
-                        self.search.output_adapter.writeln(&*format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
+                        self.search.environment_context.writeln(&*format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
                     }
                 },
 
@@ -161,15 +172,15 @@ uciok"#, "zerofish 0.1.0 64\
                     output.push_str(format!("Fen: {}\n", Fen::compute_fen(state)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
-                    self.search.output_adapter.writeln(&*output);
+                    self.search.environment_context.writeln(&*output);
                 }
 
                 "isready" => {
-                    self.search.output_adapter.writeln(&"readyok");
+                    self.search.environment_context.writeln(&"readyok");
                 },
 
                 "quit" => {
-                    self.search.output_adapter.writeln("quitting");
+                    self.search.environment_context.writeln("quitting");
                 },
 
                 "ucinewgame" => {
@@ -251,11 +262,11 @@ uciok"#, "zerofish 0.1.0 64\
 
                 _ => {
                     let result = format!("Unsupported command: {}", uci_command);
-                    self.search.output_adapter.writeln(&*result);
+                    self.search.environment_context.writeln(&*result);
                 }
             };
         } else {
-            self.search.output_adapter.writeln("Empty command");
+            self.search.environment_context.writeln("Empty command");
         };
     }
 
@@ -346,12 +357,12 @@ uciok"#, "zerofish 0.1.0 64\
 
 #[cfg(test)]
 mod tests {
-    use crate::engine::{Engine, EngineOptions, StdOutOutputAdapter};
+    use crate::engine::{Engine, EngineOptions, StdOutEnvironmentContext};
 
     #[test]
     fn parse_pgn_moves() {
         let options = EngineOptions { log_filename:  None};
-        let engine = Engine::new(options, Box::new(StdOutOutputAdapter::new()));
+        let engine = Engine::new(options, Box::new(StdOutEnvironmentContext::new()));
         let moves = engine.parse_pgn_moves("d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 c5");
         for moov in moves {
             println!("{}", moov);

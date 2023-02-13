@@ -3,10 +3,10 @@ mod web_worker_adapter;
 
 use std::rc::Rc;
 use std::sync::Mutex;
-use zerofish::engine::{OutputAdapter};
+use zerofish::engine::{EnvironmentContext};
 use wasm_bindgen::prelude::*;
 use web_sys::{Worker};
-use crate::web_worker_adapter::WebWorkerOutputAdapter;
+use crate::web_worker_adapter::WebWorkerEnvironmentContext;
 use crate::engine_wrapper::{EngineWrapper};
 
 #[wasm_bindgen]
@@ -17,12 +17,11 @@ pub struct EngineContext {
 #[wasm_bindgen]
 impl EngineContext {
     pub fn new(worker: &Worker, stop_signalling: &js_sys::Int32Array) -> Self {
-        let mut output_adapter = WebWorkerOutputAdapter::new(worker, stop_signalling);
-        output_adapter.writeln("Zerofish 0.1 64 WASM Singlethreaded");
+        let mut environment_context = WebWorkerEnvironmentContext::new(worker, stop_signalling);
+        environment_context.writeln("Zerofish 0.1 64 WASM Singlethreaded");
 
         EngineContext{
-            wrapper: Rc::new(Mutex::new(EngineWrapper::new(output_adapter))),
-//            output_adapter,
+            wrapper: Rc::new(Mutex::new(EngineWrapper::new(environment_context))),
         }
     }
 }

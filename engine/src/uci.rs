@@ -14,24 +14,20 @@ pub fn start_uci_loop(tx: &Sender<UciMessage>, stop_signal: Arc<AtomicBool>) {
 
     loop {
         let mut line = String::new();
-        let ble = io::stdin()
+        let reading_outcome = io::stdin()
             .read_line(&mut line);
 
-        match ble {
-            Ok(0) => {
-                send_message(tx, UciMessage::Stop);
-                println!("Bye");
-                break;
-            }
+        match reading_outcome {
             Ok(_) => {
-                send_message(tx, UciMessage::UciCommand(line.clone()));
-                if line.starts_with("quit") {
-                    break;
-                }
-                if line.starts_with("stop") {
-                    println!("Stopping qwe");
+                let quitting = line.starts_with("quit");
+                let stopping = line.starts_with("stop");
+                if stopping || quitting {
                     stop_signal.store(true, Ordering::SeqCst);
                 }
+                if quitting  {
+                    break;
+                }
+                send_message(tx, UciMessage::UciCommand(line.clone()));
             }
             Err(error) => {
                 eprintln!("Failed to read line: {}", error);

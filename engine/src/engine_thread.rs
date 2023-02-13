@@ -4,7 +4,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::thread::JoinHandle;
 
-use crate::engine::{Engine, EngineOptions, StdOutOutputAdapter, UciMessage};
+use crate::engine::{Engine, EngineOptions, StdOutEnvironmentContext, UciMessage};
 // use crate::fen::{configure_command_line_options, START_POS};
 // use crate::transposition_table::DEFAULT_SIZE_MB;
 
@@ -23,7 +23,7 @@ impl EngineThread {
     // }
 
     pub fn new(rx: Receiver<UciMessage>, engine_options: EngineOptions, stop_signal: Arc<AtomicBool>) -> Self {
-        let engine = Engine::new(engine_options, Box::new(StdOutOutputAdapter::new_w_signal(stop_signal)));
+        let engine = Engine::new(engine_options, Box::new(StdOutEnvironmentContext::new_w_signal(stop_signal)));
         EngineThread {
             rx,
             engine,
@@ -48,11 +48,10 @@ impl EngineThread {
     }
 
     fn handle_message(&mut self, msg: UciMessage) -> bool {
+        self.engine.search.environment_context.set_stop_signal(false);
         match msg {
-            UciMessage::Stop => {
-                println!("Stopping");
-                self.engine.search.stopped = true;
-            },
+            // UciMessage:: => {
+            // },
             UciMessage::UciCommand(uci_command) => {
                 // println!("UciCommand: {}", uci_command);
                 let quit = uci_command.starts_with("quit");

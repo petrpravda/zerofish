@@ -1,6 +1,6 @@
 use zerofish::engine::{Engine, EngineOptions};
 
-use crate::web_worker_adapter::WebWorkerOutputAdapter;
+use crate::web_worker_adapter::WebWorkerEnvironmentContext;
 
 pub struct EngineWrapper {
     pub engine: Engine,
@@ -8,9 +8,9 @@ pub struct EngineWrapper {
 }
 
 impl EngineWrapper {
-    pub fn new(output_adapter: WebWorkerOutputAdapter) -> Self {
+    pub fn new(environment_context: WebWorkerEnvironmentContext) -> Self {
         let engine = Engine::new(EngineOptions{ log_filename: None },
-                                 Box::new(output_adapter));
+                                 Box::new(environment_context));
         Self {
             engine,
         }

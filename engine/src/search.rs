@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 
 use crate::board_position::BoardPosition;
 use crate::board_state::{BOARD_STATE_HISTORY_CAPACITY, BoardState};
-use crate::engine::OutputAdapter;
+use crate::engine::EnvironmentContext;
 use crate::evaluation::Evaluation;
 use crate::fen::START_POS;
 use crate::r#move::Move;
@@ -101,7 +101,7 @@ pub struct Search {
     start_time: u64,
     search_limit: SearchLimit,
     time_checking_round: u32,
-    pub output_adapter: Box<dyn OutputAdapter>,
+    pub environment_context: Box<dyn EnvironmentContext>,
     //output: Option<Box<dyn OutputAdapter>>,
     //output: Option<Rc<RefCell<dyn OutputAdapter>>>,
 }
@@ -110,12 +110,13 @@ impl Search {
 
     pub const INF: Value = 29999;
     pub const NULL_MIN_DEPTH: Depth = 2;
+    pub const MAX_DEPTH: Depth = 100; // TODO add checks into code
 
     const LMR_MIN_DEPTH: Depth = 2;
     const LMR_MOVES_WO_REDUCTION: usize = 1; // TODO which type?
     const ASPIRATION_WINDOW: Value = 25;
 
-    pub fn new(transposition_table: TranspositionTable, output_adapter: Box<dyn OutputAdapter>) -> Self {
+    pub fn new(transposition_table: TranspositionTable, environment_context: Box<dyn EnvironmentContext>) -> Self {
         Self {
             search_position: BoardPosition::from_fen(START_POS),
             start_time: Search::current_time_millis(),
@@ -125,7 +126,7 @@ impl Search {
             transposition_table,
             search_limit: SearchLimit::default(),
             time_checking_round: 0,
-            output_adapter,
+            environment_context,
         }
     }
 
@@ -476,16 +477,26 @@ impl Search {
                                  depth,
                                  self.sel_depth,
                                  1,
-                                 search_result.score,
+                                 Search::get_score_info(search_result.score),
                                  self.statistics.total_nodes(),
                                  (self.statistics.total_nodes() as f32 / time_elapsed as f32 * 1000f32) as u32,
                                  time_elapsed,
                                  self.get_pv(state, depth)
         );
-        self.output_adapter.writeln(&*info_line);
+        self.environment_context.writeln(&*info_line);
         // output.write(info_line.as_ref()).expect("Cannot write to output stream!");
         // output.flush().expect("TODO: panic message");
         //println!("{}", info_line);
+    }
+
+    fn get_score_info(score: Value) -> String {
+        if score <= -Search::INF + Search::MAX_DEPTH as i16 {
+            return format!("mate {}", (-Search::INF - score - 1) / 2);
+        } else if score >= Search::INF - Search::MAX_DEPTH as i16 {
+            return format!("mate {}", (Search::INF - score + 1) / 2);
+        }
+
+        format!("cp {}", score)
     }
 
     fn get_pv(&self, state: &BoardState, depth: Depth) -> String {
@@ -525,7 +536,7 @@ impl Search {
                 self.stopped = true;
             }
 
-            if self.output_adapter.is_stop_signalled() {
+            if self.environment_context.is_stop_signalled() {
                 self.stopped = true;
             }
         }
@@ -535,5 +546,29 @@ impl Search {
 
     pub fn reset_tt(&mut self) {
         self.transposition_table.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // use crate::engine::{Engine, EngineOptions, StdOutEnvironmentContext};
+
+    use crate::search::Search;
+    use crate::transposition::TranspositionTable;
+    use crate::engine::StdOutEnvironmentContext;
+    use crate::board_position::BoardPosition;
+    use crate::search::SearchLimit;
+
+    #[test]
+    fn test_search_mate_in_3() {
+        let transposition_table = TranspositionTable::new(1);
+        let mut search = Search::new(transposition_table, Box::new(StdOutEnvironmentContext::new()));
+        let position = BoardPosition::from_fen(&"r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1");
+
+        search.it_deep(&position,SearchLimit {
+            depth: 8,
+            max_nodes: u32::MAX,
+            max_ms: u32::MAX,
+        });
     }
 }
