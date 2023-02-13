@@ -472,7 +472,7 @@ impl Search {
         //                         self.get_pv(state, depth)
         // );
         // info depth 9 seldepth 13 multipv 1 score cp 48 nodes 14134 nps 1413400 tbhits 0 time 10 pv e2e4 d7d5 e4d5 d8d5 d2d4 d5e6 c1e3 g8f6 g1e2 b8c6
-        let info_line = format!("info depth {} seldepth {} multipv {} score cp {} nodes {} nps {} time {} pv {}",
+        let info_line = format!("info depth {} seldepth {} multipv {} score {} nodes {} nps {} time {} pv {}",
                                 // search_result.moov.map(|m|m.uci()).unwrap_or(String::from("(none)")),
                                  depth,
                                  self.sel_depth,
