@@ -141,14 +141,16 @@ impl Pgn {
 //         result
 //     }
 //
-    pub fn one_uci_to_san(uci_move: &String, board: &mut BoardState) -> String {
-        //println!("uci_move: {}", uci_move);
+    pub fn one_uci_to_san(uci_move: &String, board: &mut BoardState) -> Result<String, String> {
         let uci_moves = board.generate_legal_moves();
-        //uci_moves.iter().for_each(|m|println!("list: {}", m.to_string()));
-        let move_from_legal = uci_moves.moves.iter()
+        let move_from_legal_optional = uci_moves.moves.iter()
             .filter(|m| m.to_string().eq(uci_move))
-            .next()
-            .unwrap();
+            .next();
+
+        let move_from_legal = match move_from_legal_optional {
+            Some(m) => m,
+            None => return Err(format!("Invalid move {} for {}", uci_move, board.to_fen()))
+        };
 
         let promotion_piece = if move_from_legal.is_promotion() { Some(move_from_legal.get_piece_type()) } else { None };
         let uci_destination = uci_move[2..4].to_string();
@@ -164,7 +166,7 @@ impl Pgn {
 //            .filter(|m| move_cheating.is_none() || m.typ() == move_cheating.unwrap().typ())
             .collect::<Vec<&Move>>();
         if matching_moves.len() == 1 {
-            return Pgn::move_to_pgn(matching_moves.first().unwrap(), board, false, false);
+            return Ok(Pgn::move_to_pgn(matching_moves.first().unwrap(), board, false, false));
         }
 
         // file only
@@ -176,7 +178,7 @@ impl Pgn {
 //            .filter(|m| move_cheating.is_none() || m.typ() == move_cheating.unwrap().typ())
             .collect::<Vec<&Move>>();
         if matching_moves.len() == 1 {
-            return Pgn::move_to_pgn(matching_moves.first().unwrap(), board, true, false);
+            return Ok(Pgn::move_to_pgn(matching_moves.first().unwrap(), board, true, false));
         }
 
         // rank only
@@ -188,7 +190,7 @@ impl Pgn {
 //            .filter(|m| move_cheating.is_none() || m.typ() == move_cheating.unwrap().typ())
             .collect::<Vec<&Move>>();
         if matching_moves.len() == 1 {
-            return Pgn::move_to_pgn(matching_moves.first().unwrap(), board, false, true);
+            return Ok(Pgn::move_to_pgn(matching_moves.first().unwrap(), board, false, true));
         }
 
         // both file and rank
@@ -201,15 +203,14 @@ impl Pgn {
 //            .filter(|m| move_cheating.is_none() || m.typ() == move_cheating.unwrap().typ())
             .collect::<Vec<&Move>>();
         if matching_moves.len() == 1 {
-            return Pgn::move_to_pgn(matching_moves.first().unwrap(), board, true, true);
+            return Ok(Pgn::move_to_pgn(matching_moves.first().unwrap(), board, true, true));
         }
 
         let moves_string = matching_moves.iter().map(|m| m.to_string()).collect::<Vec<String>>().join(" ");
         if matching_moves.len() > 1 {
-            panic!("Ambiguous possible moves: {} for {} for position {}", moves_string, uci_move, board.to_fen())
+            return Err(format!("Ambiguous possible moves: {} for {} for position {}", moves_string, uci_move, board.to_fen()));
         } else {
-            panic!("Move {} not found", uci_move);
-        }
+            return Err(format!("Move {} not found", uci_move));        }
     }
 
     fn move_to_pgn(the_move: &Move, board: &BoardState, file_needed_param: bool, rank_needed: bool) -> String {
@@ -340,7 +341,8 @@ mod tests {
         let mut board = Fen::from_fen_default(START_POS);
         let uci = "d2d4".to_string();
         let result = Pgn::one_uci_to_san(&uci, &mut board);
-        assert_eq!("d4", result);
+        assert!(result.is_ok());
+        assert_eq!("d4", result.unwrap());
     }
 
     #[test]
@@ -348,7 +350,8 @@ mod tests {
         let mut board = Fen::from_fen_default("r1bqkbnr/pp2pppp/2np4/2p5/8/1P4P1/PBPPPPBP/RN1QK1NR b KQkq - 1 4");
         let uci = "g8f6".to_string();
         let result = Pgn::one_uci_to_san(&uci, &mut board);
-        assert_eq!("Nf6", result);
+        assert!(result.is_ok());
+        assert_eq!("Nf6", result.unwrap());
     }
 
     #[test]
@@ -356,7 +359,8 @@ mod tests {
         let mut board = Fen::from_fen_default("4R3/2P3k1/p5p1/7p/8/1B1P2p1/P6P/6K1 w - - 0 37");
         let uci = "c7c8q".to_string();
         let result = Pgn::one_uci_to_san(&uci, &mut board);
-        assert_eq!("c8=Q", result);
+        assert!(result.is_ok());
+        assert_eq!("c8=Q", result.unwrap());
     }
 
     #[test]
@@ -367,7 +371,7 @@ mod tests {
         let mut state = Fen::from_fen_default(START_POS);
         for uci in ucis {
             let san = Pgn::one_uci_to_san(&uci, &mut state);
-            result.push(san);
+            result.push(san.unwrap());
             let moov = Move::from_uci_string(&uci, &state);
             state = state.do_move_no_history(&moov);
         }
