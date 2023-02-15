@@ -93,17 +93,46 @@ impl ToString for StringEnvironmentContext {
 #[derive(Debug, Clone)]
 pub struct EngineOptions {
     pub log_filename: Option<String>,
+    pub multi_pv: u8,
+    // threads: Option<u8>,
+}
+
+impl EngineOptions {
+    pub fn for_filename(log_filename: Option<String>) -> EngineOptions {
+        Self {
+            log_filename,
+            multi_pv: 1
+        }
+    }
+}
+
+impl EngineOptions {
+    pub fn default() -> Self {
+        EngineOptions { log_filename: None, multi_pv: 1 }
+    }
+
+    pub(crate) fn set_option(&mut self, name: &str, value: &str) {
+        match name {
+            "MultiPV" => {
+                if let Ok(val) = value.parse::<u8>() {
+                    self.multi_pv = val;
+                }
+            }
+            _ => { /* Handle other options here */ }
+        }
+    }
 }
 
 pub struct Engine {
     pub position: BoardPosition,
     pub search: Search,
     file: Option<File>,
+    engine_options: EngineOptions,
 }
 
 impl Engine {
     pub fn new(engine_options: EngineOptions, environment_context: Box<dyn EnvironmentContext>) -> Self {
-        let file = engine_options.log_filename.map(|filename| File::create(filename).unwrap());
+        let file = engine_options.log_filename.clone().map(|filename| File::create(filename).unwrap());
         let transposition_table = TranspositionTable::new(1);
         let search = Search::new(transposition_table, environment_context);
 
@@ -111,6 +140,7 @@ impl Engine {
             position: BoardPosition::from_fen(START_POS),
             search,
             file,
+            engine_options,
         };
 
         engine
@@ -135,7 +165,7 @@ impl Engine {
                     // has alrady been handled via signal, just let through
                 },
                 "uci" => {
-                    self.search.environment_context.writeln(&*format!(r#"id name {}
+                    self.writeln(&*format!(r#"id name {}
 id author Petr Pravda
 uciok"#, "zerofish 0.1.0 64\
 "));
@@ -154,12 +184,12 @@ uciok"#, "zerofish 0.1.0 64\
 
                     if search_limit_params.perft_depth.is_some() {
                         let (result, _count) = Perft::perft_sf_string(&self.get_board_state(), search_limit_params.perft_depth.unwrap());
-                        self.search.environment_context.writeln(&*result);
+                        self.writeln(&*result);
                     } else {
-                        let search_limit = search_limit_params.prepare(self.position.state.side_to_play);
+                        let search_limit = search_limit_params.prepare(self.position.state.side_to_play, &self.engine_options);
                         // println!("search_limit: {:?}", search_limit);
                         let result = self.search.it_deep(&self.position, search_limit);
-                        self.search.environment_context.writeln(&*format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
+                        self.writeln(&*format!("bestmove {}", result.moov.map(|m| m.uci()).unwrap_or(String::from("(none)"))));
                     }
                 },
 
@@ -172,15 +202,15 @@ uciok"#, "zerofish 0.1.0 64\
                     output.push_str(format!("Fen: {}\n", Fen::compute_fen(state)).as_str());
                     // output.push_str(format!("Checkers:{}\n", checker_moves_string).as_str());
                     //output.push_str(format!("Legal uci moves:{}\n", legal_moves_string).as_str());
-                    self.search.environment_context.writeln(&*output);
+                    self.writeln(&*output);
                 }
 
                 "isready" => {
-                    self.search.environment_context.writeln(&"readyok");
+                    self.writeln(&"readyok");
                 },
 
                 "quit" => {
-                    self.search.environment_context.writeln("quitting");
+                    self.writeln("quitting");
                 },
 
                 "ucinewgame" => {
@@ -211,16 +241,15 @@ uciok"#, "zerofish 0.1.0 64\
                     }
                 },
 
-                // "setoption" => {
-                //     if parts.len() != 5 || parts[1] != "name" || parts[3] != "value" {
-                //         eprintln!("Expecting 4 arguments, in form name XXXXX value YYY, got: {}", parts[1..].to_vec().join(" "));
-                //         return "Failed".to_string();
-                //     }
-                //
-                //     self.board.options.set_option(parts[2], parts[4]); //set_position_from_uci(&parts[1..].to_vec());
-                //     "OK".to_string()
-                // },
-                //
+                "setoption" => {
+                    if parts.len() != 5 || parts[1] != "name" || parts[3] != "value" {
+                        let result = format!("Expecting 4 arguments, in form name XXXXX value YYY, got: {}", parts[1..].to_vec().join(" "));
+                        self.writeln(&*result);
+                    }
+
+                    self.engine_options.set_option(parts[2], parts[4]);
+                },
+
                 // "ucitopgn" => {
                 //     if parts.len() >= 9 && (*parts.get(1).unwrap()).eq("fen") && (*parts.get(8).unwrap()).eq("moves") {
                 //         let fen_parts = parts[2..8].join(" ");
@@ -262,12 +291,16 @@ uciok"#, "zerofish 0.1.0 64\
 
                 _ => {
                     let result = format!("Unsupported command: {}", uci_command);
-                    self.search.environment_context.writeln(&*result);
+                    self.writeln(&*result);
                 }
             };
         } else {
-            self.search.environment_context.writeln("Empty command");
+            self.writeln("Empty command");
         };
+    }
+
+    fn writeln(&mut self, output: &str) {
+        self.search.environment_context.writeln(output);
     }
 
     pub fn uci_new_game(&mut self) {
@@ -361,7 +394,7 @@ mod tests {
 
     #[test]
     fn parse_pgn_moves() {
-        let options = EngineOptions { log_filename:  None};
+        let options = EngineOptions::default();
         let engine = Engine::new(options, Box::new(StdOutEnvironmentContext::new()));
         let moves = engine.parse_pgn_moves("d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 c5");
         for moov in moves {

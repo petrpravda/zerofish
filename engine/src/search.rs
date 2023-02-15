@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 
 use crate::board_position::BoardPosition;
 use crate::board_state::{BOARD_STATE_HISTORY_CAPACITY, BoardState};
-use crate::engine::EnvironmentContext;
+use crate::engine::{EngineOptions, EnvironmentContext};
 use crate::evaluation::Evaluation;
 use crate::fen::START_POS;
 use crate::r#move::Move;
@@ -46,6 +46,8 @@ pub struct SearchLimit {
     pub depth: Depth,
     pub max_nodes: u32,
     pub max_ms: u32,
+
+    pub multi_pv: u8,
 }
 
 impl SearchLimit {
@@ -54,6 +56,7 @@ impl SearchLimit {
             depth: 3,
             max_nodes: u32::MAX,
             max_ms: u32::MAX,
+            multi_pv: 1,
         }
     }
 }
@@ -70,11 +73,12 @@ pub struct SearchLimitParams {
 }
 
 impl SearchLimitParams {
-    pub fn prepare(&self, side_on_the_move: Side) -> SearchLimit {
+    pub fn prepare(&self, side_on_the_move: Side, engine_options: &EngineOptions) -> SearchLimit {
         let mut result = SearchLimit {
             depth: self.depth.unwrap_or(u8::MAX - 1),
             max_nodes: self.max_nodes.unwrap_or(u32::MAX - 1),
             max_ms: self.move_time.unwrap_or(u32::MAX - 1),
+            multi_pv: engine_options.multi_pv
         };
         if self.w_time.is_some() && self.b_time.is_some() && self.moves_to_go.is_some() {
             let time = match side_on_the_move { Side::WHITE => self.w_time.unwrap(),
@@ -144,6 +148,9 @@ impl Search {
         let mut depth: Depth = 1;
 
         // Deepen until end conditions
+        let mut multi_pv = 1;
+        let mut used_moves: Vec<Move> = vec![];
+
         while depth <= self.search_limit.depth && !self.stopped {
 
             // Check to see if the time has ended
@@ -152,7 +159,7 @@ impl Search {
 //                break;
 
 
-            let result_from_ply = self.nega_max_root(&position.state, depth, alpha, beta);
+            let result_from_ply = self.nega_max_root(&position.state, depth, alpha, beta, &used_moves);
             if !self.stopped {
                 let score = result_from_ply.score;
                 if score <= alpha {
@@ -163,12 +170,20 @@ impl Search {
                     beta = Search::INF;
                 } else {
                     // Adjust the window around the new score and increase the depth
-                    self.print_info_line(&position.state, &result_from_ply, depth);
+                    self.print_info_line(&position.state, &result_from_ply, depth, multi_pv);
                     best_result = result_from_ply;
+                    used_moves.push(best_result.moov.unwrap().clone());
                     alpha = score - Search::ASPIRATION_WINDOW;
                     beta = score + Search::ASPIRATION_WINDOW;
-                    depth += 1;
-                    self.statistics.reset();
+
+                    if multi_pv < self.search_limit.multi_pv {
+                        multi_pv += 1;
+                    } else {
+                        multi_pv = 1;
+                        used_moves.clear();
+                        depth += 1;
+                    }
+                    self.statistics.reset(); // here?
                 }
             }
 
@@ -180,38 +195,21 @@ impl Search {
         return best_result;
     }
 
-    pub fn nega_max_root(&mut self, state: &BoardState, depth: Depth, mut alpha: Value, beta: Value) -> SearchResult{
-        //let mut value = -Search::INF;
+    pub fn nega_max_root(&mut self, state: &BoardState, depth: Depth, mut alpha: Value, beta: Value, used_moves: &Vec<Move>) -> SearchResult {
         let moves = state.generate_legal_moves();
-        // let inCheck = state.checkers() != 0;
-        // if (inCheck) ++depth;
-        // if moves.len() == 1 {
-        //     return SearchResult{ moov: moves.moves.get(0).copied(), score: 0 }; // new SearchResult(Optional.of(moves.get(0)), 0);
-        // }
 
         let mut best_move: Option<Move> = None;
-        // self.score_moves(state, moves, 0);
         for moov in moves.over_sorted(&state, &self.transposition_table) {
-            // let uciText = moov.uci();
-            // if uciText.eq("b1c3") {
-            //     println!("{}", moov.uci());
-            // }
+            if used_moves.iter().any(|used_move| used_move.uci() == moov.uci()) {
+                continue;
+            }
 
-
-            // let uci_string = moov.uci();
-            // let start_fen = state.to_fen();
-            // let uci_best_move = best_move.map(|m| m.uci());
             let new_state = state.do_move(&moov);
             let value = -self.nega_max(&new_state, depth - 1, 1, -beta, -alpha, true);
             if self.stopped {
                 break;
             }
 
-            //println!("{} {}", uci_string, value);
-            // if (stop || Limits.checkLimits()) {
-            //     stop = true;
-            //     break;
-            // }
             if value > alpha {
                 best_move = Some(moov.clone());
                 if value >= beta {
@@ -223,13 +221,6 @@ impl Search {
                 self.transposition_table.insert(&state, depth, alpha, moov, Bound::Upper);
             }
         }
-
-       // if moves.len() == 1 {
-       //     println!("TADY JSEM");
-       //     // bestMove = moves.get(0);
-       //     // transpositionTable.set(state.hash(), alpha, depth, TTEntry.EXACT, bestMove);
-       // }
-       //
 
         SearchResult{ moov: best_move, score: alpha, stop_it_deep: moves.len() <= 1 }
     }
@@ -459,7 +450,7 @@ impl Search {
                 moov.flags() == Move::QUIET;
     }
 
-    pub fn print_info_line(&mut self, state: &BoardState, search_result: &SearchResult, depth: Depth) {
+    pub fn print_info_line(&mut self, state: &BoardState, search_result: &SearchResult, depth: Depth, multi_pv: u8) {
         let time_elapsed = self.time_elapsed();
         // let info_line = format!("info currmove {} depth {} seldepth {} time {} score cp {} nodes {} nps {} pv {}",
         //                         search_result.moov.map(|m|m.uci()).unwrap_or(String::from("(none)")),
@@ -476,7 +467,7 @@ impl Search {
                                 // search_result.moov.map(|m|m.uci()).unwrap_or(String::from("(none)")),
                                  depth,
                                  self.sel_depth,
-                                 1,
+                                 multi_pv,
                                  Search::get_score_info(search_result.score),
                                  self.statistics.total_nodes(),
                                  (self.statistics.total_nodes() as f32 / time_elapsed as f32 * 1000f32) as u32,
@@ -569,6 +560,9 @@ mod tests {
             depth: 8,
             max_nodes: u32::MAX,
             max_ms: u32::MAX,
+            multi_pv: 1,
         });
     }
+
+    // setoption name MultiPV value
 }

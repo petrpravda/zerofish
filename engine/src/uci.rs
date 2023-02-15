@@ -10,7 +10,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 //const AUTHOR: &str = "";
 
 pub fn start_uci_loop(tx: &Sender<UciMessage>, stop_signal: Arc<AtomicBool>) {
-    println!("<0)))><  0fish Chess Engine v{}", VERSION);
+    println!("<0)))><  zerofish Chess Engine v{}", VERSION);
 
     loop {
         let mut line = String::new();

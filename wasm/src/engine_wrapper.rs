@@ -9,7 +9,7 @@ pub struct EngineWrapper {
 
 impl EngineWrapper {
     pub fn new(environment_context: WebWorkerEnvironmentContext) -> Self {
-        let engine = Engine::new(EngineOptions{ log_filename: None },
+        let engine = Engine::new(EngineOptions::default(),
                                  Box::new(environment_context));
         Self {
             engine,
