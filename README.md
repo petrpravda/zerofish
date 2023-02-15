@@ -1,6 +1,6 @@
 # `<0)))><`   zerofish
 
-0fish is a free, open-source, minimalistic chess engine written in Rust implementing UCI.
+zerofish is a free, open-source, minimalistic chess engine written in Rust implementing UCI.
 
 ## Features
 * Alpha-beta pruning
@@ -52,10 +52,6 @@ At the time, I'm porting the previous engine (legacyjava) into Rust language (fo
 
 ## Getting Started
 
-### Dependencies
-
-* it doesn't have any 
-
 ### Executing program
 
 Get source files
@@ -72,6 +68,10 @@ Start the chess engine
 ```
 engine/target/release/zerofish
 ```
+
+Execute some UCI commands like
+
+`position fen 2k4r/ppp2p2/2nbp3/6q1/3PB2P/P3P1r1/1P1BQ3/2KR3R b - - 0 22`, `d`, `setoption name MultiPV value 3`, `go depth 10`
 
 ## Author
 
