@@ -225,6 +225,35 @@ impl Search {
         SearchResult{ moov: best_move, score: alpha, stop_it_deep: moves.len() <= 1 }
     }
 
+    /// Implements the negamax algorithm to search for the best move in a game state. It takes as input
+    /// the current game state state, the depth depth of the search, the current ply ply, alpha-beta bounds
+    /// alpha and beta, and a flag can_apply_null which indicates whether the null-move heuristic can be applied
+    /// at this level of the search. The function returns the value of the best move found by the search.
+    ///
+    /// The function starts by defining a mate value based on the current ply, and a transposition table flag.
+    /// It then checks whether the search should be stopped, and returns 0 if it should. It also checks whether
+    /// the alpha-beta bounds are already pruned and returns alpha if they are. It then checks whether the game
+    /// state is in check or not, and whether the search depth is less than or equal to 0 and the game state is
+    /// not in check. If both conditions are true, it calls the quiescence function to perform a quiescence
+    /// search and returns the result.
+    ///
+    /// The function then increments the number of nodes visited and checks for repetition or 50-move rule in the
+    /// game state. If either condition is true, it returns 0. It then probes the transposition table for a stored
+    /// entry for the game state, and if there is one and its depth is greater than or equal to the current depth,
+    /// it uses the stored value to update the alpha-beta bounds. If the alpha-beta bounds are pruned, it returns
+    /// the stored value.
+    ///
+    /// The function then checks whether the null-move heuristic can be applied, and applies it if it can. It then
+    /// generates all legal moves in the game state, orders them using the move-ordering heuristic, and applies
+    /// the late move reduction (LMR) heuristic to reduce the search depth of some moves. It then applies each
+    /// move to the game state and recursively calls the nega_max function with a reduced search depth and updated
+    /// alpha-beta bounds. It keeps track of the best move found so far, and updates the alpha-beta bounds
+    /// accordingly. If the search is stopped, it returns 0.
+    ///
+    /// Finally, the function checks whether there are no legal moves in the game state, and if so, returns either
+    /// a mate value or 0 depending on whether the game state is in check or not. If the best move found is not
+    /// a null move, it stores the game state, depth, value, best move, and transposition table flag in the
+    /// transposition table. The function then returns the value of the best move found.
     pub fn nega_max(&mut self, state: &BoardState, depth: Depth, ply: u16, mut alpha: Value, mut beta: Value, can_apply_null: bool) -> Value {
         let mate_value = Search::INF - ply as Value;
         //let mut in_check = false;
