@@ -1,5 +1,4 @@
 #![allow(non_camel_case_types,unused)]
-// const BOARD_FLIPPING: u8 = 0x38;
 
 use crate::side::Side;
 

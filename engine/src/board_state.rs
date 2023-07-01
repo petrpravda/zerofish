@@ -375,122 +375,6 @@ impl BoardState {
         return (BITBOARD.get_bishop_attacks(our_king as usize, all) & their_diagonal_sliders) != 0;
     }
 
-    //
-    //     /* not    side of the attacker */
-    //     /**
-    //      * @param side attacked side
-    //      * @return attacked pieces
-    //      */
-    //     public long attackedPieces(int side) {
-    //         BoardState workingState = this.getSideToPlay() == side ? this.do_null_move() : this;
-    //         MoveList quiescence = workingState.generateLegalQuiescence();
-    //         //BoardState finalWorkingState = workingState;
-    //         List<Move> attackingMoves = quiescence.stream()
-    //                 .filter(m -> workingState.pieceAt(m.to()) != Piece.NONE)
-    //                 .toList();
-    //         long result = 0L;
-    //         for (Move move : attackingMoves) {
-    //             result |= 1L << move.to();
-    //         }
-    //         return result;
-    //
-    //     }
-    //
-    //     /**
-    //      * @param side attacked side
-    //      * @return
-    //      */
-    //     public long attackedPiecesUndefended(int side) {
-    //         int sideThem = Side.flip(side);
-    //         let usBb = all_pieces(side);
-    //         let themBb = all_pieces(sideThem);
-    //         let all = usBb | themBb;
-    //
-    //         long attackedPieces = this.attackedPieces(side);
-    //         long attackedUndefendedPieces = 0L;
-    //         long work = attackedPieces;
-    //         while (work != 0){
-    //             int square = Long.numberOfTrailingZeros(work);
-    //             long attackingPieces = attackersFromIncludingKings(square, all, sideThem);
-    //             while (attackingPieces != 0) {
-    //                 int attackingSquare = Long.numberOfTrailingZeros(attackingPieces);
-    //                 long allWithoutAttacker = all & ~(1L << attackingSquare);
-    //                 long defendingPieces = attackersFromIncludingKings(square, allWithoutAttacker, side);
-    //                 if (defendingPieces == 0L) {
-    //                     attackedUndefendedPieces |= 1L << square;
-    //                 }
-    //
-    //                 attackingPieces = Bitboard.extractLsb(attackingPieces);
-    //             }
-    //             work = Bitboard.extractLsb(work);
-    //         }
-    //
-    //         return attackedUndefendedPieces;
-    //     }
-    //
-    //     public int smallestAttackerWithKing(int square, int side) {
-    //         return smallestAttacker(square, side, true);
-    //     }
-    //
-    //     public int smallestAttacker(int square, int side, boolean withAttackingKing){
-    //         final int us = Side.flip(side);
-    //         final int them = side;
-    //
-    //         long pawns = pawn_attacks(square, us) & bitboard_of(them, PieceType.PAWN);
-    //         if (pawns != 0)
-    //             return Long.numberOfTrailingZeros(pawns);
-    //
-    //         long knights = get_knight_attacks(square) & bitboard_of(them, PieceType.KNIGHT);
-    //         if (knights != 0)
-    //             return Long.numberOfTrailingZeros(knights);
-    //
-    //         let usBb = all_pieces(us);
-    //         let themBb = all_pieces(them);
-    //         let all = usBb | themBb;
-    //
-    //         let bishopAttacks = getBishopAttacks(square, all);
-    //         long bishops = bishopAttacks & bitboard_of(them, PieceType.BISHOP);
-    //
-    //         if (bishops != 0)
-    //             return Long.numberOfTrailingZeros(bishops);
-    //
-    //         let rookAttacks = getRookAttacks(square, all);
-    //         long rooks = rookAttacks & bitboard_of(them, PieceType.ROOK);
-    //         if (rooks != 0)
-    //             return Long.numberOfTrailingZeros(rooks);
-    //
-    //         long queens = (bishopAttacks | rookAttacks) & bitboard_of(them, PieceType.QUEEN);
-    //         if (queens != 0)
-    //             return Long.numberOfTrailingZeros(queens);
-    //
-    //         if (withAttackingKing) {
-    //             long kings = get_king_attacks(square) & bitboard_of(them, PieceType.KING);
-    //             if (kings != 0) {
-    //                 return Long.numberOfTrailingZeros(kings);
-    //             }
-    //         }
-    //
-    //         return NO_SQUARE;
-    //     }
-    //
-    // //    public boolean isInsufficientMaterial(int color){
-    // //        if ((bitboard_of(color, PieceType.PAWN) | bitboard_of(color, PieceType.ROOK) | bitboard_of(color, PieceType.QUEEN)) != 0)
-    // //            return false;
-    // //
-    // //        long ourPieces = all_pieces(color);
-    // //        long theirPieces = all_pieces(Side.flip(color));
-    // //        if (bitboard_of(color, PieceType.KNIGHT) != 0)
-    // //            return Long.bitCount(ourPieces) <= 2 && (theirPieces & ~bitboard_of(Side.flip(color), PieceType.KING) & ~bitboard_of(Side.flip(color), PieceType.QUEEN)) == 0;
-    // //
-    // //        long ourBishops = bitboard_of(color, PieceType.BISHOP);
-    // //        if (ourBishops != 0){
-    // //            boolean sameColor = (ourBishops & DARK_SQUARES) == 0 || (ourBishops & LIGHT_SQUARES) == 0;
-    // //            return sameColor && (bitboard_of(color, PieceType.PAWN) | bitboard_of(Side.flip(color), PieceType.PAWN)) == 0
-    // //                    || (bitboard_of(color, PieceType.KNIGHT) | bitboard_of(Side.flip(color), PieceType.KNIGHT)) == 0;
-    // //        }
-    // //        return true;
-    // //    }
-
     pub fn is_repetition_or_fifty(&self, position: &BoardPosition) -> bool {
         let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { *position.history.last().unwrap_or(&0) };
         let mut count = 0;
@@ -807,25 +691,6 @@ impl BoardState {
         moves
     }
 
-    //
-    //         return moves;
-    //     }
-    //
-    //     @Override
-    //     public String toString() {
-    //         StringBuilder result = new StringBuilder(CHESSBOARD_LINE);
-    //         for (int i = 56; i >= 0; i -= 8){
-    //             for (int j = 0; j < 8; j++){
-    //                 int piece = items[i + j];
-    //                 String notation = Piece.getNotation(piece);
-    //                 result.append("| ").append(notation).append(' ');
-    //             }
-    //             result.append("|\n").append(CHESSBOARD_LINE);
-    //         }
-    //         result.append("Fen: ").append(Fen.toFen(this));
-    //         return result.toString();
-    //     }
-
     fn clear_en_passant(&mut self) {
         let previous_state = self.en_passant;
 
@@ -888,32 +753,6 @@ impl BoardState {
         }
         move_vec
     }
-
-
-
-    //     public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
-    //
-    //     public Params toParams() {
-    //         byte[] result = new byte[80]; // 8 * 5 * 2
-    //         int index = 0;
-    //         for (int side = Side.WHITE; side <= Side.BLACK; side++) {
-    //             for (int piece = PieceType.PAWN; piece <= PieceType.QUEEN; piece++) {
-    //                 long bitboard = this.bitboard_of(side, piece);
-    //                 for (int i = 0; i < 8; i++) {
-    //                     result[index++] = (byte)((bitboard & 0xFF00000000000000L) >> 56);
-    //                     bitboard <<= 8;
-    //                 }
-    //             }
-    //
-    //         }
-    //         return new Params(result,
-    //             Long.numberOfTrailingZeros(bitboard_of(Side.WHITE, PieceType.KING)),
-    //             Long.numberOfTrailingZeros(bitboard_of(Side.BLACK, PieceType.KING)));
-    //     }
-    // fn pop_history(&mut self) -> Move {
-    //     self.ply -= 1;
-    //     Move::new_from_bits(self.history[self.ply])
-    // }
 }
 
 

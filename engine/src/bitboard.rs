@@ -147,15 +147,6 @@ impl Bitboard {
         };
         (result.bb_squares_between, result.bb_lines) = result.calc_squares_between();
 
-        // let end = Instant::now();
-
-        // let duration = end.duration_since(start);
-        // let msg = format!("Bitboard initialized in {} μs", duration.as_micros());
-        //let _msgRef = msg.as_str();
-        // eprintln!("{}", msg);
-
-        // let elapsed_time = start.elapsed();
-        // eprintln!("Bitboard initialized in {} μs", elapsed_time.unwrap().as_micros());
         result
     }
 
@@ -176,19 +167,9 @@ impl Bitboard {
         res2
     }
 
-
-    //     pub const FULL_BOARD = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111L;
-    //
     pub const LEFT_PAWN_ATTACK_MASK: u64 = 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110;
     pub const RIGHT_PAWN_ATTACK_MASK: u64 = 0b1111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111;
-    //
-    //     pub const LIGHT_SQUARES = 0x55AA55AA55AA55AAL;
-    //     pub const DARK_SQUARES = 0xAA55AA55AA55AA55L;
-    //
-    // //    WHITE_PAWN_FREEPATH = create_pawn_free_path_patterns(-1);
-    // //    BLACK_PAWN_FREEPATH = create_pawn_free_path_patterns(1);
-    //
-    //
+
     pub const PAWN_DOUBLE_PUSH_LINES: [u64; 2] = [
             0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000,
             0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000,
@@ -230,25 +211,9 @@ impl Bitboard {
                 0b00000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
     pub const  BLACK_KINGS_ROOK_MASK: u64 =
                 0b10000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
-    //
-    //     pub const WHITE_OUTPOST_MASK =
-    //             0b00000000_11111111_11111111_11111111_11111111_00000000_00000000_00000000L;
-    //     pub const BLACK_OUTPOST_MASK =
-    //             0b00000000_00000000_00000000_11111111_11111111_11111111_11111111_00000000L;
-    //
-    //     pub const LONG_DIAGONALS[] = {
-    //                     0b00000001_00000010_00000100_00001000_00010000_00100000_01000000_10000000L,
-    //                     0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001L};
-    //
 
-        pub const WHITE_KING_INITIAL_SQUARE: usize = (0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000 as u64).trailing_zeros() as usize;
-        pub const BLACK_KING_INITIAL_SQUARE: usize = (0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000 as u64).trailing_zeros() as usize;
-
-
-    //
-    //     pub const BACK_ROWS = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111L;
-    //     pub const FILE_A = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001L;
-    //
+    pub const WHITE_KING_INITIAL_SQUARE: usize = (0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000 as u64).trailing_zeros() as usize;
+    pub const BLACK_KING_INITIAL_SQUARE: usize = (0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000 as u64).trailing_zeros() as usize;
 
     pub fn push(l: u64, side: Side) -> u64 {
         match side {
@@ -265,26 +230,10 @@ impl Bitboard {
          self.bb_lines[sq1 as usize][sq2 as usize]
     }
 
-    //     public static long extractLsb(long bb){
-    //         return bb & (bb - 1);
-    //     }
-    //
-        pub fn ignore_ooo_danger(side: Side) -> u64 {
-            match side { Side::WHITE => 0x2,
-                _ => 0x200000000000000 }
-        }
-
-    //     public static String bitboardToString(long bb){
-    //         StringBuilder result = new StringBuilder();
-    //         for (int rank = 56; rank >= 0; rank -= 8){
-    //             for (int file = 0; file < 8; file++){
-    //                 result.append(((bb >>> (rank + file)) & 1) == 1 ? "X" : ".").append(" ");
-    //             }
-    //             result.append("\n");
-    //         }
-    //         return result.toString();
-    //     }
-    //
+    pub fn ignore_ooo_danger(side: Side) -> u64 {
+        match side { Side::WHITE => 0x2,
+            _ => 0x200000000000000 }
+    }
 
     fn get_line_attacks(occupied: u64, patterns: &LinePatterns) -> u64 {
         // Uses the obstruction difference algorithm to determine line attacks
