@@ -753,6 +753,11 @@ impl BoardState {
         }
         move_vec
     }
+
+    pub fn is_in_check(&self) -> bool {
+        self.generate_legal_moves();
+        self.checkers != 0
+    }
 }
 
 

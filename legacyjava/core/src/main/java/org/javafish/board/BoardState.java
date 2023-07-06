@@ -44,6 +44,7 @@ import static org.javafish.board.Square.G8;
 import static org.javafish.board.Square.H1;
 import static org.javafish.board.Square.H8;
 import static org.javafish.board.Square.NO_SQUARE;
+import static org.javafish.eval.PieceSquareTable.BASIC_MATERIAL_VALUE;
 import static org.javafish.eval.PieceSquareTable.EGS;
 import static org.javafish.eval.PieceSquareTable.MGS;
 
@@ -246,9 +247,9 @@ public class BoardState implements Cloneable {
         return performMove(move, this);
     }
 
-//    public BoardState doMove(String uciMove) { // TODO maybe not needed anymore
-//        return performMove(this.generateLegalMoves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
-//    }
+    public BoardState doMove(String uciMove) {
+        return performMove(this.generateLegalMoves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
+    }
 
     public BoardState doNullMove() {
         return performNullMove(this);
@@ -876,6 +877,137 @@ public class BoardState implements Cloneable {
     public int interpolatedScore() {
         int phase = (this.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE;
         return (this.mg() * (256 - phase) + this.eg() * phase) / 256;
+    }
+
+    public boolean isInCheck() {
+        this.generateLegalMoves();
+        return this.checkers != 0L;
+    }
+
+    public boolean isCapture(String move) {
+        Move parsedMove = Move.fromUciString(move);
+        return this.pieceAt(parsedMove.to()) != Piece.NONE;
+    }
+
+    public record ScoreOutcome(int score, int piecesTaken) {}
+
+    /**
+     * @param square battle square
+     * @param side perspective of score, starting move
+     * @return score in basic material values, the higher, the better, no matter if white or black
+     */
+    public ScoreOutcome seeScore(int square, int side) {
+        int processedSide = side;
+        int score = 0;
+        int piecesTaken = 0;
+        BoardState evaluatedState = this.getSideToPlay() != processedSide ? this.doNullMove() : this;
+
+        while (true) {
+//            if (evaluatedState.pieceAt(square) == Piece.NONE) { // TODO mozna nedovolit aby vubec nastavalo
+//                break;
+//            }
+
+            int attacker = evaluatedState.smallestAttackerWithKing(square, processedSide);
+            if (attacker == NO_SQUARE) {
+                break;
+            }
+            List<Move> possibleMoves = evaluatedState.generateLegalMoves(true)
+                    .stream()
+                    .filter(m -> m.from() == attacker && m.to() == square)
+                    .toList();
+            if (possibleMoves.size() == 0) {
+                break;
+            }
+            // for promotion, Q move is always first, only this move is considered
+//            if (possibleMoves.size() > 1) {
+//                throw new IllegalStateException(String.format("There are %d possible moves. Not implemented yet.", possibleMoves.size()));
+//            }
+            int pieceType = evaluatedState.pieceTypeAt(square);
+            if (pieceType == PieceType.KING) {
+                score = 0;
+                break;
+            }
+            score += evaluatedState.getBasicMaterialValue(square);
+            piecesTaken++;
+            processedSide = Side.flip(processedSide);
+            evaluatedState = evaluatedState.doMove(possibleMoves.get(0));
+        }
+        return new ScoreOutcome(-score * Side.multiplicator(side), piecesTaken);
+    }
+
+    private int getBasicMaterialValue(int square) {
+        int piece = pieceAt(square);
+        return BASIC_MATERIAL_VALUE[Piece.typeOf(piece)] * (Piece.sideOf(piece) == Side.WHITE ? 1 : -1);
+    }
+
+    /**
+     * @param side attacked side
+     * @return attacked pieces
+     */
+    public long attackedPiecesUnderdefended(int side) {
+        int sideThem = Side.flip(side);
+
+        long attackedPieces = this.attackedPieces(side);
+        long attackedUnderdefendedPieces = 0L;
+        long work = attackedPieces;
+        while (work != 0){
+            int square = Long.numberOfTrailingZeros(work);
+            int score = this.seeScore(square, sideThem).score();
+            if (score > 0) {
+                attackedUnderdefendedPieces |= 1L << square;
+            }
+            work = Bitboard.extractLsb(work);
+        }
+
+        return attackedUnderdefendedPieces;
+    }
+
+    /**
+     * @param attackerSquare attacker square
+     * @param attackedSide attacked side
+     * @return pinned pieces
+     */
+    public long pinnedPieces(int attackerSquare, int attackedSide) {
+        final int pieceType = this.pieceTypeAt(attackerSquare);
+        final int us = Side.flip(attackedSide);
+        final int them = attackedSide;
+
+        final long usBb = allPieces(us);
+        final long themBb = allPieces(them);
+        final long all = usBb | themBb;
+
+        long attacked = 0;
+        if (pieceType == PieceType.ROOK || pieceType == PieceType.QUEEN) {
+            attacked |= getRookAttacks(attackerSquare, all);
+        }
+        if (pieceType == PieceType.BISHOP || pieceType == PieceType.QUEEN) {
+            attacked |= getBishopAttacks(attackerSquare, all);
+        }
+        attacked &= themBb;
+
+        long pinned = 0;
+        long temp = attacked;
+        while (temp != 0){
+            int square = Long.numberOfTrailingZeros(temp);
+            long examinedMask = 1L << square;
+            long allExceptOne = all & (~examinedMask);
+
+            long pinnedCandidates = 0;
+            if (pieceType == PieceType.ROOK || pieceType == PieceType.QUEEN) {
+                pinnedCandidates |= getRookAttacks(attackerSquare, allExceptOne);
+            }
+            if (pieceType == PieceType.BISHOP || pieceType == PieceType.QUEEN) {
+                pinnedCandidates |= getBishopAttacks(attackerSquare, allExceptOne);
+            }
+            pinnedCandidates &= (themBb & allExceptOne);
+            long pinnedPiece = pinnedCandidates & (~attacked);
+            pinned |= pinnedPiece;
+
+            temp = Bitboard.extractLsb(temp);
+        }
+
+        pinned = pinned & (~this.bitboardOf(them, PieceType.PAWN));
+        return pinned;
     }
 
 //    public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
