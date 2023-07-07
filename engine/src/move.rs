@@ -1,7 +1,7 @@
 use std::fmt;
 use crate::bitboard::BitIter;
 use crate::board_state::BoardState;
-use crate::piece::{make_piece, NONE, PieceType};
+use crate::piece::{make_piece, PieceType};
 use crate::piece_square_table::MGS;
 use crate::square::Square;
 use crate::transposition::{ TranspositionTable, Value};
@@ -94,37 +94,56 @@ impl Move {
                promo)
     }
 
-    pub fn from_uci_string(uci: &str, state: &BoardState) -> Move {
-        let bytes = uci.as_bytes();
-        if bytes.len() < 4 {
-            panic!("Invalid uci move notation: {}", uci);
-        }
+    // pub fn from_uci_string(uci: &str, state: &BoardState) -> Move {
+    //     let bytes = uci.as_bytes();
+    //     if bytes.len() < 4 {
+    //         panic!("Invalid uci move notation: {}", uci);
+    //     }
+    //
+    //     let from_sq = Square::get_square_from_name(&uci[0..2]);
+    //     let to_sq = Square::get_square_from_name(&uci[2..4]);
+    //
+    //     let capture = state.piece_at(to_sq) != NONE;
+    //
+    //     let promotion = if bytes.len() == 5 {
+    //         Some(match bytes[4] {
+    //             b'q' => Move::PR_QUEEN,
+    //             b'r' => Move::PR_ROOK,
+    //             b'b' => Move::PR_BISHOP,
+    //             b'n' => Move::PR_KNIGHT,
+    //             _ => {
+    //                 panic!("Invalid promotion piece in UCI notation: {}", uci);
+    //             }
+    //         })
+    //     } else {
+    //         None
+    //     };
+    //
+    //     let flags = promotion.map(|p| p | p | if capture { Move::CAPTURE } else { Move::QUIET }).unwrap_or(0u16);
+    //     let move_with_promo = Move::new_from_flags(from_sq as u8, to_sq as u8, flags);
+    //     let move_with_promo_uci = move_with_promo.uci();
+    //     let moov = state.generate_legal_moves().moves.iter().find(|m| m.uci().eq(&move_with_promo_uci)).map(|m| m.clone()).unwrap();
+    //     moov
+    // }
 
-        let from_sq = Square::get_square_from_name(&uci[0..2]);
-        let to_sq = Square::get_square_from_name(&uci[2..4]);
-
-        let capture = state.piece_at(to_sq) != NONE;
-
-        let promotion = if bytes.len() == 5 {
-            Some(match bytes[4] {
-                b'q' => Move::PR_QUEEN,
-                b'r' => Move::PR_ROOK,
-                b'b' => Move::PR_BISHOP,
-                b'n' => Move::PR_KNIGHT,
-                _ => {
-                    panic!("Invalid promotion piece in UCI notation: {}", uci);
-                }
-            })
+    pub fn from_uci_string(str: &str) -> Move {
+        let from_sq = Square::get_square_from_name(&str[0..2]);
+        let to_sq = Square::get_square_from_name(&str[2..4]);
+        let type_str = if str.len() > 4 {
+            &str[4..]
         } else {
-            None
+            ""
         };
 
-        let flags = promotion.map(|p| p | p | if capture { Move::CAPTURE } else { Move::QUIET }).unwrap_or(0u16);
-        let move_with_promo = Move::new_from_flags(from_sq as u8, to_sq as u8, flags);
-        let move_with_promo_uci = move_with_promo.uci();
-        let moov = state.generate_legal_moves().moves.iter().find(|m| m.uci().eq(&move_with_promo_uci)).map(|m| m.clone()).unwrap();
-        moov
+        match type_str {
+            "q" => Move::new_from_flags(from_sq, to_sq, Move::PR_QUEEN),
+            "n" => Move::new_from_flags(from_sq, to_sq, Move::PR_KNIGHT),
+            "b" => Move::new_from_flags(from_sq, to_sq, Move::PR_BISHOP),
+            "r" => Move::new_from_flags(from_sq, to_sq, Move::PR_ROOK),
+            _ => Move::new_from_flags(from_sq, to_sq, Move::QUIET),
+        }
     }
+
 
     // pub fn from_uci_string(uci: &str, state: &BoardState) -> Move {
     //     let bytes = uci.as_bytes();

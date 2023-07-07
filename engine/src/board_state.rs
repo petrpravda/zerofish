@@ -270,6 +270,17 @@ impl BoardState {
         self.do_move_param(moov, false)
     }
 
+    pub fn do_move_string(&self, uci_move: &str) -> BoardState {
+        let legal_moves = self.generate_legal_moves();
+        let moov = legal_moves
+            .moves
+            .into_iter()
+            .find(|m| m.to_string() == uci_move)
+            .expect("Move not found");
+
+        self.do_move(&moov)
+    }
+
     pub fn do_move_no_history(&self, moov: &Move) -> BoardState {
         self.do_move_param(moov, true)
     }
@@ -733,7 +744,7 @@ impl BoardState {
         let mut moves: Vec<Move> = Vec::new();
 
         for i in 0..parts.len() {
-            let moov = Move::from_uci_string(parts[i], &state);
+            let moov = Move::from_uci_string(parts[i]); //, &state);
             state = state.do_move_no_history(&moov);
             moves.push(moov);
         }
@@ -747,7 +758,7 @@ impl BoardState {
         let moves = pgn_moves.split_whitespace();
         for moov in moves {
             let uci = Pgn::one_san_to_uci(moov, &state);
-            let parsed_move = Move::from_uci_string(&uci, &state);
+            let parsed_move = Move::from_uci_string(&uci); //, &state);
             state = state.do_move_no_history(&parsed_move);
             move_vec.push(uci);
         }
@@ -755,8 +766,78 @@ impl BoardState {
     }
 
     pub fn is_in_check(&self) -> bool {
-        self.generate_legal_moves();
-        self.checkers != 0
+        // self.generate_legal_moves();
+        self.checkers() != 0
+    }
+
+    pub fn checkers(&self) -> u64 {
+        // TODO simplify? inline???
+
+        let us = self.side_to_play;
+        let them = !self.side_to_play;
+
+        let us_bb = self.all_pieces_for_side(us);
+        let them_bb = self.all_pieces_for_side(them);
+        let all = us_bb | them_bb;
+
+        let our_king_bb = self.bitboard_of(us, KING);
+        let our_king = our_king_bb.trailing_zeros() as usize;
+        let their_king = self.bitboard_of(them, KING).trailing_zeros() as usize;
+
+        let our_bishops_and_queens = self.diagonal_sliders(us);
+        let their_bishops_and_queens = self.diagonal_sliders(them);
+        let our_rooks_and_queens = self.orthogonal_sliders(us);
+        let their_rooks_and_queens = self.orthogonal_sliders(them);
+
+        // Squares that the king can't move to
+        let mut under_attack: u64 = 0;
+        under_attack |= Bitboard::pawn_attacks(self.bitboard_of(them, PAWN), them) | BITBOARD.get_king_attacks(their_king);
+
+        for b1 in BitIter(self.bitboard_of(them, KNIGHT)) {
+            under_attack |= BITBOARD.get_knight_attacks(b1 as usize);
+        }
+
+        for b1 in BitIter(their_bishops_and_queens) {
+            under_attack |= BITBOARD.get_bishop_attacks(b1 as usize, all ^ (1u64 << our_king as u8));
+        }
+
+        for b1 in BitIter(their_rooks_and_queens) {
+            under_attack |= BITBOARD.get_rook_attacks(b1 as usize, all ^ (1u64 << our_king as u8));
+        }
+
+        let b1 = BITBOARD.get_king_attacks(our_king) & !(us_bb | under_attack);
+
+        // moves.make_quiets(our_king as u8, b1 & !them_bb);
+        // moves.make_captures(our_king as u8, b1 & them_bb);
+
+        //capture_mask contains destinations where there is an enemy piece that is checking the king and must be captured
+        //quiet_mask contains squares where pieces must be moved to block an incoming attack on the king
+        //let capture_mask: u64;
+        //let quiet_mask: u64;
+        //let mut s: u8;
+
+        // checker moves from opposite knights and pawns
+        let mut checkers = (BITBOARD.get_knight_attacks(our_king) & self.bitboard_of(them, KNIGHT))
+            | (Bitboard::pawn_attacks_from_square(our_king as u8, us) & self.bitboard_of(them, PAWN));
+
+        // ray candidates to our king
+        let candidates = (BITBOARD.get_rook_attacks(our_king, them_bb) & their_rooks_and_queens)
+            | (BITBOARD.get_bishop_attacks(our_king, them_bb) & their_bishops_and_queens);
+        //
+        // let mut pinned: u64 = 0;
+
+        for ray_candidate in BitIter(candidates) {
+            // squares obstructed by our pieces
+            let squares_between = BITBOARD.between(our_king as u8, ray_candidate as u8) & us_bb;
+
+            // king is not guarded by any of our pieces
+            if squares_between == 0 {
+                checkers ^= 1u64 << ray_candidate;
+                // when there's only one piece between king and a sliding piece, the piece is pinned
+            }
+        }
+
+        checkers
     }
 }
 

@@ -884,6 +884,10 @@ public class BoardState implements Cloneable {
         return this.checkers != 0L;
     }
 
+    public boolean isInCheckMate() {
+        return this.generateLegalMoves().size() == 0;
+    }
+
     public boolean isCapture(String move) {
         Move parsedMove = Move.fromUciString(move);
         return this.pieceAt(parsedMove.to()) != Piece.NONE;

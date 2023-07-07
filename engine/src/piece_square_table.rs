@@ -103,6 +103,7 @@ pub const EGS_SRC: [[Value; 64]; 6] = [
 
 pub const MGS: [[Value; 64]; 14] = prepare_value_tables(&MGS_SRC);
 pub const EGS: [[Value; 64]; 14] = prepare_value_tables(&EGS_SRC);
+pub const BASIC_MATERIAL_VALUE: [i32; 5] = [1, 3, 3, 5, 9];
 
 const fn prepare_value_tables(source: &[[Value; 64]; 6]) -> [[Value; 64]; 14] {
     let mut result = [[0i16; 64]; 14];
