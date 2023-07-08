@@ -72,6 +72,12 @@ impl Move {
         self.bits & Move::CAPTURE != 0
     }
 
+    #[inline(always)]
+    pub fn is_castling(&self) -> bool {
+        let flags = self.flags();
+        flags == Move::OO || flags == Move::OOO
+    }
+
     pub fn get_piece_type(&self) -> PieceType {
         PieceType::from((((self.flags() >> 12) & 0b11) + 1) as u8)
     }

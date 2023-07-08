@@ -2,7 +2,7 @@
 use std::fmt;
 use std::ops::Not;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Side {
     WHITE,
     BLACK,

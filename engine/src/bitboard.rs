@@ -215,6 +215,8 @@ impl Bitboard {
     pub const WHITE_KING_INITIAL_SQUARE: usize = (0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000 as u64).trailing_zeros() as usize;
     pub const BLACK_KING_INITIAL_SQUARE: usize = (0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000 as u64).trailing_zeros() as usize;
 
+    pub const BACK_ROWS: u64 = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111;
+
     pub fn push(l: u64, side: Side) -> u64 {
         match side {
             Side::WHITE => l << 8,
