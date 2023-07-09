@@ -163,7 +163,8 @@ public class Move {
             flags |= Move.CAPTURE;
         }
 
-        return new Move(fromSq, toSq, flags);
+        String moveWithPromoUci = new Move(fromSq, toSq, flags).uci();
+        return state.generateLegalMoves().stream().filter(m -> m.uci().equals(moveWithPromoUci)).findFirst().orElseThrow();
     }
 
     //    public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
