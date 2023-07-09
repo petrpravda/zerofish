@@ -108,7 +108,7 @@ public class Move {
 
     public static List<Move> parseUciMoves(List<String> moves, BoardState state) {
         return moves.stream()
-                .map(Move::fromUciString)
+                .map((String str) -> fromUciString(str, state))
                 .collect(Collectors.toList());
     }
 
@@ -139,22 +139,34 @@ public class Move {
 //        return new Move(fromSq, toSq, flags);
 //    }
 
-    public static Move fromUciString(String str) {
+    public static Move fromUciString(String str, BoardState state) {
         int fromSq = Square.getSquareFromName(str.substring(0, 2));
         int toSq = Square.getSquareFromName(str.substring(2, 4));
         String typeStr = "";
-        if (str.length() > 4)
+        boolean capturingPromotion = false;
+        if (str.length() > 4) {
             typeStr = str.substring(4);
+            if (state.pieceAt(toSq) != Piece.NONE) {
+                capturingPromotion = true;
+            }
+        }
 
-        return switch (typeStr) {
-            case "q" -> new Move(fromSq, toSq, Move.PR_QUEEN);
-            case "n" -> new Move(fromSq, toSq, Move.PR_KNIGHT);
-            case "b" -> new Move(fromSq, toSq, Move.PR_BISHOP);
-            case "r" -> new Move(fromSq, toSq, Move.PR_ROOK);
-            default -> new Move(fromSq, toSq, Move.QUIET);
+        int flags = switch (typeStr) {
+            case "q" -> Move.PR_QUEEN;
+            case "n" -> Move.PR_KNIGHT;
+            case "b" -> Move.PR_BISHOP;
+            case "r" -> Move.PR_ROOK;
+            default -> Move.QUIET;
         };
+
+        if (capturingPromotion) {
+            flags |= Move.CAPTURE;
+        }
+
+        return new Move(fromSq, toSq, flags);
     }
-//    public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
+
+    //    public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
 //        String[] moves = movesDelimitedWithSpace.split(" ");
 //        return fromUciString(moves[0]);
 //    }
