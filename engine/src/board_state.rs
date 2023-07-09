@@ -744,7 +744,7 @@ impl BoardState {
         let mut moves: Vec<Move> = Vec::new();
 
         for i in 0..parts.len() {
-            let moov = Move::from_uci_string(parts[i]); //, &state);
+            let moov = Move::from_uci_string(parts[i], &state);
             state = state.do_move_no_history(&moov);
             moves.push(moov);
         }
@@ -758,7 +758,7 @@ impl BoardState {
         let moves = pgn_moves.split_whitespace();
         for moov in moves {
             let uci = Pgn::one_san_to_uci(moov, &state);
-            let parsed_move = Move::from_uci_string(&uci); //, &state);
+            let parsed_move = Move::from_uci_string(&uci, &state);
             state = state.do_move_no_history(&parsed_move);
             move_vec.push(uci);
         }
