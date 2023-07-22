@@ -164,7 +164,14 @@ public class Move {
         }
 
         String moveWithPromoUci = new Move(fromSq, toSq, flags).uci();
-        return state.generateLegalMoves().stream().filter(m -> m.uci().equals(moveWithPromoUci)).findFirst().orElseThrow();
+        return state.generateLegalMoves()
+                .stream()
+                .filter(m -> m.uci().equals(moveWithPromoUci))
+                .findFirst()
+                .orElseThrow(() -> {
+                    return new IllegalStateException(String.format("Cannot find legal %s in \n%s\n%s",
+                        moveWithPromoUci, state.toString(), state.generateLegalMoves()));
+                });
     }
 
     //    public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
