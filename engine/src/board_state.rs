@@ -766,8 +766,16 @@ impl BoardState {
     }
 
     pub fn is_in_check(&self) -> bool {
-        // self.generate_legal_moves();
         self.checkers() != 0
+    }
+
+    pub fn is_in_checkmate(&self) -> bool {
+        self.generate_legal_moves().is_empty()
+    }
+
+    pub fn is_capture(&self, move_str: &str) -> bool {
+        let parsed_move = Move::from_uci_string(move_str, self);
+        return self.piece_at(parsed_move.to()) != NONE;
     }
 
     pub fn checkers(&self) -> u64 {

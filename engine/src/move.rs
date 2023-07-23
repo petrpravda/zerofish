@@ -170,6 +170,10 @@ impl MoveList {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.moves.is_empty()
+    }
+
     pub fn make_quiets(&mut self, from: u8, targets: u64) {
         for to in BitIter(targets) {
             self.moves.push(Move::new_from_flags(from, to as u8, Move::QUIET));
