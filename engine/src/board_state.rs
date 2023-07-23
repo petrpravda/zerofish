@@ -46,8 +46,8 @@ pub struct BoardState {
 }
 
 pub struct ScoreOutcome {
-    score: i32,
-    pieces_taken: i32,
+    pub score: i32,
+    pub pieces_taken: i32,
 }
 
 impl fmt::Display for BoardState {
