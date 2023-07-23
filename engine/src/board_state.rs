@@ -7,9 +7,9 @@ use crate::bitboard::{Bitboard, BITBOARD, BitIter};
 use crate::board_position::BoardPosition;
 use crate::fen::{Fen, FenExport};
 use crate::pgn::Pgn;
-use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
+use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, side_of, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
-use crate::piece_square_table::{EGS, MGS};
+use crate::piece_square_table::{BASIC_MATERIAL_VALUE, EGS, MGS};
 use crate::r#move::{Move, MoveList};
 use crate::side::Side;
 use crate::side::Side::{BLACK, WHITE};
@@ -43,6 +43,11 @@ pub struct BoardState {
     pub en_passant: u64,
 
 //    pub(crate) bitboard: &'a Bitboard,
+}
+
+pub struct ScoreOutcome {
+    score: i32,
+    pieces_taken: i32,
 }
 
 impl fmt::Display for BoardState {
@@ -145,7 +150,7 @@ impl BoardState {
         return type_of(self.items[square as usize]);
     }
 
-    pub fn set_piece_at(&mut self, piece: Piece, square: usize) {
+    pub fn set_piece_at(&mut self, piece: Piece, square: usize) { // TODO introduce type SquareLoc
         // //update incremental evaluation terms
         self.phase -= PIECE_PHASES[type_of(piece).index()];
         self.mg += MGS[piece as usize][square];
@@ -927,8 +932,112 @@ impl BoardState {
                 (BITBOARD.get_rook_attacks(square, occ) & (self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]))
         }
     }
-}
 
+    /**
+     * @param square battle square
+     * @param side perspective of score, starting move
+     * @return score in basic material values, the higher, the better, no matter if white or black
+     */
+    pub fn see_score(&self, square: u8, side: Side) -> ScoreOutcome {
+        let mut processed_side = side;
+        let mut score = 0;
+        let mut pieces_taken = 0;
+        let mut evaluated_state = if self.side_to_play != processed_side {
+            self.do_null_move()
+        } else {
+            self.clone()
+        };
+
+        loop {
+            let attacker = evaluated_state.smallest_attacker_with_king(square, processed_side);
+            if attacker == Square::NO_SQUARE {
+                break;
+            }
+
+            let possible_moves: Vec<Move> = evaluated_state
+                .generate_legal_moves_wo(true)
+                .moves
+                .iter()
+                .filter(|m| m.from() == attacker && m.to() == square)
+                .cloned()
+                .collect();
+
+            if possible_moves.is_empty() {
+                break;
+            }
+
+            let piece_type = evaluated_state.piece_type_at(square);
+            if piece_type == PieceType::KING {
+                score = 0;
+                break;
+            }
+
+            score += evaluated_state.get_basic_material_value(square);
+            pieces_taken += 1;
+            processed_side = processed_side.not();
+            evaluated_state = evaluated_state.do_move(&possible_moves[0]);
+        }
+
+        ScoreOutcome {
+            score: -score * Side::multiplicator(&side) as i32,
+            pieces_taken,
+        }
+    }
+
+    pub fn smallest_attacker_with_king(&self, square: u8, side: Side) -> u8 {
+        self.smallest_attacker(square, side, true)
+    }
+
+    pub fn smallest_attacker(&self, square: u8, side: Side, with_attacking_king: bool) -> u8 {
+        let us = side.not();
+        let them = side;
+
+        let pawns = Bitboard::pawn_attacks_from_square(square, us) & self.bitboard_of(them, PieceType::PAWN);
+        if pawns != 0 {
+            return pawns.trailing_zeros() as u8;
+        }
+
+        let knights = BITBOARD.get_knight_attacks(square as usize) & self.bitboard_of(them, PieceType::KNIGHT);
+        if knights != 0 {
+            return knights.trailing_zeros() as u8;
+        }
+
+        let us_bb = self.all_pieces_for_side(us);
+        let them_bb = self.all_pieces_for_side(them);
+        let all = us_bb | them_bb;
+
+        let bishop_attacks = BITBOARD.get_bishop_attacks(square as usize, all);
+        let bishops = bishop_attacks & self.bitboard_of(them, PieceType::BISHOP);
+        if bishops != 0 {
+            return bishops.trailing_zeros() as u8;
+        }
+
+        let rook_attacks = BITBOARD.get_rook_attacks(square as usize, all);
+        let rooks = rook_attacks & self.bitboard_of(them, PieceType::ROOK);
+        if rooks != 0 {
+            return rooks.trailing_zeros() as u8;
+        }
+
+        let queens = (bishop_attacks | rook_attacks) & self.bitboard_of(them, PieceType::QUEEN);
+        if queens != 0 {
+            return queens.trailing_zeros() as u8;
+        }
+
+        if with_attacking_king {
+            let kings = BITBOARD.get_king_attacks(square as usize) & self.bitboard_of(them, PieceType::KING);
+            if kings != 0 {
+                return kings.trailing_zeros() as u8;
+            }
+        }
+
+        Square::NO_SQUARE
+    }
+
+    fn get_basic_material_value(&self, square: u8) -> i32 {
+        let piece = self.piece_at(square);
+        BASIC_MATERIAL_VALUE[piece as usize] * (side_of(piece) == Side::WHITE) as i32 * 2 - 1
+    }
+}
 
 #[cfg(test)]
 mod tests {

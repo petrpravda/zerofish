@@ -113,11 +113,9 @@ impl From<u8> for PieceType {
     pub fn type_of(piece: Piece) -> PieceType {
         PieceType::from(piece & 0b111)
     }
-//
-//     public static int sideOf(int piece){
-//         return (piece & 0b1000) >>> 3;
-//     }
-//
+
+    pub fn side_of(piece: Piece) -> Side { Side::from(((piece as u8) & 0b1000) >> 3) }
+
     pub fn make_piece(side: Side, piece_type: PieceType) -> Piece {
         return ((side.index() as u8) << 3) + piece_type.index() as u8;
     }
