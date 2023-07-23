@@ -1,6 +1,7 @@
 #![allow(unused_variables, dead_code)]
 
 use std::fmt;
+use std::ops::Not;
 
 use crate::bitboard::{Bitboard, BITBOARD, BitIter};
 use crate::board_position::BoardPosition;
@@ -872,6 +873,59 @@ impl BoardState {
             result |= 1 << m.to();
         }
         result
+    }
+
+    /**
+     * @param side attacked side
+     * @return
+     */
+    pub fn attacked_pieces_undefended(&self, side: Side) -> u64 {
+        let side_them = side.not(); // Side::flip(side);
+        let us_bb = self.all_pieces_for_side(side);
+        let them_bb = self.all_pieces_for_side(side_them);
+        let all = us_bb | them_bb;
+
+        let attacked_pieces = self.attacked_pieces(side);
+        let mut attacked_undefended_pieces = 0;
+        let mut work = attacked_pieces;
+
+        while work != 0 {
+            let square = work.trailing_zeros() as usize;
+            let attacking_pieces = self.attackers_from_including_kings(square, all, side_them);
+
+            let mut attacking_pieces_copy = attacking_pieces;
+            while attacking_pieces_copy != 0 {
+                let attacking_square = attacking_pieces_copy.trailing_zeros() as usize;
+                let all_without_attacker = all & !(1 << attacking_square);
+                let defending_pieces = self.attackers_from_including_kings(square, all_without_attacker, side);
+
+                if defending_pieces == 0 {
+                    attacked_undefended_pieces |= 1 << square;
+                }
+
+                attacking_pieces_copy &= attacking_pieces_copy - 1;
+            }
+
+            work &= work - 1;
+        }
+
+        attacked_undefended_pieces as u64
+    }
+
+    fn attackers_from_including_kings(&self, square: usize, occ: u64, side: Side) -> u64 {
+        if side == Side::WHITE {
+            (Bitboard::pawn_attacks_from_square(square as u8, BLACK) & self.piece_bb[WHITE_PAWN as usize]) |
+                (BITBOARD.get_king_attacks(square) & self.piece_bb[WHITE_KING as usize]) |
+                (BITBOARD.get_knight_attacks(square) & self.piece_bb[WHITE_KNIGHT as usize]) |
+                (BITBOARD.get_bishop_attacks(square, occ) & (self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize])) |
+                (BITBOARD.get_rook_attacks(square, occ) & (self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize]))
+        } else {
+            (Bitboard::pawn_attacks_from_square(square as u8, WHITE) & self.piece_bb[BLACK_PAWN as usize]) |
+                (BITBOARD.get_king_attacks(square) & self.piece_bb[BLACK_KING as usize]) |
+                (BITBOARD.get_knight_attacks(square) & self.piece_bb[BLACK_KNIGHT as usize]) |
+                (BITBOARD.get_bishop_attacks(square, occ) & (self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize])) |
+                (BITBOARD.get_rook_attacks(square, occ) & (self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]))
+        }
     }
 }
 
