@@ -232,6 +232,10 @@ impl Bitboard {
          self.bb_lines[sq1 as usize][sq2 as usize]
     }
 
+    pub fn extract_lsb(bb: u64) -> u64 {
+        bb & (bb - 1)
+    }
+
     pub fn ignore_ooo_danger(side: Side) -> u64 {
         match side { Side::WHITE => 0x2,
             _ => 0x200000000000000 }
@@ -260,6 +264,10 @@ impl Bitboard {
     pub fn get_rook_attacks(&self, sq: usize, occupied: u64) -> u64 {
         Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq as usize + (Horizontal as usize * 64)) })
             | Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq as usize + (Vertical as usize * 64)) })
+    }
+
+    pub fn get_rook_file_attacks(&self, sq: usize, occupied: u64) -> u64 {
+        Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq as usize + (Vertical as usize * 64)) })
     }
 
     pub fn get_knight_attacks(&self, sq: usize) -> u64 {
