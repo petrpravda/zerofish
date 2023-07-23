@@ -56,11 +56,15 @@ impl Iterator for BitIter {
 }
 
 #[repr(usize)]
-enum Direction {
+pub enum Direction {
     Horizontal = 0,
     Vertical = 1,
     Diagonal = 2,
     AntiDiagonal = 3,
+}
+
+pub fn mask_index(direction: Direction, square: u8) -> usize {
+    (direction as i32 * 64 + square as i32) as usize
 }
 
 const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields on the board
@@ -73,7 +77,7 @@ pub const DIRECTIONS: [usize; 4] = [
 ];
 
 #[derive(Copy, Clone)]
-struct LinePatterns {
+pub struct LinePatterns {
     lower: u64,
     upper: u64,
     combined: u64
@@ -131,7 +135,7 @@ const fn calc_pattern(pos: i32, dir_col: i32, dir_row: i32) -> u64 {
 pub struct Bitboard {
     king_attacks: [u64; 64],
     knight_attacks: [u64; 64],
-    line_masks: [LinePatterns; 64 * 4],
+    pub line_masks: [LinePatterns; 64 * 4],
     bb_squares_between: [[u64; 64]; 64],
     bb_lines: [[u64; 64]; 64],
 }
@@ -241,7 +245,7 @@ impl Bitboard {
             _ => 0x200000000000000 }
     }
 
-    fn get_line_attacks(occupied: u64, patterns: &LinePatterns) -> u64 {
+    pub fn get_line_attacks(occupied: u64, patterns: &LinePatterns) -> u64 {
         // Uses the obstruction difference algorithm to determine line attacks
         // https://www.chessprogramming.org/Obstruction_Difference
         let lower = patterns.lower & occupied;
