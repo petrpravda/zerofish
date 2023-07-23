@@ -847,6 +847,32 @@ impl BoardState {
 
         checkers
     }
+
+    /**
+     * @param side attacked side
+     * @return attacked pieces
+     */
+    pub fn attacked_pieces(&self, side: Side) -> u64 {
+        let working_state = if self.side_to_play == side {
+            self.do_null_move()
+        } else {
+            self.clone()
+        };
+
+        let quiescence = working_state.generate_legal_moves_wo(false);
+        let attacking_moves: Vec<Move> = quiescence
+            .moves
+            .iter()
+            .filter(|&m| working_state.piece_at(m.to()) != NONE)
+            .cloned()
+            .collect();
+
+        let mut result: u64 = 0;
+        for m in attacking_moves {
+            result |= 1 << m.to();
+        }
+        result
+    }
 }
 
 
