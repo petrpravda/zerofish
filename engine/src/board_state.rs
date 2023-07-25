@@ -1037,6 +1037,76 @@ impl BoardState {
         let piece = self.piece_at(square);
         BASIC_MATERIAL_VALUE[piece as usize] * (side_of(piece) == Side::WHITE) as i32 * 2 - 1
     }
+
+    /// Get attacked pieces that are underdefended for a given side.
+    /// `side`: Attacked side.
+    /// Returns the bitboard representing attacked underdefended pieces.
+    pub fn attacked_pieces_underdefended(&self, side: Side) -> u64 {
+        let side_them = side.not();
+
+        let attacked_pieces = self.attacked_pieces(side);
+        let mut attacked_underdefended_pieces = 0u64;
+        let mut work = attacked_pieces;
+
+        while work != 0 {
+            let square = work.trailing_zeros() as u8;
+            let score = self.see_score(square, side_them).score;
+            if score > 0 {
+                attacked_underdefended_pieces |= 1u64 << square;
+            }
+            work = Bitboard::extract_lsb(work);
+        }
+
+        attacked_underdefended_pieces
+    }
+
+    /**
+     * @param attacker_square Attacker square
+     * @param attacked_side Attacked side
+     * @return Pinned pieces
+     */
+    pub fn pinned_pieces(&self, attacker_square: u8, attacked_side: Side) -> u64 {
+        let piece_type = self.piece_type_at(attacker_square);
+        let us = attacked_side.not();
+        let them = attacked_side;
+
+        let us_bb = self.all_pieces_for_side(us);
+        let them_bb = self.all_pieces_for_side(them);
+        let all = us_bb | them_bb;
+
+        let mut attacked = 0;
+        if piece_type == PieceType::ROOK || piece_type == PieceType::QUEEN {
+            attacked |= BITBOARD.get_rook_attacks(attacker_square as usize, all);
+        }
+        if piece_type == PieceType::BISHOP || piece_type == PieceType::QUEEN {
+            attacked |= BITBOARD.get_bishop_attacks(attacker_square as usize, all);
+        }
+        attacked &= them_bb;
+
+        let mut pinned = 0;
+        let mut temp = attacked;
+        while temp != 0 {
+            let square = temp.trailing_zeros() as usize;
+            let examined_mask = 1u64 << square;
+            let all_except_one = all & !examined_mask;
+
+            let mut pinned_candidates = 0;
+            if piece_type == PieceType::ROOK || piece_type == PieceType::QUEEN {
+                pinned_candidates |= BITBOARD.get_rook_attacks(attacker_square as usize, all_except_one);
+            }
+            if piece_type == PieceType::BISHOP || piece_type == PieceType::QUEEN {
+                pinned_candidates |= BITBOARD.get_bishop_attacks(attacker_square as usize, all_except_one);
+            }
+            pinned_candidates &= them_bb & all_except_one;
+            let pinned_piece = pinned_candidates & !attacked;
+            pinned |= pinned_piece;
+
+            temp ^= 1u64 << square;
+        }
+
+        pinned &= !self.bitboard_of(them, PieceType::PAWN);
+        pinned
+    }
 }
 
 #[cfg(test)]
