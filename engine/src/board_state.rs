@@ -24,7 +24,6 @@ const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
 pub const BOARD_STATE_HISTORY_CAPACITY: usize = 40;
 
-//#[derive(Copy, Clone)]
 #[derive(Clone, Debug)]
 pub struct BoardState {
     pub(crate) ply: usize,
@@ -38,11 +37,8 @@ pub struct BoardState {
     phase: i32,
     mg: i16,
     eg: i16,
-//    checkers: u64,
-    pub(crate) movements: u64,
+pub(crate) movements: u64,
     pub en_passant: u64,
-
-//    pub(crate) bitboard: &'a Bitboard,
 }
 
 pub struct ScoreOutcome {
@@ -276,7 +272,8 @@ impl BoardState {
         self.do_move_param(moov, false)
     }
 
-    pub fn do_move_string(&self, uci_move: &str) -> BoardState {
+    #[inline(always)]
+    fn do_move_string_param(&self, uci_move: &str, ignore_history: bool) -> BoardState {
         let legal_moves = self.generate_legal_moves();
         let moov = legal_moves
             .moves
@@ -284,7 +281,15 @@ impl BoardState {
             .find(|m| m.to_string() == uci_move)
             .expect("Move not found");
 
-        self.do_move(&moov)
+        self.do_move_param(&moov, ignore_history)
+    }
+
+    pub fn do_move_string_no_history(&self, uci_move: &str) -> BoardState {
+        self.do_move_string_param(uci_move, true)
+    }
+
+    pub fn do_move_string(&self, uci_move: &str) -> BoardState {
+        self.do_move_string_param(uci_move, false)
     }
 
     pub fn do_move_no_history(&self, moov: &Move) -> BoardState {
