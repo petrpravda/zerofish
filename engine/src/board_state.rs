@@ -1035,7 +1035,8 @@ impl BoardState {
 
     fn get_basic_material_value(&self, square: u8) -> i32 {
         let piece = self.piece_at(square);
-        BASIC_MATERIAL_VALUE[piece as usize] * (side_of(piece) == Side::WHITE) as i32 * 2 - 1
+        let piece_type = type_of(piece);
+        BASIC_MATERIAL_VALUE[piece_type as usize] * (side_of(piece) == Side::WHITE) as i32 * 2 - 1
     }
 
     /// Get attacked pieces that are underdefended for a given side.
