@@ -405,4 +405,20 @@ impl Bitboard {
         }
         (result_between, result_lines)
     }
+
+    pub fn bitboard_to_string(bb: u64) -> String {
+        let mut result = String::new();
+
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let index = rank * 8 + file;
+                result.push(if (bb >> index) & 1 == 1 { 'X' } else { '.' });
+                result.push(' ');
+            }
+
+            result.push('\n');
+        }
+
+        result
+    }
 }
