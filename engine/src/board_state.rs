@@ -910,7 +910,7 @@ impl BoardState {
                 let defending_pieces = self.attackers_from_including_kings(square, all_without_attacker, side);
 
                 if defending_pieces == 0 {
-                    attacked_undefended_pieces |= 1 << square;
+                    attacked_undefended_pieces |= 1u64.wrapping_shl(square as u32);
                 }
 
                 attacking_pieces_copy &= attacking_pieces_copy - 1;
