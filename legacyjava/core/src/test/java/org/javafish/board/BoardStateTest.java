@@ -161,8 +161,8 @@ class BoardStateTest {
 
     @Test
     void seeScore() {
-        BoardState state = BoardState.fromFen("6k1/5pp1/4p2p/8/5P2/4RQP1/rq1rR2P/6K1 w - - 2 33");
-        var result = state.seeScore(12, Side.WHITE);
+        BoardState state = BoardState.fromFen("6k1/5pp1/4p2p/8/5P2/4RQP1/rq1rR2P/5K2 b - - 3 33");
+        var result = state.seeScore(12, Side.BLACK);
         assertEquals(0, result.score());
     }
 

@@ -1041,7 +1041,7 @@ impl BoardState {
     fn get_basic_material_value(&self, square: u8) -> i32 {
         let piece = self.piece_at(square);
         let piece_type = type_of(piece);
-        BASIC_MATERIAL_VALUE[piece_type as usize] * (side_of(piece) == Side::WHITE) as i32 * 2 - 1
+        BASIC_MATERIAL_VALUE[piece_type as usize] * ((side_of(piece) == Side::WHITE) as i32 * 2 - 1)
     }
 
     /// Get attacked pieces that are underdefended for a given side.
@@ -1119,7 +1119,7 @@ impl BoardState {
 mod tests {
     use crate::fen::{Fen, START_POS};
     use crate::piece::{BLACK_ROOK, WHITE_ROOK};
-    use crate::side::Side::WHITE;
+    use crate::side::Side::{BLACK};
     use crate::square::Square;
     use crate::transposition::TranspositionTable;
 
@@ -1161,8 +1161,8 @@ mod tests {
 
     #[test]
     fn see_score_test() {
-        let state = Fen::from_fen_default("6k1/5pp1/4p2p/8/5P2/4RQP1/rq1rR2P/6K1 w - - 2 33");
-        let result = state.see_score(12, WHITE);
+        let state = Fen::from_fen_default("6k1/5pp1/4p2p/8/5P2/4RQP1/rq1rR2P/5K2 b - - 3 33");
+        let result = state.see_score(12, BLACK);
         assert_eq!(0, result.score);
     }
 }
