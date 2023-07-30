@@ -159,6 +159,13 @@ class BoardStateTest {
         System.out.println(moves);
     }
 
+    @Test
+    void seeScore() {
+        BoardState state = BoardState.fromFen("6k1/5pp1/4p2p/8/5P2/4RQP1/rq1rR2P/6K1 w - - 2 33");
+        var result = state.seeScore(12, Side.WHITE);
+        assertEquals(0, result.score());
+    }
+
 //    @Test
 //    void phasesOnlyPositive() {
 //        String[] moves = "d2d4 c7c5 d4c5 g7g5 c1g5 h7h6 c5c6 h6g5 c6b7 h8h2 b7a8q".split(" ");

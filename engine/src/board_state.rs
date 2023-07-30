@@ -1119,6 +1119,7 @@ impl BoardState {
 mod tests {
     use crate::fen::{Fen, START_POS};
     use crate::piece::{BLACK_ROOK, WHITE_ROOK};
+    use crate::side::Side::WHITE;
     use crate::square::Square;
     use crate::transposition::TranspositionTable;
 
@@ -1156,5 +1157,12 @@ mod tests {
         assert_eq!(state.mg, 482);
         state.set_piece_at(BLACK_ROOK, Square::get_square_from_name("d2") as usize);
         assert_eq!(state.mg, -20);
+    }
+
+    #[test]
+    fn see_score_test() {
+        let state = Fen::from_fen_default("6k1/5pp1/4p2p/8/5P2/4RQP1/rq1rR2P/6K1 w - - 2 33");
+        let result = state.see_score(12, WHITE);
+        assert_eq!(0, result.score);
     }
 }
