@@ -20,7 +20,7 @@ import static org.javafish.bitboard.Bitboard.WHITE_QUEENS_ROOK_MASK;
 public class Fen {
     public static final String START_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     private static final Pattern REGEX_FEN_FREE = Pattern.compile("Fen: (.*)");
-    private static final int MAX_SEARCH_DEPTH = 100;
+    public static final int MAX_SEARCH_DEPTH = 100;
 
     public static String toFen(BoardState state) {
         StringBuilder fen = new StringBuilder();

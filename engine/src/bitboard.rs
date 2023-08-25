@@ -56,11 +56,15 @@ impl Iterator for BitIter {
 }
 
 #[repr(usize)]
-enum Direction {
+pub enum Direction {
     Horizontal = 0,
     Vertical = 1,
     Diagonal = 2,
     AntiDiagonal = 3,
+}
+
+pub fn mask_index(direction: Direction, square: u8) -> usize {
+    (direction as i32 * 64 + square as i32) as usize
 }
 
 const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields on the board
@@ -73,7 +77,7 @@ pub const DIRECTIONS: [usize; 4] = [
 ];
 
 #[derive(Copy, Clone)]
-struct LinePatterns {
+pub struct LinePatterns {
     lower: u64,
     upper: u64,
     combined: u64
@@ -131,7 +135,7 @@ const fn calc_pattern(pos: i32, dir_col: i32, dir_row: i32) -> u64 {
 pub struct Bitboard {
     king_attacks: [u64; 64],
     knight_attacks: [u64; 64],
-    line_masks: [LinePatterns; 64 * 4],
+    pub line_masks: [LinePatterns; 64 * 4],
     bb_squares_between: [[u64; 64]; 64],
     bb_lines: [[u64; 64]; 64],
 }
@@ -147,15 +151,6 @@ impl Bitboard {
         };
         (result.bb_squares_between, result.bb_lines) = result.calc_squares_between();
 
-        // let end = Instant::now();
-
-        // let duration = end.duration_since(start);
-        // let msg = format!("Bitboard initialized in {} μs", duration.as_micros());
-        //let _msgRef = msg.as_str();
-        // eprintln!("{}", msg);
-
-        // let elapsed_time = start.elapsed();
-        // eprintln!("Bitboard initialized in {} μs", elapsed_time.unwrap().as_micros());
         result
     }
 
@@ -176,26 +171,12 @@ impl Bitboard {
         res2
     }
 
-
-    //     pub const FULL_BOARD = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111L;
-    //
     pub const LEFT_PAWN_ATTACK_MASK: u64 = 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110;
     pub const RIGHT_PAWN_ATTACK_MASK: u64 = 0b1111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111;
-    //
-    //     pub const LIGHT_SQUARES = 0x55AA55AA55AA55AAL;
-    //     pub const DARK_SQUARES = 0xAA55AA55AA55AA55L;
-    //
-    // //    WHITE_PAWN_FREEPATH = create_pawn_free_path_patterns(-1);
-    // //    BLACK_PAWN_FREEPATH = create_pawn_free_path_patterns(1);
-    //
-    //
+
     pub const PAWN_DOUBLE_PUSH_LINES: [u64; 2] = [
             0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000,
             0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000,
-    ];
-    pub const PAWN_RANKS: [u64; 2] = [
-            0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
-            0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
     ];
     pub const PAWN_FINAL_RANKS: u64 = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111;
 
@@ -230,26 +211,23 @@ impl Bitboard {
                 0b00000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
     pub const  BLACK_KINGS_ROOK_MASK: u64 =
                 0b10000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
-    //
-    //     pub const WHITE_OUTPOST_MASK =
-    //             0b00000000_11111111_11111111_11111111_11111111_00000000_00000000_00000000L;
-    //     pub const BLACK_OUTPOST_MASK =
-    //             0b00000000_00000000_00000000_11111111_11111111_11111111_11111111_00000000L;
-    //
-    //     pub const LONG_DIAGONALS[] = {
-    //                     0b00000001_00000010_00000100_00001000_00010000_00100000_01000000_10000000L,
-    //                     0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001L};
-    //
 
-        pub const WHITE_KING_INITIAL_SQUARE: usize = (0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000 as u64).trailing_zeros() as usize;
-        pub const BLACK_KING_INITIAL_SQUARE: usize = (0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000 as u64).trailing_zeros() as usize;
+    pub const WHITE_KING_INITIAL_SQUARE: usize = (0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000u64).trailing_zeros() as usize;
+    pub const BLACK_KING_INITIAL_SQUARE: usize = (0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000u64).trailing_zeros() as usize;
 
-    pub const EDGES: u64 = 0b11111111_10000001_10000001_10000001_10000001_10000001_10000001_11111111;
+    pub const BACK_ROWS: u64 = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111;
+    pub const PAWN_RANKS: [u64; 2] = [
+        0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
+        0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
+    ];
+    pub const WHITE_OUTPOST_MASK: u64 = 0b00000000_11111111_11111111_11111111_11111111_00000000_00000000_00000000;
+    pub const BLACK_OUTPOST_MASK: u64 = 0b00000000_00000000_00000000_11111111_11111111_11111111_11111111_00000000;
+    pub const FILE_A: u64 = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001;
 
-    //
-    //     pub const BACK_ROWS = 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111L;
-    //     pub const FILE_A = 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001L;
-    //
+    pub const LONG_DIAGONALS: [u64; 2] = [
+        0b00000001_00000010_00000100_00001000_00010000_00100000_01000000_10000000,
+        0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001,
+    ];
 
     pub fn push(l: u64, side: Side) -> u64 {
         match side {
@@ -266,28 +244,16 @@ impl Bitboard {
          self.bb_lines[sq1 as usize][sq2 as usize]
     }
 
-    //     public static long extractLsb(long bb){
-    //         return bb & (bb - 1);
-    //     }
-    //
-        pub fn ignore_ooo_danger(side: Side) -> u64 {
-            match side { Side::WHITE => 0x2,
-                _ => 0x200000000000000 }
-        }
+    pub fn extract_lsb(bb: u64) -> u64 {
+        bb & (bb - 1)
+    }
 
-    //     public static String bitboardToString(long bb){
-    //         StringBuilder result = new StringBuilder();
-    //         for (int rank = 56; rank >= 0; rank -= 8){
-    //             for (int file = 0; file < 8; file++){
-    //                 result.append(((bb >>> (rank + file)) & 1) == 1 ? "X" : ".").append(" ");
-    //             }
-    //             result.append("\n");
-    //         }
-    //         return result.toString();
-    //     }
-    //
+    pub fn ignore_ooo_danger(side: Side) -> u64 {
+        match side { Side::WHITE => 0x2,
+            _ => 0x200000000000000 }
+    }
 
-    fn get_line_attacks(occupied: u64, patterns: &LinePatterns) -> u64 {
+    pub fn get_line_attacks(occupied: u64, patterns: &LinePatterns) -> u64 {
         // Uses the obstruction difference algorithm to determine line attacks
         // https://www.chessprogramming.org/Obstruction_Difference
         let lower = patterns.lower & occupied;
@@ -310,6 +276,10 @@ impl Bitboard {
     pub fn get_rook_attacks(&self, sq: usize, occupied: u64) -> u64 {
         Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq as usize + (Horizontal as usize * 64)) })
             | Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq as usize + (Vertical as usize * 64)) })
+    }
+
+    pub fn get_rook_file_attacks(&self, sq: usize, occupied: u64) -> u64 {
+        Bitboard::get_line_attacks(occupied, unsafe { self.line_masks.get_unchecked(sq as usize + (Vertical as usize * 64)) })
     }
 
     pub fn get_knight_attacks(&self, sq: usize) -> u64 {
@@ -434,5 +404,21 @@ impl Bitboard {
             }
         }
         (result_between, result_lines)
+    }
+
+    pub fn bitboard_to_string(bb: u64) -> String {
+        let mut result = String::new();
+
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let index = rank * 8 + file;
+                result.push(if (bb >> index) & 1 == 1 { 'X' } else { '.' });
+                result.push(' ');
+            }
+
+            result.push('\n');
+        }
+
+        result
     }
 }

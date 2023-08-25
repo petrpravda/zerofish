@@ -65,7 +65,7 @@ impl Fen {
         let fullmove_part = fen_parts.next().unwrap();
         let fullmove = fullmove_part.parse::<usize>().unwrap();
 
-        BoardState::new(&items, side, movements, en_passant_mask, halfmove_clock, fullmove, 100)
+        BoardState::new(&items, side, movements, en_passant_mask, halfmove_clock, fullmove, max_search_depth)
         //println!("{:?}", state);
         //return state;
         // BoardState::new(&[0; 64], WHITE, 0, 0, 0, 0, 100)

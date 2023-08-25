@@ -72,6 +72,12 @@ impl Move {
         self.bits & Move::CAPTURE != 0
     }
 
+    #[inline(always)]
+    pub fn is_castling(&self) -> bool {
+        let flags = self.flags();
+        flags == Move::OO || flags == Move::OOO
+    }
+
     pub fn get_piece_type(&self) -> PieceType {
         PieceType::from((((self.flags() >> 12) & 0b11) + 1) as u8)
     }
@@ -126,47 +132,14 @@ impl Move {
         moov
     }
 
-    // pub fn from_uci_string(uci: &str, state: &BoardState) -> Move {
-    //     let bytes = uci.as_bytes();
-    //     if bytes.len() < 4 {
-    //         panic!("Invalid uci move notation: {}", uci);
-    //     }
-    //
-    //     let from_sq = Square::get_square_from_name(&uci[0..2]);
-    //     let to_sq = Square::get_square_from_name(&uci[2..4]);
-    //
-    //     //     pub const DOUBLE_PUSH: u16 = 0b0001000000000000;
-    //     //     pub const OO:          u16 = 0b0010000000000000;
-    //     //     pub const OOO:         u16 = 0b0011000000000000;
-    //     //     pub const CAPTURE:     u16 = 0b0100000000000000;
-    //     //     pub const EN_PASSANT:  u16 = 0b0101000000000000;
-    //
-    //     let capture = if state.piece_at(to_sq) != NONE { Move::CAPTURE } else { Move::QUIET };
-    //     let promotion: u16 = if bytes.len() == 5 {
-    //         Some(match bytes[4] {
-    //             b'q' => Move::PR_QUEEN,
-    //             b'r' => Move::PR_ROOK,
-    //             b'b' => Move::PR_BISHOP,
-    //             b'n' => Move::PR_KNIGHT,
-    //             _ => {
-    //                 panic!("Invalid promotion piece in UCI notation: {}", uci);
-    //             }
-    //         })
+    // pub fn from_uci_string(str: &str) -> Move {
+    //     let from_sq = Square::get_square_from_name(&str[0..2]);
+    //     let to_sq = Square::get_square_from_name(&str[2..4]);
+    //     let type_str = if str.len() > 4 {
+    //         &str[4..]
     //     } else {
-    //         None
-    //     }.unwrap_or( Move::QUIET);
-    //
-    //     let moving_pawn = type_of(state.items[from_sq as usize]) == PieceType::PAWN;
-    //     let moving_king = type_of(state.items[from_sq as usize]) == PieceType::KING;
-    //     let double_push = if moving_pawn && (from_sq as i8 -to_sq as i8).abs() == 16
-    //         { Move::DOUBLE_PUSH } else { Move::QUIET };
-    //     let en_passant = if state.en_passant != 0
-    //         && moving_pawn
-    //         && from_sq % 8 != to_sq % 8
-    //         && to_sq == state.en_passant.trailing_zeros() as u8
-    //         { Move::EN_PASSANT } else { Move::QUIET };
-    //     let oo = moving_king
-    //         && ((from_sq % 8) as i8 - (to_sq % 8) as i8).abs() == 2
+    //         ""
+    //     };
     //
     //     let flags = capture | promotion | double_push | en_passant;
     //     Move::new_from_flags(from_sq as u8, to_sq as u8, flags)
@@ -195,6 +168,10 @@ impl MoveList {
         Self {
             moves: self.moves.to_vec()
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.moves.is_empty()
     }
 
     pub fn make_quiets(&mut self, from: u8, targets: u64) {

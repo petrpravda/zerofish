@@ -1,14 +1,15 @@
 #![allow(unused_variables, dead_code)]
 
 use std::fmt;
+use std::ops::Not;
 
 use crate::bitboard::{Bitboard, BITBOARD, BitIter};
 use crate::board_position::BoardPosition;
 use crate::fen::{Fen, FenExport};
 use crate::pgn::Pgn;
-use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
+use crate::piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, make_piece, NONE, Piece, PIECES_COUNT, PieceType, side_of, to_piece_char, type_of, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK};
 use crate::piece::PieceType::{KING, KNIGHT, PAWN};
-use crate::piece_square_table::{EGS, MGS};
+use crate::piece_square_table::{BASIC_MATERIAL_VALUE, EGS, MGS};
 use crate::r#move::{Move, MoveList};
 use crate::side::Side;
 use crate::side::Side::{BLACK, WHITE};
@@ -23,7 +24,6 @@ const CHESSBOARD_LINE: &'static str = "+---+---+---+---+---+---+---+---+\n";
 
 pub const BOARD_STATE_HISTORY_CAPACITY: usize = 40;
 
-//#[derive(Copy, Clone)]
 #[derive(Clone, Debug)]
 pub struct BoardState {
     pub(crate) ply: usize,
@@ -37,11 +37,13 @@ pub struct BoardState {
     phase: i32,
     mg: i16,
     eg: i16,
-//    checkers: u64,
-    pub(crate) movements: u64,
+pub(crate) movements: u64,
     pub en_passant: u64,
+}
 
-//    pub(crate) bitboard: &'a Bitboard,
+pub struct ScoreOutcome {
+    pub score: i32,
+    pub pieces_taken: i32,
 }
 
 impl fmt::Display for BoardState {
@@ -144,7 +146,7 @@ impl BoardState {
         return type_of(self.items[square as usize]);
     }
 
-    pub fn set_piece_at(&mut self, piece: Piece, square: usize) {
+    pub fn set_piece_at(&mut self, piece: Piece, square: usize) { // TODO introduce type SquareLoc
         // //update incremental evaluation terms
         self.phase -= PIECE_PHASES[type_of(piece).index()];
         self.mg += MGS[piece as usize][square];
@@ -270,6 +272,26 @@ impl BoardState {
         self.do_move_param(moov, false)
     }
 
+    #[inline(always)]
+    fn do_move_string_param(&self, uci_move: &str, ignore_history: bool) -> BoardState {
+        let legal_moves = self.generate_legal_moves();
+        let moov = legal_moves
+            .moves
+            .into_iter()
+            .find(|m| m.to_string() == uci_move)
+            .expect("Move not found");
+
+        self.do_move_param(&moov, ignore_history)
+    }
+
+    pub fn do_move_string_no_history(&self, uci_move: &str) -> BoardState {
+        self.do_move_string_param(uci_move, true)
+    }
+
+    pub fn do_move_string(&self, uci_move: &str) -> BoardState {
+        self.do_move_string_param(uci_move, false)
+    }
+
     pub fn do_move_no_history(&self, moov: &Move) -> BoardState {
         self.do_move_param(moov, true)
     }
@@ -374,122 +396,6 @@ impl BoardState {
 
         return (BITBOARD.get_bishop_attacks(our_king as usize, all) & their_diagonal_sliders) != 0;
     }
-
-    //
-    //     /* not    side of the attacker */
-    //     /**
-    //      * @param side attacked side
-    //      * @return attacked pieces
-    //      */
-    //     public long attackedPieces(int side) {
-    //         BoardState workingState = this.getSideToPlay() == side ? this.do_null_move() : this;
-    //         MoveList quiescence = workingState.generateLegalQuiescence();
-    //         //BoardState finalWorkingState = workingState;
-    //         List<Move> attackingMoves = quiescence.stream()
-    //                 .filter(m -> workingState.pieceAt(m.to()) != Piece.NONE)
-    //                 .toList();
-    //         long result = 0L;
-    //         for (Move move : attackingMoves) {
-    //             result |= 1L << move.to();
-    //         }
-    //         return result;
-    //
-    //     }
-    //
-    //     /**
-    //      * @param side attacked side
-    //      * @return
-    //      */
-    //     public long attackedPiecesUndefended(int side) {
-    //         int sideThem = Side.flip(side);
-    //         let usBb = all_pieces(side);
-    //         let themBb = all_pieces(sideThem);
-    //         let all = usBb | themBb;
-    //
-    //         long attackedPieces = this.attackedPieces(side);
-    //         long attackedUndefendedPieces = 0L;
-    //         long work = attackedPieces;
-    //         while (work != 0){
-    //             int square = Long.numberOfTrailingZeros(work);
-    //             long attackingPieces = attackersFromIncludingKings(square, all, sideThem);
-    //             while (attackingPieces != 0) {
-    //                 int attackingSquare = Long.numberOfTrailingZeros(attackingPieces);
-    //                 long allWithoutAttacker = all & ~(1L << attackingSquare);
-    //                 long defendingPieces = attackersFromIncludingKings(square, allWithoutAttacker, side);
-    //                 if (defendingPieces == 0L) {
-    //                     attackedUndefendedPieces |= 1L << square;
-    //                 }
-    //
-    //                 attackingPieces = Bitboard.extractLsb(attackingPieces);
-    //             }
-    //             work = Bitboard.extractLsb(work);
-    //         }
-    //
-    //         return attackedUndefendedPieces;
-    //     }
-    //
-    //     public int smallestAttackerWithKing(int square, int side) {
-    //         return smallestAttacker(square, side, true);
-    //     }
-    //
-    //     public int smallestAttacker(int square, int side, boolean withAttackingKing){
-    //         final int us = Side.flip(side);
-    //         final int them = side;
-    //
-    //         long pawns = pawn_attacks(square, us) & bitboard_of(them, PieceType.PAWN);
-    //         if (pawns != 0)
-    //             return Long.numberOfTrailingZeros(pawns);
-    //
-    //         long knights = get_knight_attacks(square) & bitboard_of(them, PieceType.KNIGHT);
-    //         if (knights != 0)
-    //             return Long.numberOfTrailingZeros(knights);
-    //
-    //         let usBb = all_pieces(us);
-    //         let themBb = all_pieces(them);
-    //         let all = usBb | themBb;
-    //
-    //         let bishopAttacks = getBishopAttacks(square, all);
-    //         long bishops = bishopAttacks & bitboard_of(them, PieceType.BISHOP);
-    //
-    //         if (bishops != 0)
-    //             return Long.numberOfTrailingZeros(bishops);
-    //
-    //         let rookAttacks = getRookAttacks(square, all);
-    //         long rooks = rookAttacks & bitboard_of(them, PieceType.ROOK);
-    //         if (rooks != 0)
-    //             return Long.numberOfTrailingZeros(rooks);
-    //
-    //         long queens = (bishopAttacks | rookAttacks) & bitboard_of(them, PieceType.QUEEN);
-    //         if (queens != 0)
-    //             return Long.numberOfTrailingZeros(queens);
-    //
-    //         if (withAttackingKing) {
-    //             long kings = get_king_attacks(square) & bitboard_of(them, PieceType.KING);
-    //             if (kings != 0) {
-    //                 return Long.numberOfTrailingZeros(kings);
-    //             }
-    //         }
-    //
-    //         return NO_SQUARE;
-    //     }
-    //
-    // //    public boolean isInsufficientMaterial(int color){
-    // //        if ((bitboard_of(color, PieceType.PAWN) | bitboard_of(color, PieceType.ROOK) | bitboard_of(color, PieceType.QUEEN)) != 0)
-    // //            return false;
-    // //
-    // //        long ourPieces = all_pieces(color);
-    // //        long theirPieces = all_pieces(Side.flip(color));
-    // //        if (bitboard_of(color, PieceType.KNIGHT) != 0)
-    // //            return Long.bitCount(ourPieces) <= 2 && (theirPieces & ~bitboard_of(Side.flip(color), PieceType.KING) & ~bitboard_of(Side.flip(color), PieceType.QUEEN)) == 0;
-    // //
-    // //        long ourBishops = bitboard_of(color, PieceType.BISHOP);
-    // //        if (ourBishops != 0){
-    // //            boolean sameColor = (ourBishops & DARK_SQUARES) == 0 || (ourBishops & LIGHT_SQUARES) == 0;
-    // //            return sameColor && (bitboard_of(color, PieceType.PAWN) | bitboard_of(Side.flip(color), PieceType.PAWN)) == 0
-    // //                    || (bitboard_of(color, PieceType.KNIGHT) | bitboard_of(Side.flip(color), PieceType.KNIGHT)) == 0;
-    // //        }
-    // //        return true;
-    // //    }
 
     pub fn is_repetition_or_fifty(&self, position: &BoardPosition) -> bool {
         let last_move_bits = if self.ply > 0 { self.history[self.ply - 1] } else { *position.history.last().unwrap_or(&0) };
@@ -807,25 +713,6 @@ impl BoardState {
         moves
     }
 
-    //
-    //         return moves;
-    //     }
-    //
-    //     @Override
-    //     public String toString() {
-    //         StringBuilder result = new StringBuilder(CHESSBOARD_LINE);
-    //         for (int i = 56; i >= 0; i -= 8){
-    //             for (int j = 0; j < 8; j++){
-    //                 int piece = items[i + j];
-    //                 String notation = Piece.getNotation(piece);
-    //                 result.append("| ").append(notation).append(' ');
-    //             }
-    //             result.append("|\n").append(CHESSBOARD_LINE);
-    //         }
-    //         result.append("Fen: ").append(Fen.toFen(this));
-    //         return result.toString();
-    //     }
-
     fn clear_en_passant(&mut self) {
         let previous_state = self.en_passant;
 
@@ -889,38 +776,350 @@ impl BoardState {
         move_vec
     }
 
+    pub fn is_in_check(&self) -> bool {
+        self.checkers() != 0
+    }
 
+    pub fn is_in_checkmate(&self) -> bool {
+        self.generate_legal_moves().is_empty()
+    }
 
-    //     public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
-    //
-    //     public Params toParams() {
-    //         byte[] result = new byte[80]; // 8 * 5 * 2
-    //         int index = 0;
-    //         for (int side = Side.WHITE; side <= Side.BLACK; side++) {
-    //             for (int piece = PieceType.PAWN; piece <= PieceType.QUEEN; piece++) {
-    //                 long bitboard = this.bitboard_of(side, piece);
-    //                 for (int i = 0; i < 8; i++) {
-    //                     result[index++] = (byte)((bitboard & 0xFF00000000000000L) >> 56);
-    //                     bitboard <<= 8;
-    //                 }
-    //             }
-    //
-    //         }
-    //         return new Params(result,
-    //             Long.numberOfTrailingZeros(bitboard_of(Side.WHITE, PieceType.KING)),
-    //             Long.numberOfTrailingZeros(bitboard_of(Side.BLACK, PieceType.KING)));
-    //     }
-    // fn pop_history(&mut self) -> Move {
-    //     self.ply -= 1;
-    //     Move::new_from_bits(self.history[self.ply])
-    // }
+    pub fn is_capture(&self, move_str: &str) -> bool {
+        let parsed_move = Move::from_uci_string(move_str, self);
+        return self.piece_at(parsed_move.to()) != NONE;
+    }
+
+    pub fn checkers(&self) -> u64 {
+        // TODO simplify? inline???
+
+        let us = self.side_to_play;
+        let them = !self.side_to_play;
+
+        let us_bb = self.all_pieces_for_side(us);
+        let them_bb = self.all_pieces_for_side(them);
+        let all = us_bb | them_bb;
+
+        let our_king_bb = self.bitboard_of(us, KING);
+        let our_king = our_king_bb.trailing_zeros() as usize;
+        let their_king = self.bitboard_of(them, KING).trailing_zeros() as usize;
+
+        let our_bishops_and_queens = self.diagonal_sliders(us);
+        let their_bishops_and_queens = self.diagonal_sliders(them);
+        let our_rooks_and_queens = self.orthogonal_sliders(us);
+        let their_rooks_and_queens = self.orthogonal_sliders(them);
+
+        // Squares that the king can't move to
+        let mut under_attack: u64 = 0;
+        under_attack |= Bitboard::pawn_attacks(self.bitboard_of(them, PAWN), them) | BITBOARD.get_king_attacks(their_king);
+
+        for b1 in BitIter(self.bitboard_of(them, KNIGHT)) {
+            under_attack |= BITBOARD.get_knight_attacks(b1 as usize);
+        }
+
+        for b1 in BitIter(their_bishops_and_queens) {
+            under_attack |= BITBOARD.get_bishop_attacks(b1 as usize, all ^ (1u64 << our_king as u8));
+        }
+
+        for b1 in BitIter(their_rooks_and_queens) {
+            under_attack |= BITBOARD.get_rook_attacks(b1 as usize, all ^ (1u64 << our_king as u8));
+        }
+
+        let b1 = BITBOARD.get_king_attacks(our_king) & !(us_bb | under_attack);
+
+        // moves.make_quiets(our_king as u8, b1 & !them_bb);
+        // moves.make_captures(our_king as u8, b1 & them_bb);
+
+        //capture_mask contains destinations where there is an enemy piece that is checking the king and must be captured
+        //quiet_mask contains squares where pieces must be moved to block an incoming attack on the king
+        //let capture_mask: u64;
+        //let quiet_mask: u64;
+        //let mut s: u8;
+
+        // checker moves from opposite knights and pawns
+        let mut checkers = (BITBOARD.get_knight_attacks(our_king) & self.bitboard_of(them, KNIGHT))
+            | (Bitboard::pawn_attacks_from_square(our_king as u8, us) & self.bitboard_of(them, PAWN));
+
+        // ray candidates to our king
+        let candidates = (BITBOARD.get_rook_attacks(our_king, them_bb) & their_rooks_and_queens)
+            | (BITBOARD.get_bishop_attacks(our_king, them_bb) & their_bishops_and_queens);
+        //
+        // let mut pinned: u64 = 0;
+
+        for ray_candidate in BitIter(candidates) {
+            // squares obstructed by our pieces
+            let squares_between = BITBOARD.between(our_king as u8, ray_candidate as u8) & us_bb;
+
+            // king is not guarded by any of our pieces
+            if squares_between == 0 {
+                checkers ^= 1u64 << ray_candidate;
+                // when there's only one piece between king and a sliding piece, the piece is pinned
+            }
+        }
+
+        checkers
+    }
+
+    /**
+     * @param side attacked side
+     * @return attacked pieces
+     */
+    pub fn attacked_pieces(&self, side: Side) -> u64 {
+        let working_state = if self.side_to_play == side {
+            self.do_null_move()
+        } else {
+            self.clone()
+        };
+
+        let quiescence = working_state.generate_legal_moves_wo(false);
+        let attacking_moves: Vec<Move> = quiescence
+            .moves
+            .iter()
+            .filter(|&m| working_state.piece_at(m.to()) != NONE)
+            .cloned()
+            .collect();
+
+        let mut result: u64 = 0;
+        for m in attacking_moves {
+            result |= 1 << m.to();
+        }
+        result
+    }
+
+    /**
+     * @param side attacked side
+     * @return
+     */
+    pub fn attacked_pieces_undefended(&self, side: Side) -> u64 {
+        let side_them = side.not(); // Side::flip(side);
+        let us_bb = self.all_pieces_for_side(side);
+        let them_bb = self.all_pieces_for_side(side_them);
+        let all = us_bb | them_bb;
+
+        let attacked_pieces = self.attacked_pieces(side);
+        let mut attacked_undefended_pieces = 0;
+        let mut work = attacked_pieces;
+
+        while work != 0 {
+            let square = work.trailing_zeros() as usize;
+            let attacking_pieces = self.attackers_from_including_kings(square, all, side_them);
+
+            let mut attacking_pieces_copy = attacking_pieces;
+            while attacking_pieces_copy != 0 {
+                let attacking_square = attacking_pieces_copy.trailing_zeros() as usize;
+                let all_without_attacker = all & !(1 << attacking_square);
+                let defending_pieces = self.attackers_from_including_kings(square, all_without_attacker, side);
+
+                if defending_pieces == 0 {
+                    attacked_undefended_pieces |= 1u64.wrapping_shl(square as u32);
+                }
+
+                attacking_pieces_copy &= attacking_pieces_copy - 1;
+            }
+
+            work &= work - 1;
+        }
+
+        attacked_undefended_pieces as u64
+    }
+
+    fn attackers_from_including_kings(&self, square: usize, occ: u64, side: Side) -> u64 {
+        if side == Side::WHITE {
+            (Bitboard::pawn_attacks_from_square(square as u8, BLACK) & self.piece_bb[WHITE_PAWN as usize]) |
+                (BITBOARD.get_king_attacks(square) & self.piece_bb[WHITE_KING as usize]) |
+                (BITBOARD.get_knight_attacks(square) & self.piece_bb[WHITE_KNIGHT as usize]) |
+                (BITBOARD.get_bishop_attacks(square, occ) & (self.piece_bb[WHITE_BISHOP as usize] | self.piece_bb[WHITE_QUEEN as usize])) |
+                (BITBOARD.get_rook_attacks(square, occ) & (self.piece_bb[WHITE_ROOK as usize] | self.piece_bb[WHITE_QUEEN as usize]))
+        } else {
+            (Bitboard::pawn_attacks_from_square(square as u8, WHITE) & self.piece_bb[BLACK_PAWN as usize]) |
+                (BITBOARD.get_king_attacks(square) & self.piece_bb[BLACK_KING as usize]) |
+                (BITBOARD.get_knight_attacks(square) & self.piece_bb[BLACK_KNIGHT as usize]) |
+                (BITBOARD.get_bishop_attacks(square, occ) & (self.piece_bb[BLACK_BISHOP as usize] | self.piece_bb[BLACK_QUEEN as usize])) |
+                (BITBOARD.get_rook_attacks(square, occ) & (self.piece_bb[BLACK_ROOK as usize] | self.piece_bb[BLACK_QUEEN as usize]))
+        }
+    }
+
+    /**
+     * @param square battle square
+     * @param side perspective of score, starting move
+     * @return score in basic material values, the higher, the better, no matter if white or black
+     */
+    pub fn see_score(&self, square: u8, side: Side) -> ScoreOutcome {
+        let mut processed_side = side;
+        let mut score = 0;
+        let mut pieces_taken = 0;
+        let mut evaluated_state = if self.side_to_play != processed_side {
+            self.do_null_move()
+        } else {
+            self.clone()
+        };
+
+        loop {
+            let attacker = evaluated_state.smallest_attacker_with_king(square, processed_side);
+            if attacker == Square::NO_SQUARE {
+                break;
+            }
+
+            let possible_moves: Vec<Move> = evaluated_state
+                .generate_legal_moves_wo(true)
+                .moves
+                .iter()
+                .filter(|m| m.from() == attacker && m.to() == square)
+                .cloned()
+                .collect();
+
+            if possible_moves.is_empty() {
+                break;
+            }
+
+            let piece_type = evaluated_state.piece_type_at(square);
+            if piece_type == PieceType::KING {
+                score = 0;
+                break;
+            }
+
+            score += evaluated_state.get_basic_material_value(square);
+            pieces_taken += 1;
+            processed_side = processed_side.not();
+            evaluated_state = evaluated_state.do_move(&possible_moves[0]);
+        }
+
+        ScoreOutcome {
+            score: -score * Side::multiplicator(&side) as i32,
+            pieces_taken,
+        }
+    }
+
+    pub fn smallest_attacker_with_king(&self, square: u8, side: Side) -> u8 {
+        self.smallest_attacker(square, side, true)
+    }
+
+    pub fn smallest_attacker(&self, square: u8, side: Side, with_attacking_king: bool) -> u8 {
+        let us = side.not();
+        let them = side;
+
+        let pawns = Bitboard::pawn_attacks_from_square(square, us) & self.bitboard_of(them, PieceType::PAWN);
+        if pawns != 0 {
+            return pawns.trailing_zeros() as u8;
+        }
+
+        let knights = BITBOARD.get_knight_attacks(square as usize) & self.bitboard_of(them, PieceType::KNIGHT);
+        if knights != 0 {
+            return knights.trailing_zeros() as u8;
+        }
+
+        let us_bb = self.all_pieces_for_side(us);
+        let them_bb = self.all_pieces_for_side(them);
+        let all = us_bb | them_bb;
+
+        let bishop_attacks = BITBOARD.get_bishop_attacks(square as usize, all);
+        let bishops = bishop_attacks & self.bitboard_of(them, PieceType::BISHOP);
+        if bishops != 0 {
+            return bishops.trailing_zeros() as u8;
+        }
+
+        let rook_attacks = BITBOARD.get_rook_attacks(square as usize, all);
+        let rooks = rook_attacks & self.bitboard_of(them, PieceType::ROOK);
+        if rooks != 0 {
+            return rooks.trailing_zeros() as u8;
+        }
+
+        let queens = (bishop_attacks | rook_attacks) & self.bitboard_of(them, PieceType::QUEEN);
+        if queens != 0 {
+            return queens.trailing_zeros() as u8;
+        }
+
+        if with_attacking_king {
+            let kings = BITBOARD.get_king_attacks(square as usize) & self.bitboard_of(them, PieceType::KING);
+            if kings != 0 {
+                return kings.trailing_zeros() as u8;
+            }
+        }
+
+        Square::NO_SQUARE
+    }
+
+    fn get_basic_material_value(&self, square: u8) -> i32 {
+        let piece = self.piece_at(square);
+        let piece_type = type_of(piece);
+        BASIC_MATERIAL_VALUE[piece_type as usize] * ((side_of(piece) == Side::WHITE) as i32 * 2 - 1)
+    }
+
+    /// Get attacked pieces that are underdefended for a given side.
+    /// `side`: Attacked side.
+    /// Returns the bitboard representing attacked underdefended pieces.
+    pub fn attacked_pieces_underdefended(&self, side: Side) -> u64 {
+        let side_them = side.not();
+
+        let attacked_pieces = self.attacked_pieces(side);
+        let mut attacked_underdefended_pieces = 0u64;
+        let mut work = attacked_pieces;
+
+        while work != 0 {
+            let square = work.trailing_zeros() as u8;
+            let score = self.see_score(square, side_them).score;
+            if score > 0 {
+                attacked_underdefended_pieces |= 1u64 << square;
+            }
+            work = Bitboard::extract_lsb(work);
+        }
+
+        attacked_underdefended_pieces
+    }
+
+    /**
+     * @param attacker_square Attacker square
+     * @param attacked_side Attacked side
+     * @return Pinned pieces
+     */
+    pub fn pinned_pieces(&self, attacker_square: u8, attacked_side: Side) -> u64 {
+        let piece_type = self.piece_type_at(attacker_square);
+        let us = attacked_side.not();
+        let them = attacked_side;
+
+        let us_bb = self.all_pieces_for_side(us);
+        let them_bb = self.all_pieces_for_side(them);
+        let all = us_bb | them_bb;
+
+        let mut attacked = 0;
+        if piece_type == PieceType::ROOK || piece_type == PieceType::QUEEN {
+            attacked |= BITBOARD.get_rook_attacks(attacker_square as usize, all);
+        }
+        if piece_type == PieceType::BISHOP || piece_type == PieceType::QUEEN {
+            attacked |= BITBOARD.get_bishop_attacks(attacker_square as usize, all);
+        }
+        attacked &= them_bb;
+
+        let mut pinned = 0;
+        let mut temp = attacked;
+        while temp != 0 {
+            let square = temp.trailing_zeros() as usize;
+            let examined_mask = 1u64 << square;
+            let all_except_one = all & !examined_mask;
+
+            let mut pinned_candidates = 0;
+            if piece_type == PieceType::ROOK || piece_type == PieceType::QUEEN {
+                pinned_candidates |= BITBOARD.get_rook_attacks(attacker_square as usize, all_except_one);
+            }
+            if piece_type == PieceType::BISHOP || piece_type == PieceType::QUEEN {
+                pinned_candidates |= BITBOARD.get_bishop_attacks(attacker_square as usize, all_except_one);
+            }
+            pinned_candidates &= them_bb & all_except_one;
+            let pinned_piece = pinned_candidates & !attacked;
+            pinned |= pinned_piece;
+
+            temp ^= 1u64 << square;
+        }
+
+        pinned &= !self.bitboard_of(them, PieceType::PAWN);
+        pinned
+    }
 }
-
 
 #[cfg(test)]
 mod tests {
     use crate::fen::{Fen, START_POS};
     use crate::piece::{BLACK_ROOK, WHITE_ROOK};
+    use crate::side::Side::{BLACK};
     use crate::square::Square;
     use crate::transposition::TranspositionTable;
 
@@ -958,5 +1157,12 @@ mod tests {
         assert_eq!(state.mg, 482);
         state.set_piece_at(BLACK_ROOK, Square::get_square_from_name("d2") as usize);
         assert_eq!(state.mg, -20);
+    }
+
+    #[test]
+    fn see_score_test() {
+        let state = Fen::from_fen_default("6k1/5pp1/4p2p/8/5P2/4RQP1/rq1rR2P/5K2 b - - 3 33");
+        let result = state.see_score(12, BLACK);
+        assert_eq!(0, result.score);
     }
 }

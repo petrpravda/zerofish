@@ -112,6 +112,33 @@ public class Move {
                 .collect(Collectors.toList());
     }
 
+//    public static Move fromUciString(String str, BoardState state) {
+//        int fromSq = Square.getSquareFromName(str.substring(0, 2));
+//        int toSq = Square.getSquareFromName(str.substring(2, 4));
+//        String typeStr = "";
+//        boolean capturingPromotion = false;
+//        if (str.length() > 4) {
+//            typeStr = str.substring(4);
+//            if (state.pieceAt(toSq) != Piece.NONE) {
+//                capturingPromotion = true;
+//            }
+//        }
+//
+//        int flags = switch (typeStr) {
+//            case "q" -> Move.PR_QUEEN;
+//            case "n" -> Move.PR_KNIGHT;
+//            case "b" -> Move.PR_BISHOP;
+//            case "r" -> Move.PR_ROOK;
+//            default -> Move.QUIET;
+//        };
+//
+//        if (capturingPromotion) {
+//            flags |= Move.CAPTURE;
+//        }
+//
+//        return new Move(fromSq, toSq, flags);
+//    }
+
     public static Move fromUciString(String str, BoardState state) {
         int fromSq = Square.getSquareFromName(str.substring(0, 2));
         int toSq = Square.getSquareFromName(str.substring(2, 4));
@@ -136,10 +163,18 @@ public class Move {
             flags |= Move.CAPTURE;
         }
 
-        return new Move(fromSq, toSq, flags);
+        String moveWithPromoUci = new Move(fromSq, toSq, flags).uci();
+        return state.generateLegalMoves()
+                .stream()
+                .filter(m -> m.uci().equals(moveWithPromoUci))
+                .findFirst()
+                .orElseThrow(() -> {
+                    return new IllegalStateException(String.format("Cannot find legal %s in \n%s\n%s",
+                        moveWithPromoUci, state.toString(), state.generateLegalMoves()));
+                });
     }
 
-//    public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
+    //    public static Move fromFirstUciSubstring(String movesDelimitedWithSpace) {
 //        String[] moves = movesDelimitedWithSpace.split(" ");
 //        return fromUciString(moves[0]);
 //    }
