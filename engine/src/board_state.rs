@@ -887,6 +887,34 @@ impl BoardState {
 
     /**
      * @param side attacked side
+     * @from_square only attacks from this square
+     * @return attacked pieces
+     */
+    pub fn attacked_pieces_from(&self, side: Side, from_square: u8) -> u64 {
+        let working_state = if self.side_to_play == side {
+            self.do_null_move()
+        } else {
+            self.clone()
+        };
+
+        let quiescence = working_state.generate_legal_moves_wo(false);
+        let attacking_moves: Vec<Move> = quiescence
+            .moves
+            .iter()
+            .filter(|&m| m.from() == from_square)
+            .filter(|&m| working_state.piece_at(m.to()) != NONE)
+            .cloned()
+            .collect();
+
+        let mut result: u64 = 0;
+        for m in attacking_moves {
+            result |= 1 << m.to();
+        }
+        result
+    }
+
+    /**
+     * @param side attacked side
      * @return
      */
     pub fn attacked_pieces_undefended(&self, side: Side) -> u64 {
