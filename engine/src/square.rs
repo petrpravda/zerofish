@@ -66,13 +66,16 @@ impl Square {
         square >> 3
     }
 
-
     pub fn get_diagonal_index(square: u8) -> u8 {
         7 + Square::get_rank_index(square) - Square::get_file_index(square)
     }
 
     pub fn get_anti_diagonal_index(square: u8) -> u8 {
         Square::get_rank_index(square) + Square::get_file_index(square)
+    }
+
+    pub fn get_square(file: u8, rank: u8) -> u8 {
+        rank << 3 | file
     }
 
     #[allow(non_camel_case_types)]
