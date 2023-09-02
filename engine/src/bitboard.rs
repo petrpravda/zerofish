@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
 use lazy_static::lazy_static;
+
 use crate::bitboard::Direction::{AntiDiagonal, Diagonal, Horizontal, Vertical};
 use crate::piece::PieceType;
-use crate::side::{Side};
+use crate::side::Side;
 use crate::square::Square;
 
 lazy_static! {
@@ -422,5 +423,16 @@ impl Bitboard {
         }
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::bitboard::{Bitboard, BITBOARD};
+
+    #[test]
+    fn test_bishop_attacks() {
+        let attacks = BITBOARD.get_bishop_attacks(61, 0u64);
+        println!("{}", Bitboard::bitboard_to_string(attacks));
     }
 }
