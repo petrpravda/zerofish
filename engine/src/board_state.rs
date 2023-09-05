@@ -44,6 +44,7 @@ pub(crate) movements: u64,
 pub struct ScoreOutcome {
     pub score: i32,
     pub pieces_taken: i32,
+    pub moves: Vec<Move>,
 }
 
 impl fmt::Display for BoardState {
@@ -980,6 +981,7 @@ impl BoardState {
         } else {
             self.clone()
         };
+        let mut moves: Vec<Move> = vec![];
 
         loop {
             let attacker = evaluated_state.smallest_attacker_with_king(square, processed_side);
@@ -1008,12 +1010,15 @@ impl BoardState {
             score += evaluated_state.get_basic_material_value(square);
             pieces_taken += 1;
             processed_side = processed_side.not();
-            evaluated_state = evaluated_state.do_move(&possible_moves[0]);
+            let move_ = &possible_moves[0];
+            evaluated_state = evaluated_state.do_move(move_);
+            moves.push(move_.clone());
         }
 
         ScoreOutcome {
             score: -score * Side::multiplicator(&side) as i32,
             pieces_taken,
+            moves,
         }
     }
 
