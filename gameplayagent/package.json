@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "start": "ts-node src/index.ts"
+  },
   "devDependencies": {
     "@types/node": "^20.10.5",
     "dotenv": "^16.3.1",
