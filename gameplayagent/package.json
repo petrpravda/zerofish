@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "type": "module",
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "tfTest.ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/tfTest.ts"
   },
   "devDependencies": {
+    "@huggingface/agents": "^0.0.5",
     "@types/node": "^20.10.5",
+    "@xenova/transformers": "^2.12.1",
     "dotenv": "^16.3.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
