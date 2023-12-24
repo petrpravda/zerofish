@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "tfTest.ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/tfTest.ts"
+    "tfTest.ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/tfTest.ts",
+    "textClassification.ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/textClassification.ts"
   },
   "devDependencies": {
     "@huggingface/agents": "^0.0.5",
