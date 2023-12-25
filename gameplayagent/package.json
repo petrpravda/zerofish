@@ -8,10 +8,13 @@
     "start": "ts-node src/index.ts",
     "tfTest.ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/tfTest.ts",
     "textClassification.ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/textClassification.ts",
-    "textSummarization.ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/textSummarization.ts"
+    "textSummarization.ts": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/textSummarization.ts",
+    "hfSummarize": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/hf/hfSummarize.ts",
+    "tfHelloWorld": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/tf/tfHelloWorld.ts"
   },
   "devDependencies": {
     "@huggingface/agents": "^0.0.5",
+    "@tensorflow/tfjs-node": "^4.15.0",
     "@types/node": "^20.10.5",
     "@xenova/transformers": "^2.12.1",
     "apache-arrow": "^14.0.2",
