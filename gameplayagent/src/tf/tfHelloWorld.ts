@@ -1,4 +1,7 @@
 import * as tf from '@tensorflow/tfjs';
+import {NAME} from './mylocal';
+
+console.info(NAME);
 
 // Define two 2x2 matrices.
 let matrix1 = tf.tensor2d([1, 2, 3, 4], [2, 2]);

@@ -1,29 +1,53 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
     "strict": true,
-    "noEmit": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true
+    "module": "ESNext", // ES2020
+    "target": "ES2020",
+    "moduleResolution": "Node",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["vite/client"],
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+//    "baseUrl": "./src",
+//    "paths": {
+//      "@hf/*": ["hf/*"],
+//      "@tf/*": ["tf/*"]
+//    }
+  },
+  "ts-node": {
+    "experimentalSpecifierResolution": "node",
+    "transpileOnly": true,
+    "esm": true,
   }
 }
 
 //{
 //  "compilerOptions": {
-//    "target": "esnext",
-//    "module": "commonjs",
+//    "target": "es2020",
+//    "module": "esnext",
 //    "moduleResolution": "node",
 //    "esModuleInterop": true,
-//    "forceConsistentCasingInFileNames": true,
-//    "strict": true,
-//    "skipLibCheck": true
+//    "allowImportingTsExtensions": true,
+//    "baseUrl": "./src",
+//    "paths": {
+//      "@hf/*": ["hf/*"],
+//      "@tf/*": ["tf/*"]
+//    }
+//  },
+//  "ts-node": {
+//    "esm": true,
+//    "compilerOptions": {
+//      "target": "es2020",
+//      "module": "esnext",
+//      "moduleResolution": "node",
+//      "esModuleInterop": true,
+//      "baseUrl": "./src",
+//      "paths": {
+//        "@hf/*": ["hf/*"],
+//        "@tf/*": ["tf/*"]
+//      }
+//    }
 //  }
 //}
