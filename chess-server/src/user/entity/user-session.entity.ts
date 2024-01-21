@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { User } from './user.entity';
 
 @Entity()
 export class UserSession {
@@ -6,12 +7,15 @@ export class UserSession {
   id: number;
 
   @Column()
+  uuid: string;
+
+  @Column({ default: () => 'CURRENT_TIMESTAMP' })
   loginTime: Date; // Time when the user logged in
 
   @Column({ nullable: true })
   logoutTime: Date | null; // Time when the user logged out, null if the user is currently logged in
 
-  @Column()
+  @Column({ default: () => 'CURRENT_TIMESTAMP' })
   lastActive: Date; // Last activity time of the user
 
   @Column()
@@ -19,6 +23,9 @@ export class UserSession {
 
   @Column()
   isConnected: boolean; // Whether the user is currently connected
+
+  @OneToOne(() => User, user => user.session)
+  user: User;
 
   // userId: string; // Unique identifier for the user
   // userName: string; // User's chosen name in the game

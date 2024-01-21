@@ -15,12 +15,15 @@ import { Request } from 'express';
 export class UserSessionController {
   constructor(private readonly userSessionService: UserSessionService) {}
 
-  @Get('new')
-  async createNew(@Req() request: Request): Promise<UserSession> {
+  @Post('new')
+  async createNew(
+    @Req() request: Request,
+    @Body() uuid: string,
+  ): Promise<UserSession> {
     // Get the IP address from the request
     const ipAddress = request.ip;
     // Call the service method to create a new user session
-    return this.userSessionService.create(ipAddress);
+    return this.userSessionService.create(ipAddress, uuid);
   }
 
   @Get(':id')

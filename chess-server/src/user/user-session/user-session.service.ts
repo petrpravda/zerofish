@@ -10,9 +10,10 @@ export class UserSessionService {
     private userSessionRepository: Repository<UserSession>,
   ) {}
 
-  async create(ipAddress: string): Promise<UserSession> {
+  async create(ipAddress: string, uuid: string): Promise<UserSession> {
     const newUserSession = new UserSession();
     newUserSession.ipAddress = ipAddress;
+    newUserSession.uuid = uuid;
     newUserSession.loginTime = new Date();
     newUserSession.lastActive = new Date();
     newUserSession.isConnected = true;
