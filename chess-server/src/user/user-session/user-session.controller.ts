@@ -27,10 +27,10 @@ export class UserSessionController {
     return this.userSessionService.create(ipAddress, userSessionCreateDto.uuid);
   }
 
-  // @Get()
-  // async findAll(): Promise<UserSession[]> {
-  //   return this.userSessionService.findAll();
-  // }
+  @Get()
+  async findAll(): Promise<UserSession[]> {
+    return this.userSessionService.findAll();
+  }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
