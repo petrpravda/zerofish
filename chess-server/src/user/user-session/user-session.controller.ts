@@ -10,6 +10,7 @@ import {
 import { UserSessionService } from './user-session.service';
 import { UserSession } from '../entity/user-session.entity';
 import { Request } from 'express';
+import { UserSessionCreateDto } from '../dto/user-session.dto';
 
 @Controller('user-session')
 export class UserSessionController {
@@ -18,13 +19,18 @@ export class UserSessionController {
   @Post('new')
   async createNew(
     @Req() request: Request,
-    @Body() uuid: string,
+    @Body() userSessionCreateDto: UserSessionCreateDto,
   ): Promise<UserSession> {
     // Get the IP address from the request
     const ipAddress = request.ip;
     // Call the service method to create a new user session
-    return this.userSessionService.create(ipAddress, uuid);
+    return this.userSessionService.create(ipAddress, userSessionCreateDto.uuid);
   }
+
+  // @Get()
+  // async findAll(): Promise<UserSession[]> {
+  //   return this.userSessionService.findAll();
+  // }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {

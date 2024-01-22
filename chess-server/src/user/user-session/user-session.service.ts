@@ -23,6 +23,10 @@ export class UserSessionService {
     return newUserSession;
   }
 
+  findAll(): Promise<UserSession[]> {
+    return this.userSessionRepository.find();
+  }
+
   // const newUserSession = this.userSessionRepository.create(userSession);
   // await this.userSessionRepository.save(newUserSession);
   // return newUserSession;
