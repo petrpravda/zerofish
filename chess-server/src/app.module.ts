@@ -5,6 +5,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './user/user.module';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 const rootPath = join(__dirname, '..', 'static');
 const databaseUrl = process.env.DATABASE_URL;
@@ -19,6 +20,7 @@ const databaseUrl = process.env.DATABASE_URL;
       url: databaseUrl,
       autoLoadEntities: true,
       synchronize: true,
+      namingStrategy: new SnakeNamingStrategy(),
     }),
     UserModule,
   ],

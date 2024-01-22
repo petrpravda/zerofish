@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { UserSession } from './user-session.entity';
 import { Game } from './game.entity';
 
@@ -28,6 +28,7 @@ export class User {
   @OneToOne(() => UserSession, (userSession) => userSession.user, {
     eager: true,
   })
+  @JoinColumn()
   session: UserSession;
 
   @OneToMany(() => Game, (game) => game.playerWhite)

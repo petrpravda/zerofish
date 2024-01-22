@@ -5,7 +5,8 @@ import {
   Put,
   Delete,
   Param,
-  Body, Req
+  Body,
+  Req
 } from '@nestjs/common';
 import { UserSessionService } from './user-session.service';
 import { UserSession } from '../entity/user-session.entity';
