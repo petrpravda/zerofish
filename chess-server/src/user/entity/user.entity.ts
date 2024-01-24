@@ -1,6 +1,15 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { UserSession } from './user-session.entity';
 import { Game } from './game.entity';
+import { ActiveGame } from './active-game.entity';
+import { WaitingPlayer } from './waiting-player';
 
 @Entity()
 export class User {
@@ -36,5 +45,13 @@ export class User {
 
   @OneToMany(() => Game, (game) => game.playerBlack)
   blackGames: Game[];
-  // historical games
+
+  @OneToOne(
+    () => ActiveGame,
+    (activeGame) => activeGame.playerWhite || activeGame.playerBlack,
+  )
+  activeGame: ActiveGame;
+
+  @OneToOne(() => WaitingPlayer, (waitingPlayer) => waitingPlayer.user)
+  waitingForGame: WaitingPlayer;
 }
