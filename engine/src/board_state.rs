@@ -553,18 +553,10 @@ impl BoardState {
                 let en_passant_square = self.en_passant.trailing_zeros();
                 let pawn_attacks = Bitboard::pawn_attacks_from_square(en_passant_square as u8, them) & self.bitboard_of(us, PAWN);
                 for square in BitIter(pawn_attacks & not_pinned) {
-                    // s hold square from which pawn attack to epsq can be done
-                    // s = Long.numberOfTrailingZeros(b1);
-                    // b1 = Bitboard.extractLsb(b1);
-
-    //                        long attacks = Attacks.slidingAttacks(ourKing,
-    //                                all ^ 1L << s) ^ Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)),
-    //                                Rank.getBb(Square.getRank(ourKing)));
-
-                    // Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)) holds pawn which can be en-passant taken
-                    let qqq = them_bb ^ (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 });
-                    candidates = (BITBOARD.get_rook_attacks(our_king, qqq | us_bb) & their_rooks_and_queens)
-                            | (BITBOARD.get_bishop_attacks(our_king, qqq | us_bb) & their_bishops_and_queens);
+                    let them_bb_wo_ep = them_bb ^ (if us == WHITE { self.en_passant >> 8 } else { self.en_passant << 8 });
+                    let us_bb_ep_move = us_bb ^ 1u64 << square ^ 1u64 << en_passant_square;
+                    candidates = (BITBOARD.get_rook_attacks(our_king, them_bb_wo_ep | us_bb_ep_move) & their_rooks_and_queens)
+                            | (BITBOARD.get_bishop_attacks(our_king, them_bb_wo_ep | us_bb_ep_move) & their_bishops_and_queens);
 
                     if candidates == 0 {
                         moves.add(Move::new_from_flags(square as u8, en_passant_square as u8, Move::EN_PASSANT));

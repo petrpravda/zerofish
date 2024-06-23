@@ -333,6 +333,24 @@ mod tests {
         assert_eq!("b2b3 c7c5 c1b2 b8c6 g2g3 d7d6 f1g2 g8f6 c2c4 a7a6 b1c3 e7e5 d2d3 c6d4 e2e3 c8g4 d1d2 d4f5 g1e2 g4e2 d2e2 g7g6 g2b7 a8b8 b7c6 f6d7 e1g1 f8g7 c6g2 e8g8 c3d5 d7b6 d5b6 b8b6 g2h3 d8f6 f2f4 b6b4 f4e5 d6e5 e3e4 f6e7 e4f5 g8h8 a1e1 b4b8 f5f6 g7f6 f1f6 e7f6 b2e5 f6e5 e2e5 h8g8 h3g2 b8e8 e5e8 f8e8 e1e8 g8g7 g2d5 h7h5 b3b4 c5b4 c4c5 b4b3 d5b3 f7f5 c5c6 f5f4 c6c7 f4g3 c7c8q g3h2 g1h2 h5h4 c8e6 g7h6 e8g8 h6g5 g8g6 g5h5 e6g4", all_uci_moves);
     }
 
+    #[test]
+    fn pgn_to_uci_en_passant() {
+        let pgn = "exf6";
+        let mut state = Fen::from_fen_default("3r1rk1/1R4pp/p3p3/4Pp2/2p1Q3/2q5/2B3PP/4RK2 w - f6 0 25");
+
+        let uci_vec: Vec<String> = pgn.split(" ")
+            .map(|san_move| {
+                let uci = Pgn::one_san_to_uci(san_move, &state);
+                let moov = Move::from_uci_string(&uci, &state);
+                state = state.do_move_no_history(&moov);
+                uci
+            })
+            .collect();
+
+        let all_uci_moves = uci_vec.join(" ");
+        assert_eq!("e5f6", all_uci_moves);
+    }
+
 
 
 
