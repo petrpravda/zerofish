@@ -40,6 +40,12 @@ public class PgnToUciTest extends PgnParserBase {
     }
 
     @Test
+    public void pgnToUciEnPassant() {
+        PgnMoves pgnMoves = PgnParser.fromSan("exf6");
+        assertEquals("e5f6", pgnMoves.asUciFromPosition("3r1rk1/1R4pp/p3p3/4Pp2/2p1Q3/2q5/2B3PP/4RK2 w - f6 0 25"));
+    }
+
+    @Test
     public void pgnToUciComplex() {
         PgnMoves pgnMoves = PgnParser.fromSan(COMPLEX_MOVES_SAN);
         assertEquals(COMPLEX_MOVES_SAN, pgnMoves.asSan());

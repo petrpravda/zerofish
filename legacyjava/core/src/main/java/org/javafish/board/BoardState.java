@@ -652,16 +652,12 @@ public class BoardState implements Cloneable {
                         s = Long.numberOfTrailingZeros(b1);
                         b1 = Bitboard.extractLsb(b1);
 
-//                        long attacks = Attacks.slidingAttacks(ourKing,
-//                                all ^ 1L << s) ^ Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)),
-//                                Rank.getBb(Square.getRank(ourKing)));
+                        long themWoEp = themBb ^ (us == Side.WHITE ? enPassant >>> 8 : enPassant << 8);
+                        long usBbEpMove = usBb ^ 1L << s ^ 1L << enPassantSquare;
+                        candidates = (getRookAttacks(ourKing, themWoEp | usBbEpMove) & theirRooksAndQueens)
+                                | (getBishopAttacks(ourKing, themWoEp | usBbEpMove) & theirBishopsAndQueens);
 
-                        // Bitboard.shift(1L << this.epsq), Square.relative_dir(Square.SOUTH, us)) holds pawn which can be en-passant taken
-                        long qqq = themBb ^ (us == Side.WHITE ? enPassant >>> 8 : enPassant << 8);
-                        candidates = (getRookAttacks(ourKing, qqq | usBb) & theirRooksAndQueens)
-                                | (getBishopAttacks(ourKing, qqq | usBb) & theirBishopsAndQueens);
-
-                        if (candidates == 0 /*&& (attacks & theirOrthSliders) == 0*/)
+                        if (candidates == 0)
                             moves.add(new Move(s, enPassantSquare, Move.EN_PASSANT));
                     }
                 }
