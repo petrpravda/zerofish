@@ -8,7 +8,6 @@ import org.javafish.move.Zobrist;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.LongStream;
 
 import static org.javafish.Constants.CHESSBOARD_LINE;
 import static org.javafish.bitboard.Bitboard.PAWN_DOUBLE_PUSH_LINES;
@@ -109,7 +108,7 @@ public class BoardState implements Cloneable {
     }
 
     @Override
-    protected BoardState clone() {
+    protected final BoardState clone() {
         try {
             BoardState result = (BoardState) super.clone();
             result.piece_bb = this.piece_bb.clone();
@@ -121,15 +120,15 @@ public class BoardState implements Cloneable {
         }
     }
 
-    public int pieceAt(int square){
+    public final int pieceAt(int square){
         return items[square];
     }
 
-    public int pieceTypeAt(int square){
+    public final int pieceTypeAt(int square){
         return Piece.typeOf(items[square]);
     }
 
-    public void setPieceAt(int piece, int square){
+    public final void setPieceAt(int piece, int square){
 
         //update incremental evaluation terms
         phase -= PIECE_PHASES[Piece.typeOf(piece)];
@@ -145,7 +144,7 @@ public class BoardState implements Cloneable {
         hash ^= Zobrist.ZOBRIST_TABLE[piece][square];
     }
 
-    public void removePiece(int square){
+    public final void removePiece(int square){
         int piece = items[square];
         phase += PIECE_PHASES[Piece.typeOf(piece)];
         mg -= MGS[piece][square]; // EConstants.PIECE_TABLES[piece][square];
@@ -159,7 +158,7 @@ public class BoardState implements Cloneable {
         items[square] = Piece.NONE;
     }
 
-    public void movePieceQuiet(int fromSq, int toSq){
+    public final void movePieceQuiet(int fromSq, int toSq){
         //update incremental evaluation terms
         int piece = items[fromSq];
         mg += MGS[piece][toSq] - MGS[piece][fromSq];
@@ -175,38 +174,34 @@ public class BoardState implements Cloneable {
         items[fromSq] = Piece.NONE;
     }
 
-    public void movePiece(int fromSq, int toSq){
+    public final void movePiece(int fromSq, int toSq){
         removePiece(toSq);
         movePieceQuiet(fromSq, toSq);
     }
 
-    public long hash(){
+    public final long hash(){
         return hash;
     }
 
-    public long bitboardOf(int piece){
+    public final long bitboardOf(int piece){
         return piece_bb[piece];
     }
 
-    public long bitboardOf(int side, int pieceType){
+    public final long bitboardOf(int side, int pieceType){
         return piece_bb[Piece.makePiece(side, pieceType)];
     }
 
-//    public long checkers(){
-//        return checkers;
-//    }
-
-    public long diagonalSliders(int side){
+    public final long diagonalSliders(int side){
         return side == Side.WHITE ? piece_bb[Piece.WHITE_BISHOP] | piece_bb[Piece.WHITE_QUEEN] :
                                  piece_bb[Piece.BLACK_BISHOP] | piece_bb[Piece.BLACK_QUEEN];
     }
 
-    public long orthogonalSliders(int side){
+    public final long orthogonalSliders(int side){
         return side == Side.WHITE ? piece_bb[Piece.WHITE_ROOK] | piece_bb[Piece.WHITE_QUEEN] :
                 piece_bb[Piece.BLACK_ROOK] | piece_bb[Piece.BLACK_QUEEN];
     }
 
-    public long allPieces(int side){
+    public final long allPieces(int side){
         return side == Side.WHITE ? piece_bb[Piece.WHITE_PAWN] | piece_bb[Piece.WHITE_KNIGHT] |
                                  piece_bb[Piece.WHITE_BISHOP] | piece_bb[Piece.WHITE_ROOK] |
                                  piece_bb[Piece.WHITE_QUEEN] | piece_bb[Piece.WHITE_KING] :
@@ -216,11 +211,11 @@ public class BoardState implements Cloneable {
                                  piece_bb[Piece.BLACK_QUEEN] | piece_bb[Piece.BLACK_KING];
     }
 
-    public long allPieces() {
+    public final long allPieces() {
         return allPieces(Side.WHITE) | allPieces(Side.BLACK);
     }
 
-    public long attackersFrom(int square, long occ, int side){
+    public final long attackersFrom(int square, long occ, int side){
         return side == Side.WHITE ? (pawnAttacks(square, Side.BLACK) & piece_bb[Piece.WHITE_PAWN]) |
                 (getKnightAttacks(square) & piece_bb[Piece.WHITE_KNIGHT]) |
                 (getBishopAttacks(square, occ) & (piece_bb[Piece.WHITE_BISHOP] | piece_bb[Piece.WHITE_QUEEN])) |
@@ -232,7 +227,7 @@ public class BoardState implements Cloneable {
                 (getRookAttacks(square, occ) & (piece_bb[Piece.BLACK_ROOK] | piece_bb[Piece.BLACK_QUEEN]));
     }
 
-    public long attackersFromIncludingKings(int square, long occ, int side){
+    public final long attackersFromIncludingKings(int square, long occ, int side){
         return side == Side.WHITE ? (pawnAttacks(square, Side.BLACK) & piece_bb[Piece.WHITE_PAWN]) |
                 (getKingAttacks(square) & piece_bb[Piece.WHITE_KING]) |
                 (getKnightAttacks(square) & piece_bb[Piece.WHITE_KNIGHT]) |
@@ -246,15 +241,15 @@ public class BoardState implements Cloneable {
                 (getRookAttacks(square, occ) & (piece_bb[Piece.BLACK_ROOK] | piece_bb[Piece.BLACK_QUEEN]));
     }
 
-    public BoardState doMove(Move move) {
+    public final BoardState doMove(Move move) {
         return performMove(move, this);
     }
 
-    public BoardState doMove(String uciMove) {
+    public final BoardState doMove(String uciMove) {
         return performMove(this.generateLegalMoves().stream().filter(m->m.toString().equals(uciMove)).findFirst().orElseThrow(), this);
     }
 
-    public BoardState doNullMove() {
+    public final BoardState doNullMove() {
         return performNullMove(this);
     }
 
@@ -339,11 +334,11 @@ public class BoardState implements Cloneable {
         return state;
     }
 
-    public int getSideToPlay(){
+    public final int getSideToPlay(){
         return sideToPlay;
     }
 
-    public boolean isKingAttacked() {
+    public final boolean isKingAttacked() {
         final int us = sideToPlay;
         final int them = Side.flip(sideToPlay);
         final int ourKing = Long.numberOfTrailingZeros(bitboardOf(us, PieceType.KING));
@@ -373,7 +368,7 @@ public class BoardState implements Cloneable {
      * @param side attacked side
      * @return attacked pieces
      */
-    public long attackedPieces(int side) {
+    public final long attackedPieces(int side) {
         BoardState workingState = this.getSideToPlay() == side ? this.doNullMove() : this;
         MoveList quiescence = workingState.generateLegalQuiescence();
         //BoardState finalWorkingState = workingState;
@@ -392,7 +387,7 @@ public class BoardState implements Cloneable {
      * @param side attacked side
      * @return
      */
-    public long attackedPiecesUndefended(int side) {
+    public final long attackedPiecesUndefended(int side) {
         int sideThem = Side.flip(side);
         final long usBb = allPieces(side);
         final long themBb = allPieces(sideThem);
@@ -420,11 +415,11 @@ public class BoardState implements Cloneable {
         return attackedUndefendedPieces;
     }
 
-    public int smallestAttackerWithKing(int square, int side) {
+    public final int smallestAttackerWithKing(int square, int side) {
         return smallestAttacker(square, side, true);
     }
 
-    public int smallestAttacker(int square, int side, boolean withAttackingKing){
+    public final int smallestAttacker(int square, int side, boolean withAttackingKing){
         final int us = Side.flip(side);
         final int them = side;
 
@@ -483,7 +478,7 @@ public class BoardState implements Cloneable {
 //        return true;
 //    }
 //
-    public boolean isRepetitionOrFifty(/*BoardPosition position*/){
+    public final boolean isRepetitionOrFifty(/*BoardPosition position*/){
         if (this.ply < 1) {
             return false;
         }
@@ -504,7 +499,7 @@ public class BoardState implements Cloneable {
         return count > 2 || this.halfMoveClock >= 100;
     }
 
-    public boolean hasNonPawnMaterial(int side) {
+    public final boolean hasNonPawnMaterial(int side) {
         int start = Piece.makePiece(side, PieceType.KNIGHT);
         int end = Piece.makePiece(side, PieceType.QUEEN);
         for (int piece = start; piece <= end; piece++){
@@ -530,15 +525,15 @@ public class BoardState implements Cloneable {
         return underAttack;
     }
 
-    public MoveList generateLegalMoves(){
+    public final MoveList generateLegalMoves(){
         return this.generateLegalMoves(false);
     }
 
-    public MoveList generateLegalQuiescence(){
+    public final MoveList generateLegalQuiescence(){
         return generateLegalMoves(true);
     }
 
-    public MoveList generateLegalMoves(boolean onlyQuiescence) {
+    public final MoveList generateLegalMoves(boolean onlyQuiescence) {
         final MoveList moves = new MoveList();
         final int us = sideToPlay;
         final int them = Side.flip(sideToPlay);
@@ -556,23 +551,49 @@ public class BoardState implements Cloneable {
         final long ourRooksAndQueens = orthogonalSliders(us);
         final long theirRooksAndQueens = orthogonalSliders(them);
 
-        // General purpose to keep down initialized primitives
-        long b1, b2, b3;
-
-        final long attacksOnKing = pawnAttacks(bitboardOf(them, PieceType.PAWN), them) | getKingAttacks(theirKing)
+        final long underAttack = pawnAttacks(bitboardOf(them, PieceType.PAWN), them) | getKingAttacks(theirKing)
             | calculateAttacks(bitboardOf(them, PieceType.KNIGHT), Bitboard::getKnightAttacks)
             | calculateAttacks(theirBishopsAndQueens, index -> getBishopAttacks(index, all ^ ourKingBb))
             | calculateAttacks(theirRooksAndQueens, index -> getRookAttacks(index, all ^ ourKingBb));
-        final long kingAttacks = getKingAttacks(ourKing) & ~(usBb | attacksOnKing);
-        
+        final long kingAttacks = getKingAttacks(ourKing) & ~(usBb | underAttack);
+
         moves.makeQ(ourKing, kingAttacks & ~themBb);
         moves.makeC(ourKing, kingAttacks & themBb);
+
+//        // Squares that the king can't move to
+//        long underAttack = 0;
+//        underAttack |= pawnAttacks(bitboardOf(them, PieceType.PAWN), them) | getKingAttacks(theirKing);
+//
+//        b1 = bitboardOf(them, PieceType.KNIGHT);
+//        while (b1 != 0){
+//            underAttack |= getKnightAttacks(Long.numberOfTrailingZeros(b1));
+//            b1 = Bitboard.extractLsb(b1);
+//        }
+//
+//
+//        b1 = theirBishopsAndQueens;
+//        while (b1 != 0){
+//            underAttack |= getBishopAttacks(Long.numberOfTrailingZeros(b1), all ^ 1L << ourKing);
+//            b1 = Bitboard.extractLsb(b1);
+//        }
+//
+//        b1 = theirRooksAndQueens;
+//        while (b1 != 0){
+//            underAttack |= getRookAttacks(Long.numberOfTrailingZeros(b1), all ^ 1L << ourKing);
+//            b1 = Bitboard.extractLsb(b1);
+//        }
+//
+//        b1 = getKingAttacks(ourKing) & ~(usBb | underAttack);
+//
+//        moves.makeQ(ourKing, b1 & ~themBb);
+//        moves.makeC(ourKing, b1 & themBb);
+
+
 
         //captureMask contains destinations where there is an enemy piece that is checking the king and must be captured
         //quietMask contains squares where pieces must be moved to block an incoming attack on the king
         long captureMask;
         long quietMask;
-        int s;
 
         // knight and pawn checkers
         checkers = (getKnightAttacks(ourKing) & bitboardOf(them, PieceType.KNIGHT))
@@ -582,19 +603,20 @@ public class BoardState implements Cloneable {
         long candidates = (getRookAttacks(ourKing, themBb) & theirRooksAndQueens)
                 | (getBishopAttacks(ourKing, themBb) & theirBishopsAndQueens);
 
-        // our pinned pieces
+        // detect pinned pieces
         long pinned = 0;
         while (candidates != 0) {
-            s = Long.numberOfTrailingZeros(candidates);
+            int attackingSquare = Long.numberOfTrailingZeros(candidates);
             candidates = Bitboard.extractLsb(candidates);
-            b1 = between(ourKing, s) & usBb;
+            long piecesBetweenKingAndAttacker = between(ourKing, attackingSquare) & usBb;
 
-            if (b1 == 0)
-                // there is no piece between our king and attacking sliding piece, therefore it is a checker
-                checkers ^= 1L << s;
-            else if (Bitboard.extractLsb(b1) == 0)
-                // there is only one piece in between king and attacking sliding piece, therefore the one piece is pinned
-                pinned ^= b1;
+            if (piecesBetweenKingAndAttacker == 0) {
+                // no piece between our king and the attacking sliding piece; it's a checker
+                checkers ^= 1L << attackingSquare;
+            } else if (Bitboard.extractLsb(piecesBetweenKingAndAttacker) == 0) {
+                // Only one piece between king and attacking sliding piece; that piece is pinned
+                pinned ^= piecesBetweenKingAndAttacker;
+            }
         }
 
         final long notPinned = ~pinned;
@@ -609,31 +631,33 @@ public class BoardState implements Cloneable {
                         // check to see if the checker is a pawn that can be captured ep
                         if (checkers == (us == Side.WHITE ? enPassant >>> 8 : enPassant << 8)) {
                             int enPassantSquare = Long.numberOfTrailingZeros(enPassant);
-                            b1 = pawnAttacks(enPassantSquare, them) & bitboardOf(us, PieceType.PAWN) & notPinned;
-                            while (b1 != 0){
+                            long nonPinnedPawnAttacks = pawnAttacks(enPassantSquare, them) & bitboardOf(us, PieceType.PAWN) & notPinned;
+                            while (nonPinnedPawnAttacks != 0) {
                                 // ep move which can save the king
-                                moves.add(new Move(Long.numberOfTrailingZeros(b1), enPassantSquare, Move.EN_PASSANT));
-                                b1 = Bitboard.extractLsb(b1);
+                                moves.add(new Move(Long.numberOfTrailingZeros(nonPinnedPawnAttacks), enPassantSquare, Move.EN_PASSANT));
+                                nonPinnedPawnAttacks = Bitboard.extractLsb(nonPinnedPawnAttacks);
                             }
                         }
-                        // FALL THROUGH INTENTIONAL
+                    // intentional fall through
                     case PieceType.KNIGHT:
-                        b1 = attackersFrom(checkerSquare, all, us) & notPinned;
-                        while (b1 != 0){
-                            int sq = Long.numberOfTrailingZeros(b1);
-                            b1 = Bitboard.extractLsb(b1);
+                        long piecesAttackingChecker = attackersFrom(checkerSquare, all, us) & notPinned;
+                        while (piecesAttackingChecker != 0){
+                            int sq = Long.numberOfTrailingZeros(piecesAttackingChecker);
+                            piecesAttackingChecker = Bitboard.extractLsb(piecesAttackingChecker);
                             if (pieceTypeAt(sq) == PieceType.PAWN && (1L << sq & PAWN_FINAL_RANKS) != 0L) {
+                                // promoting a pawn with capturing move
                                 moves.add(new Move(sq, checkerSquare, Move.PC_QUEEN));
                                 moves.add(new Move(sq, checkerSquare, Move.PC_ROOK));
                                 moves.add(new Move(sq, checkerSquare, Move.PC_KNIGHT));
                                 moves.add(new Move(sq, checkerSquare, Move.PC_BISHOP));
-                            }
-                            else {
+                            } else {
+                                // "normal" capture of checking knight
                                 moves.add(new Move(sq, checkerSquare, Move.CAPTURE));
                             }
                         }
                         return moves;
                     default:
+                        // so the checker must be bishop, rook or queen then
                         // We have to capture the checker
                         captureMask = checkers;
                         // ...or block it
@@ -644,72 +668,72 @@ public class BoardState implements Cloneable {
             }
             default:
                 captureMask = themBb;
-
                 quietMask = ~all;
 
                 if (enPassant != 0L) {
                     int enPassantSquare = Long.numberOfTrailingZeros(enPassant);
-                    b2 = pawnAttacks(enPassantSquare, them) & bitboardOf(us, PieceType.PAWN);
-                    // b2 holds pawns that can do an ep capture
-                    b1 = b2 & notPinned;
-                    while (b1 != 0) {
-                        // s hold square from which pawn attack to epsq can be done
-                        s = Long.numberOfTrailingZeros(b1);
-                        b1 = Bitboard.extractLsb(b1);
+                    long pawnAttacks = pawnAttacks(enPassantSquare, them) & bitboardOf(us, PieceType.PAWN);
+                    // pawnAttacks holds pawns that can perform an en passant capture
+                    long nonPinnedPawnAttacks = pawnAttacks & notPinned;
+                    while (nonPinnedPawnAttacks != 0) {
+                        // 'pawnAttackSquare' holds the square from which a pawn attack to the en passant square can be done
+                        int pawnAttackSquare = Long.numberOfTrailingZeros(nonPinnedPawnAttacks);
+                        nonPinnedPawnAttacks = Bitboard.extractLsb(nonPinnedPawnAttacks);
 
                         long themWoEp = themBb ^ (us == Side.WHITE ? enPassant >>> 8 : enPassant << 8);
-                        long usBbEpMove = usBb ^ 1L << s ^ 1L << enPassantSquare;
-                        candidates = (getRookAttacks(ourKing, themWoEp | usBbEpMove) & theirRooksAndQueens)
+                        long usBbEpMove = usBb ^ 1L << pawnAttackSquare ^ 1L << enPassantSquare;
+                        long kingAttackersAfterEp = (getRookAttacks(ourKing, themWoEp | usBbEpMove) & theirRooksAndQueens)
                                 | (getBishopAttacks(ourKing, themWoEp | usBbEpMove) & theirBishopsAndQueens);
 
-                        if (candidates == 0)
-                            moves.add(new Move(s, enPassantSquare, Move.EN_PASSANT));
+                        if (kingAttackersAfterEp == 0)
+                            // allow EP take, only when not uncovering our king
+                            moves.add(new Move(pawnAttackSquare, enPassantSquare, Move.EN_PASSANT));
                     }
                 }
-
+                
+                // castling moves
                 if (!onlyQuiescence) {
-                    if (0 == ((this.movements & Bitboard.castlingPiecesKingsideMask(us)) | ((all | attacksOnKing) & Bitboard.castlingBlockersKingsideMask(us))))
+                    if (0 == ((this.movements & Bitboard.castlingPiecesKingsideMask(us)) | ((all | underAttack) & Bitboard.castlingBlockersKingsideMask(us))))
                         moves.add(us == Side.WHITE ? new Move(E1, G1, Move.OO) : new Move(E8, G8, Move.OO));
 
                     if (0 == ((this.movements & Bitboard.castlingPiecesQueensideMask(us)) |
-                            ((all | (attacksOnKing & ~ignoreOOODanger(us))) & Bitboard.castlingBlockersQueensideMask(us))))
+                            ((all | (underAttack & ~ignoreOOODanger(us))) & Bitboard.castlingBlockersQueensideMask(us))))
                         moves.add(us == Side.WHITE ? new Move(E1, C1, Move.OOO) : new Move(E8, C8, Move.OOO));
                 }
 
                 // For each pinned rook, bishop, or queen...
-                b1 = ~(notPinned | bitboardOf(us, PieceType.KNIGHT));
-                while (b1 != 0){
-                    s = Long.numberOfTrailingZeros(b1);
-                    b1 = Bitboard.extractLsb(b1);
+                long pinnedRookBishopQueen = ~(notPinned | bitboardOf(us, PieceType.KNIGHT));
+                while (pinnedRookBishopQueen != 0) {
+                    int square = Long.numberOfTrailingZeros(pinnedRookBishopQueen);
+                    pinnedRookBishopQueen = Bitboard.extractLsb(pinnedRookBishopQueen);
 
-                    b2 = attacks(Piece.typeOf(items[s]), s, all) & line(ourKing, s);
+                    long attacksToKing = attacks(Piece.typeOf(items[square]), square, all) & line(ourKing, square);
                     if (!onlyQuiescence) {
-                        moves.makeQ(s, b2 & quietMask);
+                        moves.makeQ(square, attacksToKing & quietMask);
                     }
-                    moves.makeC(s, b2 & captureMask);
+                    moves.makeC(square, attacksToKing & captureMask);
                 }
 
                 // for each pinned pawn
-                b1 = ~notPinned & bitboardOf(us, PieceType.PAWN);
-                while (b1 != 0){
-                    s = Long.numberOfTrailingZeros(b1);
-                    b1 = Bitboard.extractLsb(b1);
+                long pinnedPawn = ~notPinned & bitboardOf(us, PieceType.PAWN);
+                while (pinnedPawn != 0) {
+                    int square = Long.numberOfTrailingZeros(pinnedPawn);
+                    pinnedPawn = Bitboard.extractLsb(pinnedPawn);
 
-                    if (((1L << s) & PAWN_FINAL_RANKS) != 0L) {
-                        b2 = pawnAttacks(s, us) & captureMask & line(ourKing, s);
-                        moves.makePC(s, b2);
-                    }
-                    else{
-                        b2 = pawnAttacks(s, us) & themBb & line(s, ourKing);
-                        moves.makeC(s, b2);
+                    if (((1L << square) & PAWN_FINAL_RANKS) != 0L) {
+                        long pawnCaptures = pawnAttacks(square, us) & captureMask & line(ourKing, square);
+                        moves.makePC(square, pawnCaptures);
+                    } else {
+                        long pawnCaptures = pawnAttacks(square, us) & themBb & line(square, ourKing);
+                        moves.makeC(square, pawnCaptures);
 
                         if (!onlyQuiescence) {
-                            //single pawn pushes
-                            b2 = Bitboard.push(1L << s, us) & ~all & line(ourKing, s);
-                            b3 = Bitboard.push(b2 & PAWN_DOUBLE_PUSH_LINES[us], us) & ~all & line(ourKing, s);
+                            // Single pawn pushes
+                            long singlePush = Bitboard.push(1L << square, us) & ~all & line(ourKing, square);
+                            long doublePush = Bitboard.push(singlePush & PAWN_DOUBLE_PUSH_LINES[us], us) & ~all & line(ourKing, square);
 
-                            moves.makeQ(s, b2);
-                            moves.makeDP(s, b3);
+                            moves.makeQ(square, singlePush);
+                            moves.makeDP(square, doublePush);
                         }
                     }
                 }
@@ -733,74 +757,72 @@ public class BoardState implements Cloneable {
                     }
                 };
 
-        // Use the lambda function
+        // Generate attacks for our knights, bishops, rooks and queens
         generateMovesForPieceLambda.accept(bitboardOf(us, PieceType.KNIGHT) & notPinned, Bitboard::getKnightAttacks);
         generateMovesForPieceLambda.accept(ourBishopsAndQueens & notPinned, sq -> getBishopAttacks(sq, all));
         generateMovesForPieceLambda.accept(ourRooksAndQueens & notPinned, sq -> getRookAttacks(sq, all));
 
-        
-
-        b1 = bitboardOf(us, PieceType.PAWN) & notPinned & ~PAWN_RANKS[us];
+        long pawnBitboard = bitboardOf(us, PieceType.PAWN) & notPinned & ~PAWN_RANKS[us];
 
         if (!onlyQuiescence) {
-            // single pawn pushes
-            b2 = (us == Side.WHITE ? b1 << 8 : b1 >>> 8) & ~all;
+            // Single pawn pushes
+            long singlePushTargets = (us == Side.WHITE) ? pawnBitboard << 8 : pawnBitboard >>> 8;
+            singlePushTargets &= ~all;
 
-            //double pawn pushes
-            b3 = Bitboard.push(b2 & PAWN_DOUBLE_PUSH_LINES[us], us) & quietMask;
+            // Double pawn pushes
+            long doublePushTargets = Bitboard.push(singlePushTargets & PAWN_DOUBLE_PUSH_LINES[us], us) & quietMask;
+            singlePushTargets &= quietMask;
 
-            b2 &= quietMask;
-
-            while (b2 != 0) {
-                s = Long.numberOfTrailingZeros(b2);
-                b2 = Bitboard.extractLsb(b2);
-                moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.QUIET));
+            while (singlePushTargets != 0) {
+                int square = Long.numberOfTrailingZeros(singlePushTargets);
+                singlePushTargets = Bitboard.extractLsb(singlePushTargets);
+                moves.add(new Move(square - Square.direction(FORWARD, us), square, Move.QUIET));
             }
 
-            while (b3 != 0) {
-                s = Long.numberOfTrailingZeros(b3);
-                b3 = Bitboard.extractLsb(b3);
-                moves.add(new Move(s - Square.direction(DOUBLE_FORWARD, us), s, Move.DOUBLE_PUSH));
+            while (doublePushTargets != 0) {
+                int square = Long.numberOfTrailingZeros(doublePushTargets);
+                doublePushTargets = Bitboard.extractLsb(doublePushTargets);
+                moves.add(new Move(square - Square.direction(DOUBLE_FORWARD, us), square, Move.DOUBLE_PUSH));
             }
         }
 
-        b2 = (us == Side.WHITE ? whiteLeftPawnAttacks(b1) : blackRightPawnAttacks(b1)) & captureMask;
-        b3 = (us == Side.WHITE ? whiteRightPawnAttacks(b1) : blackLeftPawnAttacks(b1)) & captureMask;
-
-
-        while (b2 != 0){
-            s = Long.numberOfTrailingZeros(b2);
-            b2 = Bitboard.extractLsb(b2);
+        long leftPawnAttacks = ((us == Side.WHITE) ? whiteLeftPawnAttacks(pawnBitboard) : blackRightPawnAttacks(pawnBitboard)) & captureMask;
+        long rightPawnAttacks = ((us == Side.WHITE) ? whiteRightPawnAttacks(pawnBitboard) : blackLeftPawnAttacks(pawnBitboard)) & captureMask;
+        
+        
+        while (leftPawnAttacks != 0){
+            int s = Long.numberOfTrailingZeros(leftPawnAttacks);
+            leftPawnAttacks = Bitboard.extractLsb(leftPawnAttacks);
             moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.CAPTURE));
         }
 
-        while (b3 != 0){
-            s = Long.numberOfTrailingZeros(b3);
-            b3 = Bitboard.extractLsb(b3);
+        while (rightPawnAttacks != 0){
+            int s = Long.numberOfTrailingZeros(rightPawnAttacks);
+            rightPawnAttacks = Bitboard.extractLsb(rightPawnAttacks);
             moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.CAPTURE));
         }
 
-        b1 = bitboardOf(us, PieceType.PAWN) & notPinned & PAWN_RANKS[us];
-        if (b1 != 0){
+        pawnBitboard = bitboardOf(us, PieceType.PAWN) & notPinned & PAWN_RANKS[us];
+        if (pawnBitboard != 0) {
             if (!onlyQuiescence) {
-                b2 = (us == Side.WHITE ? b1 << 8 : b1 >>> 8) & quietMask;
-                while (b2 != 0) {
-                    s = Long.numberOfTrailingZeros(b2);
-                    b2 = Bitboard.extractLsb(b2);
-
-                    moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.PR_QUEEN));
-                    moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.PR_ROOK));
-                    moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.PR_KNIGHT));
-                    moves.add(new Move(s - Square.direction(FORWARD, us), s, Move.PR_BISHOP));
+                long singlePushTargets = (us == Side.WHITE) ? pawnBitboard << 8 : pawnBitboard >>> 8;
+                singlePushTargets &= quietMask;
+                while (singlePushTargets != 0) {
+                    int square = Long.numberOfTrailingZeros(singlePushTargets);
+                    singlePushTargets = Bitboard.extractLsb(singlePushTargets);
+                    moves.add(new Move(square - Square.direction(FORWARD, us), square, Move.PR_QUEEN));
+                    moves.add(new Move(square - Square.direction(FORWARD, us), square, Move.PR_ROOK));
+                    moves.add(new Move(square - Square.direction(FORWARD, us), square, Move.PR_KNIGHT));
+                    moves.add(new Move(square - Square.direction(FORWARD, us), square, Move.PR_BISHOP));
                 }
             }
 
-            b2 = (us == Side.WHITE ? whiteLeftPawnAttacks(b1) : blackRightPawnAttacks(b1)) & captureMask;
-            b3 = (us == Side.WHITE ? whiteRightPawnAttacks(b1) : blackLeftPawnAttacks(b1)) & captureMask;
+            leftPawnAttacks = ((us == Side.WHITE) ? whiteLeftPawnAttacks(pawnBitboard) : blackRightPawnAttacks(pawnBitboard)) & captureMask;
+            rightPawnAttacks = ((us == Side.WHITE) ? whiteRightPawnAttacks(pawnBitboard) : blackLeftPawnAttacks(pawnBitboard)) & captureMask;
 
-            while (b2 != 0){
-                s = Long.numberOfTrailingZeros(b2);
-                b2 = Bitboard.extractLsb(b2);
+            while (leftPawnAttacks != 0){
+                int s = Long.numberOfTrailingZeros(leftPawnAttacks);
+                leftPawnAttacks = Bitboard.extractLsb(leftPawnAttacks);
 
                 moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.PC_QUEEN));
                 moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.PC_ROOK));
@@ -808,9 +830,9 @@ public class BoardState implements Cloneable {
                 moves.add(new Move(s - Square.direction(FORWARD_LEFT, us), s, Move.PC_BISHOP));
             }
 
-            while (b3 != 0){
-                s = Long.numberOfTrailingZeros(b3);
-                b3 = Bitboard.extractLsb(b3);
+            while (rightPawnAttacks != 0){
+                int s = Long.numberOfTrailingZeros(rightPawnAttacks);
+                rightPawnAttacks = Bitboard.extractLsb(rightPawnAttacks);
 
                 moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.PC_QUEEN));
                 moves.add(new Move(s - Square.direction(FORWARD_RIGHT, us), s, Move.PC_ROOK));
@@ -823,7 +845,7 @@ public class BoardState implements Cloneable {
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         StringBuilder result = new StringBuilder(CHESSBOARD_LINE);
         for (int i = 56; i >= 0; i -= 8){
             for (int j = 0; j < 8; j++){
@@ -844,40 +866,40 @@ public class BoardState implements Cloneable {
         }
     }
 
-    public BoardState forSearchDepth(int searchDepth) {
+    public final BoardState forSearchDepth(int searchDepth) {
         BoardState result = this.clone();
         result.history = new int[searchDepth];
         result.ply = 0;
         return result;
     }
 
-    public String toFen() {
+    public final String toFen() {
         return Fen.toFen(this);
     }
 
-    public int mg() {
+    public final int mg() {
         return mg;
     }
 
-    public int eg() {
+    public final int eg() {
         return eg;
     }
 
-    public int interpolatedScore() {
+    public final int interpolatedScore() {
         int phase = (this.phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE;
         return (this.mg() * (256 - phase) + this.eg() * phase) / 256;
     }
 
-    public boolean isInCheck() {
+    public final boolean isInCheck() {
         this.generateLegalMoves();
         return this.checkers != 0L;
     }
 
-    public boolean isInCheckMate() {
+    public final boolean isInCheckMate() {
         return this.generateLegalMoves().size() == 0;
     }
 
-    public boolean isCapture(String move) {
+    public final boolean isCapture(String move) {
         Move parsedMove = Move.fromUciString(move, this);
         return this.pieceAt(parsedMove.to()) != Piece.NONE;
     }
@@ -889,7 +911,7 @@ public class BoardState implements Cloneable {
      * @param side perspective of score, starting move
      * @return score in basic material values, the higher, the better, no matter if white or black
      */
-    public ScoreOutcome seeScore(int square, int side) {
+    public final ScoreOutcome seeScore(int square, int side) {
         int processedSide = side;
         int score = 0;
         int piecesTaken = 0;
@@ -928,7 +950,7 @@ public class BoardState implements Cloneable {
         return new ScoreOutcome(-score * Side.multiplicator(side), piecesTaken);
     }
 
-    private int getBasicMaterialValue(int square) {
+    private final int getBasicMaterialValue(int square) {
         int piece = pieceAt(square);
         return BASIC_MATERIAL_VALUE[Piece.typeOf(piece)] * (Piece.sideOf(piece) == Side.WHITE ? 1 : -1);
     }
@@ -937,7 +959,7 @@ public class BoardState implements Cloneable {
      * @param side attacked side
      * @return attacked pieces
      */
-    public long attackedPiecesUnderdefended(int side) {
+    public final long attackedPiecesUnderdefended(int side) {
         int sideThem = Side.flip(side);
 
         long attackedPieces = this.attackedPieces(side);
@@ -960,7 +982,7 @@ public class BoardState implements Cloneable {
      * @param attackedSide attacked side
      * @return pinned pieces
      */
-    public long pinnedPieces(int attackerSquare, int attackedSide) {
+    public final long pinnedPieces(int attackerSquare, int attackedSide) {
         final int pieceType = this.pieceTypeAt(attackerSquare);
         final int us = Side.flip(attackedSide);
         final int them = attackedSide;

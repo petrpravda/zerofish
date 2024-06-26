@@ -5,6 +5,7 @@ import org.javafish.board.BoardState;
 import org.javafish.board.Square;
 import org.javafish.move.Move;
 import org.javafish.board.PieceType;
+import org.javafish.move.MoveList;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +38,7 @@ public class UciMoves {
     }
 
     private String oneUciToSan(String uciMove) {
-        List<Move> uciMoves = state.generateLegalMoves();
+        MoveList uciMoves = state.generateLegalMoves();
         Optional<Move> moveCheating = uciMoves.stream()
                 .filter(move -> move.toString().equals(uciMove))
                 .findFirst();
@@ -144,7 +145,7 @@ public class UciMoves {
 
         this.state = state.doMove(move);
 
-        List<Move> legalMovesForOpponent = state.generateLegalMoves();
+        MoveList legalMovesForOpponent = state.generateLegalMoves();
 
         if (legalMovesForOpponent.size() == 0 && checking) {
             // we need to be sure that it is the checkmate, therefore "checking"

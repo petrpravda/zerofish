@@ -3,6 +3,7 @@ package org.javafish.pgn;
 import org.javafish.board.*;
 import org.javafish.move.Move;
 import org.javafish.board.PieceType;
+import org.javafish.move.MoveList;
 
 import java.util.List;
 import java.util.Optional;
@@ -108,7 +109,7 @@ public class PgnMoves {
         final Character fromFileFinal = fromFile;
         final Character fromRankFinal = fromRank;
         final Integer promotionPieceFinal = promotionPiece;
-        List<Move> uciMoves = state.generateLegalMoves();
+        MoveList uciMoves = state.generateLegalMoves();
         List<Move> matchingMoves = uciMoves.stream()
                 .filter(move -> move.to() == destinationNumber)
                 .filter(move -> move.isPromotion() ? move.getPieceType() == promotionPieceFinal :

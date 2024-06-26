@@ -1,0 +1,6 @@
+refactor to java21 performMove
+
+omezit
+    public final Stream<T> stream() {
+    public final Iterator<T> iterator() {
+    public final void forEach(Consumer<? super T> action) {
