@@ -125,7 +125,7 @@ public class Fen {
                         }
                 )
                 .toArray();
-        
+
         long entry = 0L;
         String castlingFlags = fenParts.get(2);
         if (!castlingFlags.contains("K") || items[WHITE_KING_INITIAL_SQUARE] != Piece.WHITE_KING
@@ -151,8 +151,8 @@ public class Fen {
         // EnumColor side_to_play = fenParts.get(1).equalsIgnoreCase("w") ? EnumColor.WHITE : EnumColor.BLACK;
         int side_to_play = fenParts.get(1).equalsIgnoreCase("w") ? Side.WHITE : Side.BLACK;
 
-        return new BoardState(items, side_to_play, entry, enPassantMask, Integer.parseInt(halfMoveClock), Integer.parseInt(fullMoveCount),
-                Optional.ofNullable(maxSearchDepth).orElse(MAX_SEARCH_DEPTH));
+        return new BoardState(items, side_to_play, entry, enPassantMask, Integer.parseInt(halfMoveClock), Integer.parseInt(fullMoveCount)/*,
+                Optional.ofNullable(maxSearchDepth).orElse(MAX_SEARCH_DEPTH)*/);
     }
 
 //    private static String validateCastlingFlags(int[] items, int rookSquare, int rookPieceValue, int kingSquare, int kingPieceValue, String code, String castlingFlags) {

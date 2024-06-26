@@ -54,8 +54,6 @@ public class BoardState implements Cloneable {
     public static int TOTAL_PHASE = 24;
     public static int[] PIECE_PHASES = {0, 1, 1, 2, 4, 0};
 
-    public int ply;
-    private int[] history;
     private long[] piece_bb = new long[Piece.PIECES_COUNT];
     public int[] items = new int[64];
     private int sideToPlay;
@@ -71,7 +69,7 @@ public class BoardState implements Cloneable {
     public long movements;
     public long enPassant;
 
-    public BoardState(int[] items, int sideToPlay, long movements, long enPassantMask, int halfMoveClock, int fullMoveCount, int maxSearchDepth) {
+    public BoardState(int[] items, int sideToPlay, long movements, long enPassantMask, int halfMoveClock, int fullMoveCount) {
         for (int i = 0; i < 64; i++) {
             int item = items[i];
             if (item != Piece.NONE) {
@@ -95,8 +93,6 @@ public class BoardState implements Cloneable {
 
         this.halfMoveClock = halfMoveClock;
         this.fullMoveNormalized = (fullMoveCount - 1) * 2 + (sideToPlay == Side.WHITE ? 0 : 1);
-        this.history = new int[maxSearchDepth];
-        this.ply = 0;
     }
 
     public static BoardState fromFen(String fen) {
@@ -113,7 +109,6 @@ public class BoardState implements Cloneable {
             BoardState result = (BoardState) super.clone();
             result.piece_bb = this.piece_bb.clone();
             result.items = this.items.clone();
-            result.history = this.history.clone();
             return result;
         } catch (CloneNotSupportedException e) {
             throw new IllegalStateException(e);
@@ -265,69 +260,62 @@ public class BoardState implements Cloneable {
 
 
     public static BoardState performMove(Move move, BoardState oldBoardState) {
-        BoardState state = oldBoardState.clone();
+        var state = oldBoardState.clone();
 
-        state.fullMoveNormalized += 1;
-        state.halfMoveClock += 1;
-        state.history[state.ply++] = move.bits();
+        state.fullMoveNormalized++;
+        state.halfMoveClock++;
         state.movements |= (1L << move.to() | 1L << move.from());
 
-        if (Piece.typeOf(state.items[move.from()]) == PieceType.PAWN)
+        if (Piece.typeOf(state.items[move.from()]) == PieceType.PAWN) {
             state.halfMoveClock = 0;
+        }
 
         state.clearEnPassant();
 
-        switch (move.flags()){
-            case Move.QUIET:
-                state.movePieceQuiet(move.from(), move.to());
-                break;
-            case Move.DOUBLE_PUSH:
+        switch (move.flags()) {
+            case Move.QUIET -> state.movePieceQuiet(move.from(), move.to());
+            case Move.DOUBLE_PUSH -> {
                 state.movePieceQuiet(move.from(), move.to());
                 state.enPassant = 1L << (move.from() + Square.direction(FORWARD, state.sideToPlay));
-                state.hash ^= Zobrist.EN_PASSANT[(Bitboard.lsb(state.enPassant) & 0b111)];
-                break;
-            case Move.OO:
-                if (state.sideToPlay == Side.WHITE){
+                state.hash ^= Zobrist.EN_PASSANT[Bitboard.lsb(state.enPassant) & 0b111];
+            }
+            case Move.OO -> {
+                if (state.sideToPlay == Side.WHITE) {
                     state.movePieceQuiet(E1, G1);
                     state.movePieceQuiet(H1, F1);
                 } else {
                     state.movePieceQuiet(E8, G8);
                     state.movePieceQuiet(H8, F8);
                 }
-                break;
-            case Move.OOO:
-                if (state.sideToPlay == Side.WHITE){
+            }
+            case Move.OOO -> {
+                if (state.sideToPlay == Side.WHITE) {
                     state.movePieceQuiet(E1, C1);
                     state.movePieceQuiet(A1, D1);
                 } else {
                     state.movePieceQuiet(E8, C8);
                     state.movePieceQuiet(A8, D8);
                 }
-                break;
-            case Move.EN_PASSANT:
+            }
+            case Move.EN_PASSANT -> {
                 state.movePieceQuiet(move.from(), move.to());
                 state.removePiece(move.to() + Square.direction(BACK, state.sideToPlay));
-                break;
-            case Move.PR_KNIGHT:
-            case Move.PR_BISHOP:
-            case Move.PR_ROOK:
-            case Move.PR_QUEEN:
+            }
+            case Move.PR_KNIGHT, Move.PR_BISHOP, Move.PR_ROOK, Move.PR_QUEEN -> {
                 state.removePiece(move.from());
                 state.setPieceAt(Piece.makePiece(state.sideToPlay, move.getPieceType()), move.to());
-                break;
-            case Move.PC_KNIGHT:
-            case Move.PC_BISHOP:
-            case Move.PC_ROOK:
-            case Move.PC_QUEEN:
+            }
+            case Move.PC_KNIGHT, Move.PC_BISHOP, Move.PC_ROOK, Move.PC_QUEEN -> {
                 state.removePiece(move.from());
                 state.removePiece(move.to());
                 state.setPieceAt(Piece.makePiece(state.sideToPlay, move.getPieceType()), move.to());
-                break;
-            case Move.CAPTURE:
+            }
+            case Move.CAPTURE -> {
                 state.halfMoveClock = 0;
                 state.movePiece(move.from(), move.to());
-                break;
+            }
         }
+
         state.sideToPlay = Side.flip(state.sideToPlay);
         state.hash ^= Zobrist.SIDE;
 
@@ -478,26 +466,21 @@ public class BoardState implements Cloneable {
 //        return true;
 //    }
 //
-    public final boolean isRepetitionOrFifty(/*BoardPosition position*/){
-        if (this.ply < 1) {
-            return false;
-        }
-        final long lastMoveBits = /*this.ply > 0 ?*/ this.history[this.ply - 1]; // : position.history[position.historyIndex - 1];
-        int count = 0;
-        int index = this.ply - 1;
-        while (index >= 0) {
-            if (this.history[index--] == lastMoveBits) {
-                count++;
-            }
-        }
-//        index = position.historyIndex - 1;
+//    public final boolean isRepetitionOrFifty(/*BoardPosition position*/){
+//        return false;
+//        if (this.ply < 1) {
+//            return false;
+//        }
+//        final long lastMoveBits = /*this.ply > 0 ?*/ this.history[this.ply - 1]; // : position.history[position.historyIndex - 1];
+//        int count = 0;
+//        int index = this.ply - 1;
 //        while (index >= 0) {
-//            if (position.history[index--] == lastMoveBits) {
+//            if (this.history[index--] == lastMoveBits) {
 //                count++;
 //            }
 //        }
-        return count > 2 || this.halfMoveClock >= 100;
-    }
+//        return count > 2 || this.halfMoveClock >= 100;
+//    }
 
     public final boolean hasNonPawnMaterial(int side) {
         int start = Piece.makePiece(side, PieceType.KNIGHT);
@@ -551,42 +534,42 @@ public class BoardState implements Cloneable {
         final long ourRooksAndQueens = orthogonalSliders(us);
         final long theirRooksAndQueens = orthogonalSliders(them);
 
-        final long underAttack = pawnAttacks(bitboardOf(them, PieceType.PAWN), them) | getKingAttacks(theirKing)
-            | calculateAttacks(bitboardOf(them, PieceType.KNIGHT), Bitboard::getKnightAttacks)
-            | calculateAttacks(theirBishopsAndQueens, index -> getBishopAttacks(index, all ^ ourKingBb))
-            | calculateAttacks(theirRooksAndQueens, index -> getRookAttacks(index, all ^ ourKingBb));
-        final long kingAttacks = getKingAttacks(ourKing) & ~(usBb | underAttack);
+//        final long underAttack = pawnAttacks(bitboardOf(them, PieceType.PAWN), them) | getKingAttacks(theirKing)
+//            | calculateAttacks(bitboardOf(them, PieceType.KNIGHT), Bitboard::getKnightAttacks)
+//            | calculateAttacks(theirBishopsAndQueens, index -> getBishopAttacks(index, all ^ ourKingBb))
+//            | calculateAttacks(theirRooksAndQueens, index -> getRookAttacks(index, all ^ ourKingBb));
+//        final long kingAttacks = getKingAttacks(ourKing) & ~(usBb | underAttack);
+//
+//        moves.makeQ(ourKing, kingAttacks & ~themBb);
+//        moves.makeC(ourKing, kingAttacks & themBb);
 
-        moves.makeQ(ourKing, kingAttacks & ~themBb);
-        moves.makeC(ourKing, kingAttacks & themBb);
+        // Squares that the king can't move to
+        long underAttack = 0;
+        underAttack |= pawnAttacks(bitboardOf(them, PieceType.PAWN), them) | getKingAttacks(theirKing);
 
-//        // Squares that the king can't move to
-//        long underAttack = 0;
-//        underAttack |= pawnAttacks(bitboardOf(them, PieceType.PAWN), them) | getKingAttacks(theirKing);
-//
-//        b1 = bitboardOf(them, PieceType.KNIGHT);
-//        while (b1 != 0){
-//            underAttack |= getKnightAttacks(Long.numberOfTrailingZeros(b1));
-//            b1 = Bitboard.extractLsb(b1);
-//        }
-//
-//
-//        b1 = theirBishopsAndQueens;
-//        while (b1 != 0){
-//            underAttack |= getBishopAttacks(Long.numberOfTrailingZeros(b1), all ^ 1L << ourKing);
-//            b1 = Bitboard.extractLsb(b1);
-//        }
-//
-//        b1 = theirRooksAndQueens;
-//        while (b1 != 0){
-//            underAttack |= getRookAttacks(Long.numberOfTrailingZeros(b1), all ^ 1L << ourKing);
-//            b1 = Bitboard.extractLsb(b1);
-//        }
-//
-//        b1 = getKingAttacks(ourKing) & ~(usBb | underAttack);
-//
-//        moves.makeQ(ourKing, b1 & ~themBb);
-//        moves.makeC(ourKing, b1 & themBb);
+        long b1 = bitboardOf(them, PieceType.KNIGHT);
+        while (b1 != 0){
+            underAttack |= getKnightAttacks(Long.numberOfTrailingZeros(b1));
+            b1 = Bitboard.extractLsb(b1);
+        }
+
+
+        b1 = theirBishopsAndQueens;
+        while (b1 != 0){
+            underAttack |= getBishopAttacks(Long.numberOfTrailingZeros(b1), all ^ 1L << ourKing);
+            b1 = Bitboard.extractLsb(b1);
+        }
+
+        b1 = theirRooksAndQueens;
+        while (b1 != 0){
+            underAttack |= getRookAttacks(Long.numberOfTrailingZeros(b1), all ^ 1L << ourKing);
+            b1 = Bitboard.extractLsb(b1);
+        }
+
+        b1 = getKingAttacks(ourKing) & ~(usBb | underAttack);
+
+        moves.makeQ(ourKing, b1 & ~themBb);
+        moves.makeC(ourKing, b1 & themBb);
 
 
 
@@ -690,7 +673,7 @@ public class BoardState implements Cloneable {
                             moves.add(new Move(pawnAttackSquare, enPassantSquare, Move.EN_PASSANT));
                     }
                 }
-                
+
                 // castling moves
                 if (!onlyQuiescence) {
                     if (0 == ((this.movements & Bitboard.castlingPiecesKingsideMask(us)) | ((all | underAttack) & Bitboard.castlingBlockersKingsideMask(us))))
@@ -788,8 +771,8 @@ public class BoardState implements Cloneable {
 
         long leftPawnAttacks = ((us == Side.WHITE) ? whiteLeftPawnAttacks(pawnBitboard) : blackRightPawnAttacks(pawnBitboard)) & captureMask;
         long rightPawnAttacks = ((us == Side.WHITE) ? whiteRightPawnAttacks(pawnBitboard) : blackLeftPawnAttacks(pawnBitboard)) & captureMask;
-        
-        
+
+
         while (leftPawnAttacks != 0){
             int s = Long.numberOfTrailingZeros(leftPawnAttacks);
             leftPawnAttacks = Bitboard.extractLsb(leftPawnAttacks);
@@ -866,12 +849,12 @@ public class BoardState implements Cloneable {
         }
     }
 
-    public final BoardState forSearchDepth(int searchDepth) {
-        BoardState result = this.clone();
-        result.history = new int[searchDepth];
-        result.ply = 0;
-        return result;
-    }
+//    public final BoardState forSearchDepth(int searchDepth) { // TODO vyhodit
+//        BoardState result = this.clone();
+////        result.history = new int[searchDepth];
+////        result.ply = 0;
+//        return result;
+//    }
 
     public final String toFen() {
         return Fen.toFen(this);
@@ -930,7 +913,7 @@ public class BoardState implements Cloneable {
                     .stream()
                     .filter(m -> m.from() == attacker && m.to() == square)
                     .toList();
-            if (possibleMoves.size() == 0) {
+            if (possibleMoves.isEmpty()) {
                 break;
             }
             // for promotion, Q move is always first, only this move is considered

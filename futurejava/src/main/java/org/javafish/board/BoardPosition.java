@@ -21,7 +21,6 @@ public final class BoardPosition {
     public BoardState doMove(Move move) {
         this.state = this.state.doMove(move);
         this.history[this.historyIndex++] = move.bits();
-        this.state.ply = 0;
         return this.state;
     }
 
@@ -31,11 +30,11 @@ public final class BoardPosition {
         return doMove(move);
     }
 
-    public BoardPosition forSearchDepth(int searchDepth) {
-        BoardPosition result = new BoardPosition();
-        result.state = this.state.forSearchDepth(searchDepth);
-        result.historyIndex = this.historyIndex;
-        result.history = this.history.clone();
-        return result;
-    }
+//    public BoardPosition forSearchDepth(int searchDepth) {
+//        BoardPosition result = new BoardPosition();
+//        result.state = this.state.forSearchDepth(searchDepth);
+//        result.historyIndex = this.historyIndex;
+//        result.history = this.history.clone();
+//        return result;
+//    }
 }

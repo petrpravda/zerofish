@@ -1,6 +1,41 @@
-refactor to java21 performMove
+
+history vs. isRepetitionOrFifty
+/*if (state.isRepetitionOrFifty()) {
+
+/opt/zulu22.30.13-ca-jdk22.0.1-linux_x64/bin/java -XX:MaxInlineSize=0 -cp target/classes org.javafish.app.Benchmark
 
 omezit
     public final Stream<T> stream() {
     public final Iterator<T> iterator() {
     public final void forEach(Consumer<? super T> action) {
+
+
+
+
+
+
+
+
+
+
+
+/opt/zulu22.30.13-ca-jdk22.0.1-linux_x64/bin/java \
+    -XX:MaxInlineSize=2000 \
+    -XX:FreqInlineSize=2000 \
+    -XX:InlineSmallCode=2000 \
+    -XX:+PrintCompilation \
+    -XX:+UnlockDiagnosticVMOptions \
+    -XX:+PrintInlining \
+    -cp target/classes org.javafish.app.Benchmark
+
+
+
+/opt/zulu22.30.13-ca-jdk22.0.1-linux_x64/bin/java \
+    -XX:MaxInlineSize=2000 \
+    -XX:FreqInlineSize=2000 \
+    -XX:InlineSmallCode=2000 \
+    -cp target/classes org.javafish.app.Benchmark
+
+/opt/zulu22.30.13-ca-jdk22.0.1-linux_x64/bin/java \
+    -XX:MaxInlineSize=0 \
+    -cp target/classes org.javafish.app.Benchmark
