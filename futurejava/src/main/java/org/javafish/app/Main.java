@@ -2,9 +2,11 @@ package org.javafish.app;
 
 
 import org.javafish.uci.Engine;
-import org.javafish.uci.HalfParsedCommand;
+import org.javafish.uci.UciLambdaCommand;
 import org.javafish.uci.UciRepl;
 
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,7 +28,7 @@ public class Main {
 
         ExecutorService searchExecutor = Executors.newSingleThreadExecutor();
 
-        PriorityBlockingQueue<HalfParsedCommand> queue = new PriorityBlockingQueue<>();
+        BlockingQueue<UciLambdaCommand> queue = new ArrayBlockingQueue<>(12);
         Future<?> executorTask = searchExecutor.submit(() -> {
             try {
                 new Engine(queue, args).mainLoop();

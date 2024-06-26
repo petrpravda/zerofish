@@ -1,22 +1,23 @@
 package org.javafish.uci;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Engine {
     private static final Logger LOGGER = Logger.getLogger(String.valueOf(UciRepl.class));
-
+    public static volatile boolean QUIT_REQUESTED = false;
     private UciCommands uciCommandsInstance = new UciCommands();
 
     public static final String POSITION_FEN = "position fen";
     private static final String STARTPOS_MOVES = "startpos moves ";
     private static final int TT_SIZE_MB = 100;
 
-    private final PriorityBlockingQueue<HalfParsedCommand> queue;
+    private final BlockingQueue<UciLambdaCommand> queue;
     private String[] args;
 
-    public Engine(PriorityBlockingQueue<HalfParsedCommand> queue, String[] args) {
+    public Engine(BlockingQueue<UciLambdaCommand> queue, String[] args) {
         this.queue = queue;
         this.args = args;
     }
@@ -38,11 +39,11 @@ public class Engine {
 
             //noinspection InfiniteLoopStatement
             while (true) {
-                HalfParsedCommand command = queue.take();
+                UciLambdaCommand command = queue.take();
                 //System.out.printf("Executing %s\n", command.getClass().getSimpleName());
-                command.execute(uciCommandsInstance);
+                command.execute();
 
-                if (command.isQuitting()) {
+                if (QUIT_REQUESTED) {
                     break;
                 }
                 //System.out.printf("Execution of %s finished\n", command.getClass().getSimpleName());

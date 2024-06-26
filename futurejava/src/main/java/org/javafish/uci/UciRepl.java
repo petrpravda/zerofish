@@ -4,6 +4,7 @@ package org.javafish.uci;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.logging.Logger;
 
@@ -11,9 +12,10 @@ import java.util.logging.Logger;
 public class UciRepl {
     private static final Logger LOGGER = Logger.getLogger(String.valueOf(UciRepl.class));
 
-    private final PriorityBlockingQueue<HalfParsedCommand> queue;
+    private final UciProcessor uciProcessor = new UciProcessor();
+    private final BlockingQueue<UciLambdaCommand> queue;
 
-    public UciRepl(PriorityBlockingQueue<HalfParsedCommand> queue) {
+    public UciRepl(BlockingQueue<UciLambdaCommand> queue) {
         this.queue = queue;
     }
 
@@ -21,21 +23,21 @@ public class UciRepl {
         Scanner sc = new Scanner(System.in);
         while (sc.hasNextLine()) {
             String line = sc.nextLine();
-            Optional<HalfParsedCommand> command = UciProcessor.matchCommand(line);
+            Optional<UciLambdaCommand> command = uciProcessor.matchCommand(line);
 
             if (command.isPresent()) {
-                HalfParsedCommand cmd = command.get();
-                LOGGER.info(String.format("processing: %s %s", cmd.metaInfo().method(), String.join(" ", List.of(command.get().tokens()))));
-                queue.add(command.get());
+                UciLambdaCommand cmd = command.get();
+                // LOGGER.info(String.format("processing: %s %s", cmd.metaInfo().method(), String.join(" ", List.of(command.get().tokens()))));
+                queue.add(cmd);
 
-                if (command.get().isQuitting()) {
-                    System.out.println("bye");
-                    break;
-                }
+//                if (command.get().isQuitting()) {
+//                    System.out.println("bye");
+//                    break;
+//                }
             }
         }
 
         // CTLR + D handling
-        queue.add(UciProcessor.makeQuitCommand());
+        queue.add(uciProcessor.makeQuitCommand());
     }
 }
