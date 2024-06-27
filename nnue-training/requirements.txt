@@ -1,0 +1,6 @@
+chess
+numpy
+
+-f https://download.pytorch.org/whl/cpu
+torch==2.3.1
+

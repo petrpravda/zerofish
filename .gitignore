@@ -21,3 +21,6 @@
 /wasm/web/public/zerofish_wasm.js
 /wasm/web/public/zerofish.js
 /wasm/web/public/zerofish.wasm
+
+/nnue-training/venv
+/nnue-training/.idea
