@@ -1,3 +1,4 @@
+--add-modules jdk.incubator.vector
 
 history vs. isRepetitionOrFifty
 /*if (state.isRepetitionOrFifty()) {

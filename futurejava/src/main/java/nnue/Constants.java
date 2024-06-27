@@ -1,8 +1,17 @@
 package nnue;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class Constants {
-    public static final short[] INPUT_LAYER_WEIGHT = { // 196608
-    };
+    public static final short[] INPUT_LAYER_WEIGHT = loadWeights("nnue/input.layer.weights.txt");
+//            { // 196608
+//    };
 
     public static final short[] INPUT_LAYER_BIAS = {
         -8, -44, -8, -7, -35, -16, -10, -14, 9, 1, -8, -29, -33, -8, -1, 20, 19, -19, -13, -32, -20,
@@ -37,4 +46,26 @@ public class Constants {
     public static final short[] L1_BIAS = {
         -311
     };
+
+    private static short[] convertListToShortArray(List<Short> data) {
+        short[] array = new short[data.size()];
+        for (int i = 0; i < data.size(); i++) {
+            array[i] = data.get(i);
+        }
+        return array;
+    }
+
+    private static short[] loadWeights(String resourcePath) {
+        try (InputStream inputStream = Constants.class.getClassLoader().getResourceAsStream(resourcePath);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            List<Short> data = reader.lines()
+                    .flatMap(line -> Arrays.stream(line.split(",\\s*|\\s+")))
+                    .mapToInt(Integer::parseInt)
+                    .mapToObj(i -> (short) i)
+                    .toList();
+            return convertListToShortArray(data);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load weights", e);
+        }
+    }
 }
