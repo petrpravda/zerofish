@@ -1,4 +1,4 @@
---add-modules jdk.incubator.vector
+--add-modules jdk.incubator.vector --enable-preview
 
 history vs. isRepetitionOrFifty
 /*if (state.isRepetitionOrFifty()) {
