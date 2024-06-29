@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class Constants {
     public static final short[] INPUT_LAYER_WEIGHT = loadWeights("nnue/input.layer.weights.txt");

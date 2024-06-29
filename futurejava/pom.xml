@@ -7,8 +7,13 @@
   <groupId>org.javafish</groupId>
   <artifactId>javafish</artifactId>
   <version>1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
 
   <name>javafish</name>
+  <modules>
+    <module>core</module>
+    <module>nnue-training</module>
+  </modules>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

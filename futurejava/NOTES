@@ -56,3 +56,9 @@ omezit
 /opt/zulu22.30.13-ca-jdk22.0.1-linux_x64/bin/java \
     -XX:MaxInlineSize=0 \
     -cp target/classes org.javafish.app.Benchmark
+
+
+// loadovani NNUE a inference v pythonu
+https://colab.research.google.com/drive/1j3NXS2lBL9lrCP4fWasV5xAhRnQbcXCz?usp=sharing#scrollTo=nfmWYmxn2Lx-
+// trenik NNUE
+https://www.kaggle.com/code/scalacoder/train-your-own-stockfish-nnue/edit
