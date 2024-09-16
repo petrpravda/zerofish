@@ -1,2 +1,6 @@
 - learning data kaggle 2
+- stream reader for train.csv
+- board encoding 8x8x12
+- board encoding 15x15x11+2x15(masks)
+- notebook reading data
 -
