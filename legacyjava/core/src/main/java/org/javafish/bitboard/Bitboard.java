@@ -184,6 +184,14 @@ public class Bitboard {
         return result.toString();
     }
 
+    public static String bitboardToFormattedBinary(long bb) {
+        return String.format("%64s", Long.toBinaryString(bb))
+                .replace(' ', '0')
+                .replaceAll("(.{8})(?=.)", "$1_")
+                .replaceAll("^", "0b")
+                .replaceAll("$", "L");
+    }
+
     public static long getLineAttacks(long occupied, LineAttackMask patterns) {
         //  https://www.chessprogramming.org/Obstruction_Difference
         long lower = patterns.lower & occupied;
@@ -328,16 +336,28 @@ public class Bitboard {
                 BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN;
     }
 
+    public static long attacks(int pieceType, int square, long occ){
+        return switch (pieceType) {
+            case PieceType.ROOK -> getRookAttacks(square, occ);
+            case PieceType.BISHOP -> getBishopAttacks(square, occ);
+            case PieceType.QUEEN -> getBishopAttacks(square, occ) | getRookAttacks(square, occ);
+            case PieceType.KING -> getKingAttacks(square);
+            case PieceType.KNIGHT -> getKnightAttacks(square);
+            default -> 0L;
+        };
+    }
+}
 
 
-    // . . X . . . . .
-    // . . X . . . . .
-    // . . X . . . . .
-    // . . X . . . . .
-    // . . @ . . . . .
-    // . . . . . . . .
-    // . . . . . . . .
-    // . . . . . . . .
+
+// . . X . . . . .
+// . . X . . . . .
+// . . X . . . . .
+// . . X . . . . .
+// . . @ . . . . .
+// . . . . . . . .
+// . . . . . . . .
+// . . . . . . . .
 //    private long[] create_pawn_free_path_patterns(int direction) {
 //        long[] patterns = new long[64];
 //        for (int pos = 0; pos < 64; pos++) {
@@ -355,14 +375,3 @@ public class Bitboard {
 //        return patterns;
 //    }
 
-    public static long attacks(int pieceType, int square, long occ){
-        return switch (pieceType) {
-            case PieceType.ROOK -> getRookAttacks(square, occ);
-            case PieceType.BISHOP -> getBishopAttacks(square, occ);
-            case PieceType.QUEEN -> getBishopAttacks(square, occ) | getRookAttacks(square, occ);
-            case PieceType.KING -> getKingAttacks(square);
-            case PieceType.KNIGHT -> getKnightAttacks(square);
-            default -> 0L;
-        };
-    }
-}
