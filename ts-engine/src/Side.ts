@@ -3,6 +3,8 @@ export const Side = {
   BLACK: 1,
 } as const;
 
+export type SideType = (typeof Side)[keyof typeof Side];
+
 export namespace SideUtils {
   export function flip(side: number): number {
     return Side.BLACK ^ side;

@@ -1,4 +1,5 @@
-import {BB64Long, zeroBB} from './BB64Long';
+import {BB64Long, fromBigInt, zeroBB} from './BB64Long';
+import {Side, SideType} from './Side';
 
 export class Bitboard {
 
@@ -27,22 +28,87 @@ export class Bitboard {
 
     return rookAttacks.OR(bishopAttacks);
   }
+
+  static pawnAttacks(pawns: BB64Long, side: SideType): BB64Long {
+    if (side === Side.WHITE) {
+      // Left attack shift by 7 and right attack shift by 9
+      const leftAttacks = pawns.AND(LEFT_PAWN_ATTACK_MASK).SHL(7);
+      const rightAttacks = pawns.AND(RIGHT_PAWN_ATTACK_MASK).SHL(9);
+      return leftAttacks.OR(rightAttacks);
+    } else {
+      // For black, shift by 9 to the right and by 7 to the right
+      const leftAttacks = pawns.AND(LEFT_PAWN_ATTACK_MASK).SHR(9);
+      const rightAttacks = pawns.AND(RIGHT_PAWN_ATTACK_MASK).SHR(7);
+      return leftAttacks.OR(rightAttacks);
+    }
+  }
+
+  static push(pawn: BB64Long, side: SideType): BB64Long {
+    return side == Side.WHITE ? pawn.SHL(8) : pawn.SHR(8);
+  }
 }
 
+// Constants converted to BigInt using `fromBigInt` (assuming fromBigInt handles the conversion)
+export const LEFT_PAWN_ATTACK_MASK = fromBigInt(0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110n);
+export const RIGHT_PAWN_ATTACK_MASK = fromBigInt(0b1111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111n);
+
+// Exporting arrays of BigInt for patterns like PAWN_DOUBLE_PUSH_LINES and PAWN_RANKS
+export const PAWN_DOUBLE_PUSH_LINES = [
+  fromBigInt(0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000n),
+  fromBigInt(0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000n),
+];
+
+export const PAWN_RANKS = [
+  fromBigInt(0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000n),
+  fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000n),
+];
+
+export const PAWN_FINAL_RANKS = fromBigInt(0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_11111111n);
+
+// Castling blockers pattern constants
+export const BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN = fromBigInt(0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000n);
+export const BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN = fromBigInt(0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000n);
+export const WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000n);
+export const WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110n);
+
+// Castling bit patterns
+export const BLACK_KING_SIDE_CASTLING_BIT_PATTERN = fromBigInt(0b10010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000n);
+export const BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN = fromBigInt(0b00010001_00000000_00000000_00000000_00000000_00000000_00000000_00000000n);
+export const WHITE_KING_SIDE_CASTLING_BIT_PATTERN = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10010000n);
+export const WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010001n);
+
+// Rook masks
+export const WHITE_KINGS_ROOK_MASK = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000000n);
+export const WHITE_QUEENS_ROOK_MASK = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001n);
+export const BLACK_QUEENS_ROOK_MASK = fromBigInt(0b00000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000n);
+export const BLACK_KINGS_ROOK_MASK = fromBigInt(0b10000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000n);
+
+// Function to calculate the position of the most significant bit (MSB)
+function MSB(bigIntValue: BigInt): number {
+  // You would implement the MSB calculation here (or use a library function)
+  // This is a placeholder function that should return the position of the highest bit set.
+  return 0; // Implement actual logic based on your requirements
+}
+
+// Initial king square values calculated using MSB
+export const WHITE_KING_INITIAL_SQUARE = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000n).LSB();
+export const BLACK_KING_INITIAL_SQUARE = fromBigInt(0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000n).LSB();
+
+
 export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
-  const lower = patterns.lower.copy().AND(occupied); // lower part of occupied & patterns.lower
+  const lower = patterns.lower.AND(occupied); // lower part of occupied & patterns.lower
   // console.info(bitboardToFormattedBinary(occupied));
   // console.info(bitboardToFormattedBinary(patterns.lower));
   // console.info(bitboardToFormattedBinary(lower));
-  const upper = patterns.upper.copy().AND(occupied); // upper part of occupied & patterns.upper
+  const upper = patterns.upper.AND(occupied); // upper part of occupied & patterns.upper
 
-  lower.maskMostSignificantBit().subtract1().NOT().AND(patterns.lower);
+  const lowerSlide = lower.maskMostSignificantBit().subtract1().NOT().AND(patterns.lower);
   // console.info(bitboardToFormattedBinary(lower));
   // console.info(bitboardToFormattedBinary(patterns.upper));
   // console.info(bitboardToFormattedBinary(upper));
-  upper.subtract1().SHL(1).AND(patterns.upper);
+  const upperSlide = upper.subtract1().SHL(1).AND(patterns.upper);
 
-  return lower.OR(upper);
+  return lowerSlide.OR(upperSlide);
 }
 
 export class MoveDirection {
@@ -151,7 +217,7 @@ function generateAttacks(moveDirections: MoveDirection[]): BB64Long[] {
       return moveDirections
         .map(direction => position.moveInDirection(direction))
         .filter(pos => pos.isOnBoard())
-        .reduce((acc, pos) => acc.OR(new BB64Long(BigInt(1) << BigInt(pos.toSquareIndex()))), zeroBB());
+        .reduce((acc, pos) => acc.OR(fromBigInt(BigInt(1) << BigInt(pos.toSquareIndex()))), zeroBB());
     });
 }
 
