@@ -199,6 +199,7 @@ public class Bitboard {
         long mMs1b = 0x8000000000000000L >> Long.numberOfLeadingZeros (lower | 1);
         long ls1b  = upper & -upper;
         long diff = 2*ls1b + mMs1b;
+        // long diff = upper ^ (upper - mMs1b);
         return patterns.combined & diff;
     }
 
@@ -345,6 +346,11 @@ public class Bitboard {
             case PieceType.KNIGHT -> getKnightAttacks(square);
             default -> 0L;
         };
+    }
+
+    public static void main(String[] args) {
+        // System.out.println(Arrays.toString(LINE_MASKS));
+        Arrays.stream(LINE_MASKS).forEach(System.out::println);
     }
 }
 

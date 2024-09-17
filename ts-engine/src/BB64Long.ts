@@ -99,10 +99,37 @@ export class BB64Long {
     return this;
   }
 
+  maskMostSignificantBit(): this {
+    if (this.upper !== 0) {
+      // The most significant bit is in the upper part
+      const msbIndex = 31 - Math.clz32(this.upper);  // Get index of MSB in upper
+      this.upper = U32(1 << msbIndex);  // Leave only the MSB in upper
+      this.lower = U32(0);              // Clear the lower part
+    } else if (this.lower !== 0) {
+      // The most significant bit is in the lower part
+      const msbIndex = 31 - Math.clz32(this.lower);  // Get index of MSB in lower
+      this.lower = U32(1 << msbIndex);  // Leave only the MSB in lower
+    }
+
+    return this;
+  }
+
   // Get the index of the least significant bit
   LSB(): number {
     return this.lower ? getLSB32(this.lower) : 32 + getLSB32(this.upper);
   }
+
+  countLeadingZeros64(): number {
+    // First, check if the upper part is zero
+    if (this.upper === 0) {
+      // If the upper part is zero, count leading zeros in the lower part + 32
+      return 32 + Math.clz32(this.lower);
+    } else {
+      // If the upper part is non-zero, count leading zeros in the upper part
+      return Math.clz32(this.upper);
+    }
+  }
+
 
   // Clear the least significant bit and return its previous index
   popRetLSB(): number {
@@ -192,6 +219,41 @@ export class BB64Long {
   // Create a copy of the bitboard
   copy(): BB64Long {
     return new BB64Long(this.lower, this.upper);
+  }
+
+  // Perform subtraction between two BB64Long bitboards
+  subtract(other: BB64Long): this {
+    // Subtract the lower parts
+    const lowerResult = U32(this.lower - other.lower);
+
+    // Check for underflow in the lower part and subtract the upper parts accordingly
+    // If this.lower < other.lower, borrowing occurs, so we need to subtract 1 from the upper part
+    const borrow = this.lower < other.lower ? 1 : 0;
+
+    // Subtract the upper parts, including the borrow if needed
+    const upperResult = U32(this.upper - other.upper - borrow);
+
+    // Update this object's lower and upper parts
+    this.lower = lowerResult;
+    this.upper = upperResult;
+
+    return this;
+  }
+
+  // Perform subtraction of 1 from the BB64Long bitboard
+  subtract1(): this {
+    // Check if the lower part will underflow when subtracting 1
+    if (this.lower === 0) {
+      // If the lower part is 0, it will underflow, so set it to 0xFFFFFFFF (wrap around)
+      // and subtract 1 from the upper part
+      this.lower = U32(0xFFFFFFFF);
+      this.upper = U32(this.upper - 1);
+    } else {
+      // If the lower part won't underflow, simply subtract 1 from the lower part
+      this.lower = U32(this.lower - 1);
+    }
+
+    return this;
   }
 }
 

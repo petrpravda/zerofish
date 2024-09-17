@@ -2,6 +2,8 @@ import org.javafish.bitboard.Bitboard;
 import org.javafish.board.Side;
 import org.junit.jupiter.api.Test;
 
+import static org.javafish.bitboard.Bitboard.bitboardToFormattedBinary;
+import static org.javafish.bitboard.Bitboard.bitboardToString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BitboardTest {
@@ -51,9 +53,9 @@ class BitboardTest {
                 //Bitboard.FULL_BOARD & ~(1L << rookPosition); // Full board without the rook
         long expectedAttacks = 0b00000000_00000000_00000000_00100000_11011110_00100000_00100000_00100000L;
         long rookAttacks = Bitboard.getRookAttacks(rookPosition, occupied);
-//        System.out.println(bitboardToString(occupied));
-//        System.out.println(bitboardToString(rookAttacks));
-//        System.out.println(bitboardToFormattedBinary(rookAttacks));
+        System.out.println(bitboardToString(occupied));
+        System.out.println(bitboardToString(rookAttacks));
+        System.out.println(bitboardToFormattedBinary(rookAttacks));
         assertEquals(expectedAttacks, rookAttacks);
     }
 
@@ -71,11 +73,12 @@ class BitboardTest {
 
     @Test
     void testGetQueenAttacks() {
-        int queenPosition = 27;  // e4
-        long occupied = Bitboard.FULL_BOARD & ~(1L << queenPosition); // Full board without the queen
-        long expectedAttacks = Bitboard.getRookAttacks(queenPosition, occupied) |
-                Bitboard.getBishopAttacks(queenPosition, occupied);
-        assertEquals(expectedAttacks, Bitboard.getQueenAttacks(queenPosition, occupied));
+        int queenPosition = 28;
+        long occupied = 0b01010101_01110011_00001000_00101000_00100010_11010001_01010100_01110101L;
+        long expectedAttacks = 0b00000000_00010000_00010000_00111000_00101110_00111000_01000100_00000000L;
+        long queenAttacks = Bitboard.getQueenAttacks(queenPosition, occupied);
+        // System.out.println(bitboardToString(queenAttacks));
+        assertEquals(expectedAttacks, queenAttacks);
     }
 
     @Test

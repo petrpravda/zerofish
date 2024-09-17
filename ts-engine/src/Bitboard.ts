@@ -15,36 +15,34 @@ export class Bitboard {
     return getLineAttacks(occupied, LINE_MASKS[DirectionUtils.maskIndex(Directions.Horizontal, rookPosition)])
       .OR(getLineAttacks(occupied, LINE_MASKS[DirectionUtils.maskIndex(Directions.Vertical, rookPosition)]));
   }
+
+  static getBishopAttacks(bishopPosition: number, occupied: BB64Long): BB64Long {
+    return getLineAttacks(occupied, LINE_MASKS[DirectionUtils.maskIndex(Directions.Diagonal, bishopPosition)])
+      .OR(getLineAttacks(occupied, LINE_MASKS[DirectionUtils.maskIndex(Directions.AntiDiagonal, bishopPosition)]));
+  }
+
+  static getQueenAttacks(queenPosition: number, occupied: BB64Long): BB64Long {
+    const rookAttacks = Bitboard.getRookAttacks(queenPosition, occupied);
+    const bishopAttacks = Bitboard.getBishopAttacks(queenPosition, occupied);
+
+    return rookAttacks.OR(bishopAttacks);
+  }
 }
 
-/** BB64Long operations: In the Java code, there were bitwise operations on long types like &, |, and shifts. These have been replaced with corresponding methods on BB64Long such as .AND(), .OR(), .SHL(), and .LSB().
- MS1B (most significant bit): The code finds the most significant bit of lower. Since BB64Long doesn't have a direct numberOfLeadingZeros equivalent, the solution is to reverse-engineer it by calculating the index of the most significant bit (via 63 - LSB()).
- LS1B (least significant bit): For this, the code uses the LSB() method of BB64Long to get the least significant bit and performs a shift and bitwise OR as per the logic in the original Java code.
- Return: Finally, the method returns the result of a bitwise AND between patterns.combined and the calculated diff.
-  **/
 export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
-  // https://www.chessprogramming.org/Obstruction_Difference
   const lower = patterns.lower.copy().AND(occupied); // lower part of occupied & patterns.lower
+  // console.info(bitboardToFormattedBinary(occupied));
+  // console.info(bitboardToFormattedBinary(patterns.lower));
+  // console.info(bitboardToFormattedBinary(lower));
   const upper = patterns.upper.copy().AND(occupied); // upper part of occupied & patterns.upper
 
-  // Find the most significant bit (MS1B) in the lower part
-  const mMs1b = new BB64Long(0, 0);
-  if (!lower.empty()) {
-    const ms1bIdx = 63 - lower.LSB(); // MS1B index (highest bit set in lower)
-    mMs1b.setBit(ms1bIdx);
-  }
+  lower.maskMostSignificantBit().subtract1().NOT().AND(patterns.lower);
+  // console.info(bitboardToFormattedBinary(lower));
+  // console.info(bitboardToFormattedBinary(patterns.upper));
+  // console.info(bitboardToFormattedBinary(upper));
+  upper.subtract1().SHL(1).AND(patterns.upper);
 
-  // Get least significant bit (LS1B) in the upper part
-  const ls1b = upper.copy();
-  if (!upper.empty()) {
-    ls1b.clearBit(upper.LSB()); // ls1b = upper & -upper in terms of BB64Long logic
-  }
-
-  // Difference calculation
-  const diff = ls1b.copy().SHL(1).OR(mMs1b); // 2 * ls1b + mMs1b
-
-  // Return the masked attacks using the combined mask
-  return patterns.combined.copy().AND(diff);
+  return lower.OR(upper);
 }
 
 export class MoveDirection {
@@ -61,6 +59,10 @@ export class LineAttackMask {
     public upper: BB64Long,
     public combined: BB64Long
   ) {}
+
+  toString(): string {
+    return `LineAttackMask[lower=${this.lower.asBigInt()}, upper=${this.upper.asBigInt()}, combined=${this.combined.asBigInt()}]`;
+  }
 }
 
 export enum Directions {
@@ -172,3 +174,7 @@ const LINE_MASKS: LineAttackMask[] = calculateLinePatterns();
 
 const KNIGHT_ATTACKS: BB64Long[] = generateAttacks(KNIGHT_MOVE_DIRECTIONS);
 const KING_ATTACKS: BB64Long[] = generateAttacks(KING_MOVE_DIRECTIONS);
+
+//console.info(LINE_MASKS.map(mask => mask.toString()));
+// LINE_MASKS.forEach(mask => console.info(mask.toString()));
+
