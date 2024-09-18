@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "buildts": "ts-node src/BB64Long.ts",
+    "start": "ts-node src/index.ts",
+    "test": "jest"
+  },
   "devDependencies": {
     "@types/node": "^22.5.5",
     "ts-node": "^10.9.2",

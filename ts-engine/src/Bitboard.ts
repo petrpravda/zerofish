@@ -43,7 +43,7 @@ export class Bitboard {
     }
   }
 
-  static push(pawn: BB64Long, side: SideType): BB64Long {
+  static pawnPush(pawn: BB64Long, side: SideType): BB64Long {
     return side == Side.WHITE ? pawn.SHL(8) : pawn.SHR(8);
   }
 }

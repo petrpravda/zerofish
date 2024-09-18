@@ -72,14 +72,14 @@ describe('Bitboard Tests', () => {
   test('testPushWhite', () => {
     const pawn =         fromBigInt(0b00000000_00000000_00000000_00000000_00000100_00000000_00000000_00000000n);
     const expectedPush = fromBigInt(0b00000000_00000000_00000000_00000100_00000000_00000000_00000000_00000000n);
-    const pushedPawn = Bitboard.push(pawn, Side.WHITE);
+    const pushedPawn = Bitboard.pawnPush(pawn, Side.WHITE);
     expect(pushedPawn).toEqual(expectedPush);
   });
 
   test('testPushBlack', () => {
     const pawn =         fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000010_00000000n);
     const expectedPush = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010n);
-    const pushedPawn = Bitboard.push(pawn, Side.BLACK);
+    const pushedPawn = Bitboard.pawnPush(pawn, Side.BLACK);
     expect(pushedPawn).toEqual(expectedPush);
   });
 

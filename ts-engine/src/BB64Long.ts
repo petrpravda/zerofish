@@ -1,6 +1,7 @@
 // inspired by https://github.com/wlivengood/Winston/tree/master
 
 // Utility Functions for 32-bit unsigned integer operations
+
 export function U32(v: number): number {
   return v >>> 0;
 }
@@ -37,11 +38,11 @@ export function getMSB32(v: number): number {
 
 
 // Bitboard class for handling 64-bit board represented as two 32-bit integers
-export class BB64Long {
-  readonly lower: number;
-  readonly upper: number;
-  // lower: number;
-  // upper: number;
+export class BB64Long implements BB64Long{
+  // readonly lower: number;
+  // readonly upper: number;
+  lower: number;
+  upper: number;
 
   constructor(lower: number, upper: number) {
     this.lower = U32(lower);
@@ -66,34 +67,34 @@ export class BB64Long {
   }
 
   // Set a bit at a specific index
-  // setBit(idx: number): this {
-  //   idx = U32(idx);
-  //   if (idx < 32) this.lower = U32(this.lower | (1 << idx));
-  //   else this.upper = U32(this.upper | (1 << (idx - 32)));
-  //   return this;
-  // }
-  // Bypassing readonly with Object.defineProperty
   setBit(idx: number): this {
     idx = U32(idx);
-
-    if (idx < 32) {
-      // Bypass readonly and update the 'lower' value
-      Object.defineProperty(this, 'lower', {
-        value: U32(this.lower | (1 << idx)),
-        writable: true,  // Optional if you want to make it writable again
-        configurable: true,  // Allows redefining the property again later if needed
-      });
-    } else {
-      // Bypass readonly and update the 'upper' value
-      Object.defineProperty(this, 'upper', {
-        value: U32(this.upper | (1 << (idx - 32))),
-        writable: true,
-        configurable: true,
-      });
-    }
-
+    if (idx < 32) this.lower = U32(this.lower | (1 << idx));
+    else this.upper = U32(this.upper | (1 << (idx - 32)));
     return this;
   }
+  // Bypassing readonly with Object.defineProperty
+  // setBit(idx: number): this {
+  //   idx = U32(idx);
+  //
+  //   if (idx < 32) {
+  //     // Bypass readonly and update the 'lower' value
+  //     Object.defineProperty(this, 'lower', {
+  //       value: U32(this.lower | (1 << idx)),
+  //       writable: true,  // Optional if you want to make it writable again
+  //       configurable: true,  // Allows redefining the property again later if needed
+  //     });
+  //   } else {
+  //     // Bypass readonly and update the 'upper' value
+  //     Object.defineProperty(this, 'upper', {
+  //       value: U32(this.upper | (1 << (idx - 32))),
+  //       writable: true,
+  //       configurable: true,
+  //     });
+  //   }
+  //
+  //   return this;
+  // }
   // // Clear a bit at a specific index
   // clearBit(idx: number): this {
   //   idx = U32(idx);
