@@ -53,9 +53,6 @@ class BitboardTest {
                 //Bitboard.FULL_BOARD & ~(1L << rookPosition); // Full board without the rook
         long expectedAttacks = 0b00000000_00000000_00000000_00100000_11011110_00100000_00100000_00100000L;
         long rookAttacks = Bitboard.getRookAttacks(rookPosition, occupied);
-        System.out.println(bitboardToString(occupied));
-        System.out.println(bitboardToString(rookAttacks));
-        System.out.println(bitboardToFormattedBinary(rookAttacks));
         assertEquals(expectedAttacks, rookAttacks);
     }
 

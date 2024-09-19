@@ -29,6 +29,7 @@ export class Bitboard {
     return rookAttacks.OR(bishopAttacks);
   }
 
+
   static pawnAttacks(pawns: BB64Long, side: SideType): BB64Long {
     if (side === Side.WHITE) {
       // Left attack shift by 7 and right attack shift by 9
@@ -45,6 +46,41 @@ export class Bitboard {
 
   static pawnPush(pawn: BB64Long, side: SideType): BB64Long {
     return side == Side.WHITE ? pawn.SHL(8) : pawn.SHR(8);
+  }
+
+  static castlingPiecesKingsideMask(side: SideType): BB64Long {
+    return side == Side.WHITE ? WHITE_KING_SIDE_CASTLING_BIT_PATTERN : BLACK_KING_SIDE_CASTLING_BIT_PATTERN;
+  }
+
+  static castlingPiecesQueensideMask(side: SideType): BB64Long {
+    return side == Side.WHITE ? WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN : BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN;
+  }
+
+  static pawnAttacksFromSquare(square: number, side: number): BB64Long {
+    const bb = zeroBB();
+    bb.setBit(square);
+
+    if (side === Side.WHITE) {
+      return Bitboard.whiteLeftPawnAttacks(bb).OR(Bitboard.whiteRightPawnAttacks(bb));
+    } else {
+      return Bitboard.blackLeftPawnAttacks(bb).OR(Bitboard.blackRightPawnAttacks(bb));
+    }
+  }
+
+  static whiteLeftPawnAttacks(pawns: BB64Long): BB64Long {
+    return pawns.AND(LEFT_PAWN_ATTACK_MASK).SHL(7);
+  }
+
+  static whiteRightPawnAttacks(pawns: BB64Long): BB64Long {
+    return pawns.AND(RIGHT_PAWN_ATTACK_MASK).SHL(9);
+  }
+
+  static blackLeftPawnAttacks(pawns: BB64Long): BB64Long {
+    return pawns.AND(LEFT_PAWN_ATTACK_MASK).SHR(9);
+  }
+
+  static blackRightPawnAttacks(pawns: BB64Long): BB64Long {
+    return pawns.AND(RIGHT_PAWN_ATTACK_MASK).SHR(7);
   }
 }
 

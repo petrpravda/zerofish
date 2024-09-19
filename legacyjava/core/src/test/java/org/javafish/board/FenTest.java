@@ -1,14 +1,94 @@
 package org.javafish.board;
 
-import org.javafish.bitboard.Bitboard;
 import org.junit.jupiter.api.Test;
 
 import static org.javafish.bitboard.Bitboard.WHITE_KINGS_ROOK_MASK;
-import static org.javafish.bitboard.Bitboard.bitboardToFormattedBinary;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FenTest {
+    @Test
+    void testToFen() {
+        // Arrange
+        BoardState state = BoardState.fromFen(Fen.START_POS);
+
+        // Act
+        String fen = Fen.toFen(state);
+
+        // Assert
+        assertEquals(Fen.START_POS, fen, "FEN should match the initial position");
+    }
+
+    @Test
+    void testFromFen() {
+        // Arrange
+        String fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+        // Act
+        BoardState state = Fen.fromFen(fen, null);
+
+        // Assert
+        assertNotNull(state, "BoardState should not be null");
+        assertEquals(Side.WHITE, state.getSideToPlay(), "Side to play should be WHITE");
+        assertEquals(0, state.halfMoveClock, "Halfmove clock should be 0");
+        assertEquals(1, (state.fullMoveNormalized / 2) + 1, "Full move number should be 1");
+    }
+
+    @Test
+    void testExpandFenPieces() {
+        // Arrange
+        String fenPieces = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+
+        // Act
+        String expandedFen = Fen.expandFenPieces(fenPieces);
+
+        // Assert
+        String expectedExpandedFen = "rnbqkbnr/pppppppp/11111111/11111111/11111111/11111111/PPPPPPPP/RNBQKBNR";
+        assertEquals(expectedExpandedFen, expandedFen, "Expanded FEN should match expected format");
+    }
+
+    @Test
+    void testFromFenFree_Valid() {
+        // Arrange
+        String fenFree = "Fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+        // Act
+        BoardPosition boardPosition = Fen.fromFenFree(fenFree);
+
+        // Assert
+        assertNotNull(boardPosition, "BoardPosition should not be null");
+    }
+
+    @Test
+    void testFromFenFree_Invalid() {
+        // Arrange
+        String invalidFenFree = "This is an invalid FEN string";
+
+        // Act & Assert
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            Fen.fromFenFree(invalidFenFree);
+        });
+        assertEquals("This is an invalid FEN string doesn't contain 'Fen: '", exception.getMessage());
+    }
+
+    @Test
+    void testFromFen_ComplexPosition() {
+        // Arrange
+        String fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 2";
+
+        // Act
+        BoardState state = Fen.fromFen(fen, null);
+
+        // Assert
+        assertNotNull(state, "BoardState should not be null");
+        assertEquals(Side.BLACK, state.getSideToPlay(), "Side to play should be BLACK");
+        assertEquals(2, (state.fullMoveNormalized / 2) + 1, "Full move number should be 2");
+        assertEquals(0, state.halfMoveClock, "Halfmove clock should be 0");
+        assertEquals("e3", Square.getName(Long.numberOfTrailingZeros(state.enPassant)), "En passant square should be e3");
+    }
+
     @Test
     public void kingsideCastlingFlagsRookMoving() {
         BoardPosition position = Fen.fromFenFree("""
@@ -98,43 +178,5 @@ class FenTest {
                         Key: CE0A996DEF8E74EC
                         Checkers:\s""");
         assertEquals("r2q1rk1/pbp2ppp/1pnp1n2/8/2PPp3/2P1P3/P1N2PPP/R1BQKB1R w - - 0 10", position.getState().toFen());
-    }
-
-    @Test
-    void toFen() {
-    }
-
-    @Test
-    void expandFenPieces() {
-    }
-
-    @Test
-    void fromFen() {
-        String fen = "r1b1r1k1/pp2qpp1/3b4/3p1n2/1P3n2/P3p1pP/2P1N1B1/R1Q1BKR1 w - - 0 21";
-        BoardState boardState = Fen.fromFen(fen, 10);
-
-        long combinedOccupancy = 0L;
-        for (int side = 0; side <= 1; side++) {
-
-            // Iterate over pieces: 0 -> Pawn, 1 -> Knight, 2 -> Bishop, 3 -> Rook, 4 -> Queen, 5 -> King
-            for (int pieceType = 0; pieceType <= 5; pieceType++) {
-                // OR the results for all piece types on the current side
-                combinedOccupancy |= boardState.bitboardOf(side, pieceType);
-            }
-
-
-            // Example assertion if you have expected occupancy values:
-            // long expectedOccupancy = <expected value for side>;
-            // assertEquals(expectedOccupancy, combinedOccupancy);
-        }
-        //System.out.println(combinedOccupancy);
-
-        // Print the combined occupancy in binary format
-//        System.out.println("Combined Occupancy (binary): " + bitboardToFormattedBinary(combinedOccupancy));
-//        System.out.println(Bitboard.bitboardToString(combinedOccupancy));
-    }
-
-    @Test
-    void fromFenFree() {
     }
 }

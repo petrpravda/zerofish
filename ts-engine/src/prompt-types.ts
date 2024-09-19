@@ -26,15 +26,21 @@ class BB64Long {
   equals(other: BB64Long): boolean;
 }
 
-class BitboardInterface {
-  static getKnightAttacks(knightPosition: number): BB64Long;
-  static getKingAttacks(kingPosition: number): BB64Long;
-  static getRookAttacks(rookPosition: number, occupied: BB64Long): BB64Long;
-  static getBishopAttacks(bishopPosition: number, occupied: BB64Long): BB64Long;
-  static getQueenAttacks(queenPosition: number, occupied: BB64Long): BB64Long;
-  static pawnAttacks(pawns: BB64Long, side: SideType): BB64Long;
-  static pawnPush(pawn: BB64Long, side: SideType): BB64Long;
-}
+class Bitboard {
+  getKnightAttacks(knightPosition: number): BB64Long;
+  getKingAttacks(kingPosition: number): BB64Long;
+  getRookAttacks(rookPosition: number, occupied: BB64Long): BB64Long;
+  getBishopAttacks(bishopPosition: number, occupied: BB64Long): BB64Long;
+  getQueenAttacks(queenPosition: number, occupied: BB64Long): BB64Long;
+  pawnAttacks(pawns: BB64Long, side: Side): BB64Long;
+  pawnPush(pawn: BB64Long, side: Side): BB64Long;
+  castlingPiecesKingsideMask(side: Side): BB64Long;
+  castlingPiecesQueensideMask(side: Side): BB64Long;
+  pawnAttacksFromSquare(square: number, side: Side): BB64Long;
+  whiteLeftPawnAttacks(pawns: BB64Long): BB64Long;
+  whiteRightPawnAttacks(pawns: BB64Long): BB64Long;
+  blackLeftPawnAttacks(pawns: BB64Long): BB64Long;
+  blackRightPawnAttacks(pawns: BB64Long): BB64Long;}
 
 export const Side = {
   WHITE: 0,

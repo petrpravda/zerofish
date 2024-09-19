@@ -1,4 +1,5 @@
 import {Move} from '../Move';
+import {BoardState} from '../BoardState';
 
 describe('Move tests', () => {
 

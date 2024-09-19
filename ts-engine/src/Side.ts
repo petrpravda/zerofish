@@ -6,8 +6,8 @@ export const Side = {
 export type SideType = (typeof Side)[keyof typeof Side];
 
 export namespace SideUtils {
-  export function flip(side: number): number {
-    return Side.BLACK ^ side;
+  export function flip(side: SideType): SideType {
+    return side === Side.BLACK ? Side.WHITE : Side.BLACK;
   }
 
   export function multiplicator(side: number): number {
