@@ -1,13 +1,7 @@
 package org.javafish.board;
 
-import org.javafish.pgn.PgnMoves;
-import org.javafish.pgn.PgnParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static org.javafish.board.Fen.START_POS;
-import static org.javafish.board.Fen.fromFen;
-import static org.junit.jupiter.api.Assertions.*;
 
 class BoardPositionTest {
 

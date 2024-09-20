@@ -4,9 +4,91 @@ import org.junit.jupiter.api.Test;
 
 import static org.javafish.bitboard.Bitboard.WHITE_KINGS_ROOK_MASK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FenTest {
+    @Test
+    void testToFen() {
+        // Arrange
+        BoardState state = BoardState.fromFen(Fen.START_POS);
+
+        // Act
+        String fen = Fen.toFen(state);
+
+        // Assert
+        assertEquals(Fen.START_POS, fen, "FEN should match the initial position");
+    }
+
+    @Test
+    void testFromFen() {
+        // Arrange
+        String fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+        // Act
+        BoardState state = Fen.fromFen(fen, null);
+
+        // Assert
+        assertNotNull(state, "BoardState should not be null");
+        assertEquals(Side.WHITE, state.getSideToPlay(), "Side to play should be WHITE");
+        assertEquals(0, state.halfMoveClock, "Halfmove clock should be 0");
+        assertEquals(1, (state.fullMoveNormalized / 2) + 1, "Full move number should be 1");
+    }
+
+    @Test
+    void testExpandFenPieces() {
+        // Arrange
+        String fenPieces = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+
+        // Act
+        String expandedFen = Fen.expandFenPieces(fenPieces);
+
+        // Assert
+        String expectedExpandedFen = "rnbqkbnr/pppppppp/11111111/11111111/11111111/11111111/PPPPPPPP/RNBQKBNR";
+        assertEquals(expectedExpandedFen, expandedFen, "Expanded FEN should match expected format");
+    }
+
+    @Test
+    void testFromFenFree_Valid() {
+        // Arrange
+        String fenFree = "Fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+        // Act
+        BoardPosition boardPosition = Fen.fromFenFree(fenFree);
+
+        // Assert
+        assertNotNull(boardPosition, "BoardPosition should not be null");
+    }
+
+    @Test
+    void testFromFenFree_Invalid() {
+        // Arrange
+        String invalidFenFree = "This is an invalid FEN string";
+
+        // Act & Assert
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            Fen.fromFenFree(invalidFenFree);
+        });
+        assertEquals("This is an invalid FEN string doesn't contain 'Fen: '", exception.getMessage());
+    }
+
+    @Test
+    void testFromFen_ComplexPosition() {
+        // Arrange
+        String fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 2";
+
+        // Act
+        BoardState state = Fen.fromFen(fen, null);
+
+        // Assert
+        assertNotNull(state, "BoardState should not be null");
+        assertEquals(Side.BLACK, state.getSideToPlay(), "Side to play should be BLACK");
+        assertEquals(2, (state.fullMoveNormalized / 2) + 1, "Full move number should be 2");
+        assertEquals(0, state.halfMoveClock, "Halfmove clock should be 0");
+        assertEquals("e3", Square.getName(Long.numberOfTrailingZeros(state.enPassant)), "En passant square should be e3");
+    }
+
     @Test
     public void kingsideCastlingFlagsRookMoving() {
         BoardPosition position = Fen.fromFenFree("""

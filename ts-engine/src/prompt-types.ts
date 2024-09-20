@@ -40,7 +40,8 @@ class Bitboard {
   whiteLeftPawnAttacks(pawns: BB64Long): BB64Long;
   whiteRightPawnAttacks(pawns: BB64Long): BB64Long;
   blackLeftPawnAttacks(pawns: BB64Long): BB64Long;
-  blackRightPawnAttacks(pawns: BB64Long): BB64Long;}
+  blackRightPawnAttacks(pawns: BB64Long): BB64Long;
+}
 
 export const Side = {
   WHITE: 0,

@@ -1,10 +1,11 @@
 import {Side} from '../Side';
-import {bitboardToString} from '../BB64Long';
+import {BB64Long, BB_ZERO, bitboardToString} from '../BB64Long';
 import {BoardState} from '../BoardState';
 import {Square} from '../Square';
 import {Piece} from '../Piece';
 import {Move} from '../Move';
 import {START_POS} from '../Fen';
+import {bitboardToNormalized, normalizeBitboard} from './testing.helper';
 
 describe('BoardStateTest', () => {
 
@@ -16,7 +17,7 @@ describe('BoardStateTest', () => {
   it('attackedPieces', () => {
     const state = BoardState.fromFen("5k2/p6p/1p1r4/1PpP1P2/2P5/P4K2/8/7R b - - 1 40");
     const attackedPieces = state.attackedPieces(Side.BLACK);
-    expect(bitboardToString(attackedPieces)).toEqual(`
+    const expected = normalizeBitboard`
             . . . . . . . . 
             . . . . . . . X 
             . . . . . . . . 
@@ -25,13 +26,14 @@ describe('BoardStateTest', () => {
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
-        `);
+        `;
+    expect(bitboardToNormalized(attackedPieces)).toEqual(expected);
   });
 
   it('attackedPiecesWithPinning', () => {
     const state = BoardState.fromFen("6q1/1p2bpk1/1r4p1/3pPB2/1n1P2Q1/6P1/3N2K1/7R b - - 4 39");
     const attackedPieces = state.attackedPieces(Side.WHITE);
-    expect(bitboardToString(attackedPieces)).toEqual(`
+    expect(bitboardToNormalized(attackedPieces)).toEqual(normalizeBitboard`
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
@@ -46,7 +48,7 @@ describe('BoardStateTest', () => {
   it('attackedPiecesUndefended', () => {
     let state = BoardState.fromFen("5k2/p6p/1p1r4/1PpP1P2/2P5/P4K2/8/7R b - - 1 40");
     let attackedPiecesUndefended = state.attackedPiecesUndefended(Side.BLACK);
-    expect(bitboardToString(attackedPiecesUndefended)).toEqual(`
+    expect(bitboardToNormalized(attackedPiecesUndefended)).toEqual(normalizeBitboard`
             . . . . . . . . 
             . . . . . . . X 
             . . . . . . . . 
@@ -59,13 +61,13 @@ describe('BoardStateTest', () => {
 
     state = BoardState.fromFen("8/p5kp/1p1r4/1PpP1P2/2P5/P4K2/8/7R w - - 2 41");
     attackedPiecesUndefended = state.attackedPiecesUndefended(Side.BLACK);
-    expect(attackedPiecesUndefended).toEqual(0);
+    expect(attackedPiecesUndefended).toEqual(BB_ZERO);
   });
 
   it('attackedPiecesUndefendedBehindSlidingAttacker', () => {
     let state = BoardState.fromFen("r2qk2r/pp1nbpQp/2p1p1b1/8/4P1P1/5N1P/PPP2PB1/R1B2RK1 b kq - 0 13");
     let attackedPiecesUndefended = state.attackedPiecesUndefended(Side.BLACK);
-    expect(bitboardToString(attackedPiecesUndefended)).toEqual(`
+    expect(bitboardToNormalized(attackedPiecesUndefended)).toEqual(normalizeBitboard`
             . . . . . . . X 
             . . . . . . . . 
             . . . . . . . . 
@@ -78,7 +80,7 @@ describe('BoardStateTest', () => {
 
     state = BoardState.fromFen("r2qk2r/pp1n1pQp/2p1pbb1/8/4P1P1/5N1P/PPP2PB1/R1B2RK1 w kq - 1 14");
     attackedPiecesUndefended = state.attackedPiecesUndefended(Side.BLACK);
-    expect(bitboardToString(attackedPiecesUndefended)).toEqual(`
+    expect(bitboardToNormalized(attackedPiecesUndefended)).toEqual(normalizeBitboard`
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
@@ -171,7 +173,7 @@ describe('BoardStateTest', () => {
     const whiteDiagonalSliders = state.diagonalSliders(Side.WHITE);
     const blackDiagonalSliders = state.diagonalSliders(Side.BLACK);
 
-    expect(bitboardToString(whiteDiagonalSliders)).toEqual(`
+    expect(bitboardToNormalized(whiteDiagonalSliders)).toEqual(normalizeBitboard`
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
@@ -179,12 +181,12 @@ describe('BoardStateTest', () => {
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
-            . . X . . . . X 
+            . . X X . X . . 
         `);
 
-    expect(bitboardToString(blackDiagonalSliders)).toEqual(`
+    expect(bitboardToNormalized(blackDiagonalSliders)).toEqual(normalizeBitboard`
+            . . X X . X . . 
             . . . . . . . . 
-            . . X . . . . X 
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
@@ -197,30 +199,41 @@ describe('BoardStateTest', () => {
   it('testStraightSliders', () => {
     const state = BoardState.fromFen(START_POS);
 
-    const whiteStraightSliders = state.straightSliders(Side.WHITE);
-    const blackStraightSliders = state.straightSliders(Side.BLACK);
+    const whiteStraightSliders = state.orthogonalSliders(Side.WHITE);
+    const blackStraightSliders = state.orthogonalSliders(Side.BLACK);
 
-    expect(bitboardToString(whiteStraightSliders)).toEqual(`
-            . . . . X . X . 
+    expect(bitboardToNormalized(whiteStraightSliders)).toEqual(normalizeBitboard`
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
-            . . . . X . X . 
+            . . . . . . . . 
+            X . . X . . . X 
         `);
 
-    expect(bitboardToString(blackStraightSliders)).toEqual(`
-            . . . . X . X . 
+    expect(bitboardToNormalized(blackStraightSliders)).toEqual(normalizeBitboard`
+            X . . X . . . X 
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
             . . . . . . . . 
-            . . . . X . X . 
+            . . . . . . . . 
         `);
+  });
+
+  it('not possible to do non-sense a1g1 move', () => {
+    const state = BoardState.fromFen('r1bqkbnr/pppppppp/n7/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2');
+    const moves: string[] = state.generateLegalMoves().map(m => m.toString());
+
+    // Assert that 'h2h4' is a legal move
+    expect(moves).toContain('h2h4');
+
+    // Assert that 'a1g1' is not a legal move
+    expect(moves).not.toContain('a1g1');
   });
 
 });

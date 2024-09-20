@@ -143,6 +143,8 @@ export class PieceSquareTable {
   // Initialize MGS and EGS arrays to hold positional values for pieces
   public static MGS: number[][] = new Array(Piece.BLACK_KING + 1);
   public static EGS: number[][] = new Array(Piece.BLACK_KING + 1);
+  public static BASIC_MATERIAL_VALUE: number[] = [1, 3, 3, 5, 9];
+
 
   static {
     for (let piece = 0; piece <= Piece.WHITE_KING; piece++) {

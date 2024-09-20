@@ -34,10 +34,20 @@ describe('Bitboard Tests', () => {
 
   test('testGetRookAttacks', () => {
     const rookPosition = 29;
-    const occupied = fromBigInt(0b01010101_01110011_00001000_00101000_00100010_11010001_01010100_01110101n);
+    const occupied =        fromBigInt(0b01010101_01110011_00001000_00101000_00100010_11010001_01010100_01110101n);
     const expectedAttacks = fromBigInt(0b00000000_00000000_00000000_00100000_11011110_00100000_00100000_00100000n);
     const rookAttacks = Bitboard.getRookAttacks(rookPosition, occupied);
     // console.info(bitboardToString(expectedAttacks));
+    // console.info(bitboardToString(rookAttacks));
+    expect(rookAttacks.equals(expectedAttacks)).toBe(true);
+  });
+
+  test('testGetRookAttacks2', () => {
+    const rookPosition = 0;
+    const occupied =        fromBigInt(0b11111101_11111111_00000001_00000000_00000000_00100000_11111111_10111111n);
+    const expectedAttacks = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000001_00000010n);
+    const rookAttacks = Bitboard.getRookAttacks(rookPosition, occupied);
+    // console.info(bitboardToFormattedBinary(occupied));
     // console.info(bitboardToString(rookAttacks));
     expect(rookAttacks.equals(expectedAttacks)).toBe(true);
   });
@@ -125,6 +135,28 @@ describe('getLineAttacks', () => {
 
     // Expected result as BigInt
     const expectedResult = BigInt(3724541952);
+
+    // When we calculate the line attacks
+    const result = getLineAttacks(occupancy, lineMask);
+
+    // Then the result should match the expected value
+    expect(result.asBigInt()).toBe(expectedResult);
+  });
+});
+
+describe('getLineAttacks2', () => {
+  it('should correctly compute line attacks using obstruction difference', () => {
+    // Given the occupancy and line attack mask
+    const occupancy = fromBigInt(BigInt('18302348510170775487'));
+    // console.info(bitboardToFormattedBinary(occupancy));
+    const lineMask = new LineAttackMask(
+      fromBigInt(BigInt('0')),
+      fromBigInt(BigInt('254')),
+      fromBigInt(BigInt('254'))
+    );
+
+    // Expected result as BigInt
+    const expectedResult = BigInt(2);
 
     // When we calculate the line attacks
     const result = getLineAttacks(occupancy, lineMask);

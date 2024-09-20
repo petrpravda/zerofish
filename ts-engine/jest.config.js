@@ -3,8 +3,10 @@
 module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'node',
-    testPathIgnorePatterns: ['/node_modules/'],
-    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
+    testPathIgnorePatterns: [
+        '/node_modules/', // Default to ignore node_modules
+        '/src/__tests__/testing.helper.ts', // Add this to ignore the specific file
+    ],    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
     // Use transform instead of globals for ts-jest configuration
     transform: {
         '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],

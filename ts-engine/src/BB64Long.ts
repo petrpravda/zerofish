@@ -137,6 +137,10 @@ export class BB64Long implements BB64Long{
     return new BB64Long(newLower, newUpper);
   }
 
+  maskLeastSignificantBit(): BB64Long {
+    return idxBB(this.LSB());
+  }
+
   LSB(): number {
     return this.lower ? getLSB32(this.lower) : 32 + getLSB32(this.upper);
   }
@@ -280,6 +284,10 @@ export function zeroBB(): BB64Long {
 }
 
 export function oneBB(): BB64Long {
+  return makeBB(1, 0);
+}
+
+export function fullBB(): BB64Long {
   return makeBB(0xFFFFFFFF, 0xFFFFFFFF);
 }
 
@@ -311,29 +319,35 @@ export function rankBBs(): BB64Long[] {
   return b;
 }
 
-// export function idxBB(index: number): BB64Long {
-//   return zeroBB().setBit(index);
+export function idxBB(index: number): BB64Long {
+  return zeroBB().setBit(index);
+}
+// // TODO use idxBB
+// export function bitAtSquare(square: number): BB64Long {
+//   const result = makeBB(0, 0);
+//   result.setBit(square);
+//   return result;
 // }
 
-export function diagBB(diagonal: number): BB64Long {
-  return makeBB(0x10204080, 0x01020408).AND(oneBB().SHIFT(diagonal * 8)).SHIFT(diagonal);
-}
-
-export function diagBBs(): BB64Long[] {
-  const b: BB64Long[] = [];
-  for (let i = -7; i < 8; ++i) b.push(diagBB(i));
-  return b;
-}
-
-export function antiDiagBB(antidiagonal: number): BB64Long {
-  return makeBB(0x08040201, 0x80402010).AND(oneBB().SHIFT(-antidiagonal * 8)).SHIFT(antidiagonal);
-}
-
-export function antiDiagBBs(): BB64Long[] {
-  const b: BB64Long[] = [];
-  for (let i = -7; i < 8; ++i) b.push(antiDiagBB(i));
-  return b;
-}
+// export function diagBB(diagonal: number): BB64Long {
+//   return makeBB(0x10204080, 0x01020408).AND(fullBB().SHIFT(diagonal * 8)).SHIFT(diagonal);
+// }
+//
+// export function diagBBs(): BB64Long[] {
+//   const b: BB64Long[] = [];
+//   for (let i = -7; i < 8; ++i) b.push(diagBB(i));
+//   return b;
+// }
+//
+// export function antiDiagBB(antidiagonal: number): BB64Long {
+//   return makeBB(0x08040201, 0x80402010).AND(fullBB().SHIFT(-antidiagonal * 8)).SHIFT(antidiagonal);
+// }
+//
+// export function antiDiagBBs(): BB64Long[] {
+//   const b: BB64Long[] = [];
+//   for (let i = -7; i < 8; ++i) b.push(antiDiagBB(i));
+//   return b;
+// }
 
 export function bitboardToString(bb: BB64Long): string {
   const bigIntBoard = bb.asBigInt();
@@ -358,3 +372,6 @@ export function bitboardToFormattedBinary(bb: BB64Long): string {
   binaryString = binaryString.replace(/(.{8})(?=.)/g, "$1_");
   return `0b${binaryString}n`;
 }
+
+export const BB_ZERO = zeroBB();
+export const BB_ONE = oneBB();

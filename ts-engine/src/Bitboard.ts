@@ -1,5 +1,7 @@
-import {BB64Long, fromBigInt, zeroBB} from './BB64Long';
+import {BB64Long, BB_ZERO, fromBigInt, idxBB, zeroBB} from './BB64Long';
 import {Side, SideType} from './Side';
+import {Square} from './Square';
+import {PieceType} from './PieceType';
 
 export class Bitboard {
 
@@ -82,7 +84,49 @@ export class Bitboard {
   static blackRightPawnAttacks(pawns: BB64Long): BB64Long {
     return pawns.AND(RIGHT_PAWN_ATTACK_MASK).SHR(7);
   }
+
+  static castlingBlockersKingsideMask(side: SideType): BB64Long {
+    return side === Side.WHITE ? WHITE_KING_SIDE_CASTLING_BLOCKERS_PATTERN :
+      BLACK_KING_SIDE_CASTLING_BLOCKERS_PATTERN;
+  }
+
+  static castlingBlockersQueensideMask(side: SideType): BB64Long {
+    return side === Side.WHITE ? WHITE_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN :
+      BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN;
+  }
+
+  static ignoreOOODanger(side: SideType): BB64Long {
+    return side === Side.WHITE ? OOO_DANGER_WHITE : OOO_DANGER_BLACK;
+  }
+
+  static between(sq1: number, sq2: number): BB64Long {
+    return BB_SQUARES_BETWEEN[sq1][sq2];
+  }
+
+  static attacks(pieceType: number, square: number, occ: BB64Long): BB64Long {
+    switch (pieceType) {
+      case PieceType.ROOK:
+        return Bitboard.getRookAttacks(square, occ);
+      case PieceType.BISHOP:
+        return Bitboard.getBishopAttacks(square, occ);
+      case PieceType.QUEEN:
+        return Bitboard.getBishopAttacks(square, occ).OR(Bitboard.getRookAttacks(square, occ));
+      case PieceType.KING:
+        return Bitboard.getKingAttacks(square);
+      case PieceType.KNIGHT:
+        return Bitboard.getKnightAttacks(square);
+      default:
+        return BB_ZERO;
+    }
+  }
+
+  static line(sq1: number, sq2: number): BB64Long {
+    return BB_LINES[sq1][sq2];
+  }
 }
+
+const OOO_DANGER_WHITE = fromBigInt(0x2n);
+const OOO_DANGER_BLACK = fromBigInt(0x200000000000000n);
 
 // Constants converted to BigInt using `fromBigInt` (assuming fromBigInt handles the conversion)
 export const LEFT_PAWN_ATTACK_MASK = fromBigInt(0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110n);
@@ -142,7 +186,7 @@ export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB
   // console.info(bitboardToFormattedBinary(lower));
   // console.info(bitboardToFormattedBinary(patterns.upper));
   // console.info(bitboardToFormattedBinary(upper));
-  const upperSlide = upper.subtract1().SHL(1).AND(patterns.upper);
+  const upperSlide = upper.maskLeastSignificantBit().subtract1().SHL(1).AND(patterns.upper);
 
   return lowerSlide.OR(upperSlide);
 }
@@ -227,6 +271,43 @@ function calculateLinePatterns(): LineAttackMask[] {
     );
 }
 
+function generateSquaresBetween(): BB64Long[][] {
+  const squaresBetween: BB64Long[][] = Array.from({ length: 64 }, () => Array(64).fill(0n));
+
+  for (let sq1 = Square.A1; sq1 <= Square.H8; sq1++) {
+    for (let sq2 = Square.A1; sq2 <= Square.H8; sq2++) {
+      const sqs = idxBB(sq1).OR(idxBB(sq2));
+
+      if (Square.getFileIndex(sq1) === Square.getFileIndex(sq2) || Square.getRankIndex(sq1) === Square.getRankIndex(sq2)) {
+        squaresBetween[sq1][sq2] =
+          Bitboard.getRookAttacks(sq1, sqs).AND(Bitboard.getRookAttacks(sq2, sqs));
+      } else if (Square.getDiagonalIndex(sq1) === Square.getDiagonalIndex(sq2) || Square.getAntiDiagonalIndex(sq1) === Square.getAntiDiagonalIndex(sq2)) {
+        squaresBetween[sq1][sq2] =
+          Bitboard.getBishopAttacks(sq1, sqs).AND(Bitboard.getBishopAttacks(sq2, sqs));
+      }
+    }
+  }
+
+  return squaresBetween;
+}
+
+function createBBLines(): BB64Long[][] {
+  const bbLines: BB64Long[][] = Array.from({ length: 64 }, () => Array(64).fill(BB_ZERO));
+
+  for (let sq1 = Square.A1; sq1 <= Square.H8; sq1++) {
+    for (let sq2 = Square.A1; sq2 <= Square.H8; sq2++) {
+      if (Square.getFileIndex(sq1) === Square.getFileIndex(sq2) || Square.getRankIndex(sq1) === Square.getRankIndex(sq2)) {
+        bbLines[sq1][sq2] = Bitboard.getRookAttacks(sq1, BB_ZERO).AND(Bitboard.getRookAttacks(sq2, BB_ZERO));
+      } else if (Square.getDiagonalIndex(sq1) === Square.getDiagonalIndex(sq2) || Square.getAntiDiagonalIndex(sq1) === Square.getAntiDiagonalIndex(sq2)) {
+        bbLines[sq1][sq2] = Bitboard.getBishopAttacks(sq1, BB_ZERO).AND(Bitboard.getBishopAttacks(sq2, BB_ZERO));
+      }
+    }
+  }
+
+  return bbLines;
+}
+
+
 function generateRay(pos: number, directionHorizontal: number, directionVertical: number): BB64Long {
   let file = pos % 8;
   let rank = Math.floor(pos / 8);
@@ -273,10 +354,13 @@ const KING_MOVE_DIRECTIONS: MoveDirection[] = [
 ];
 
 const LINE_MASKS: LineAttackMask[] = calculateLinePatterns();
-
+const BB_SQUARES_BETWEEN: BB64Long[][] = generateSquaresBetween();
+const BB_LINES: BB64Long[][] = createBBLines();
 const KNIGHT_ATTACKS: BB64Long[] = generateAttacks(KNIGHT_MOVE_DIRECTIONS);
 const KING_ATTACKS: BB64Long[] = generateAttacks(KING_MOVE_DIRECTIONS);
 
 //console.info(LINE_MASKS.map(mask => mask.toString()));
 // LINE_MASKS.forEach(mask => console.info(mask.toString()));
+
+
 

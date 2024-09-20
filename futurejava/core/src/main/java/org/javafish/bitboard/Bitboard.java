@@ -184,6 +184,14 @@ public class Bitboard {
         return result.toString();
     }
 
+    public static String bitboardToFormattedBinary(long bb) {
+        return String.format("%64s", Long.toBinaryString(bb))
+                .replace(' ', '0')
+                .replaceAll("(.{8})(?=.)", "$1_")
+                .replaceAll("^", "0b")
+                .replaceAll("$", "L");
+    }
+
     public static long getLineAttacks(long occupied, LineAttackMask patterns) {
         //  https://www.chessprogramming.org/Obstruction_Difference
         long lower = patterns.lower & occupied;

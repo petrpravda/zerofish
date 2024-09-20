@@ -142,6 +142,8 @@ public class MoveList extends MyArrayList<Move> {
             @Override
             public Move next() {
                 int i = index.get();
+//                System.out.println("returning idx: " + i + ", move: " + sortedList.get(i).move +
+//                        ", score: " + sortedList.get(i).score);
                 index.getAndIncrement();
                 outer.pickNextBestMove(i, sortedList);
                 return sortedList.get(i).move;
