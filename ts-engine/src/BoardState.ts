@@ -98,7 +98,7 @@ export class BoardState {
     this.eg += PieceSquareTable.EGS[piece][square];
 
     this.items[square] = piece;
-    this.piece_bb[piece] = this.piece_bb[piece].OR(new BB64Long(1, 0).SHL(square));
+    this.piece_bb[piece] = this.piece_bb[piece].OR(new BB64Long(1, 0).SHL(square)); // TODO idxBB
 
     this.hash = this.hash ^ Zobrist.ZOBRIST_TABLE[piece][square];
   }
@@ -111,7 +111,7 @@ export class BoardState {
 
     this.hash = this.hash ^ Zobrist.ZOBRIST_TABLE[piece][square];
 
-    this.piece_bb[piece] = this.piece_bb[piece].AND_NOT(new BB64Long(1, 0).SHL(square));
+    this.piece_bb[piece] = this.piece_bb[piece].AND_NOT(new BB64Long(1, 0).SHL(square));  // TODO idxBB
     this.items[square] = Piece.NONE;
   }
 
@@ -122,7 +122,7 @@ export class BoardState {
 
     this.hash = this.hash ^ Zobrist.ZOBRIST_TABLE[piece][fromSq] ^ Zobrist.ZOBRIST_TABLE[piece][toSq];
 
-    this.piece_bb[piece] = this.piece_bb[piece].XOR(new BB64Long(1, 0).SHL(fromSq)).XOR(new BB64Long(1, 0).SHL(toSq));
+    this.piece_bb[piece] = this.piece_bb[piece].XOR(new BB64Long(1, 0).SHL(fromSq)).XOR(new BB64Long(1, 0).SHL(toSq)); // TODO
     this.items[toSq] = piece;
     this.items[fromSq] = Piece.NONE;
   }
@@ -234,7 +234,7 @@ export class BoardState {
     state.fullMoveNormalized += 1;
     state.halfMoveClock += 1;
     state.history[state.ply++] = move.bitsValue();
-    state.movements = state.movements.OR(new BB64Long(1 << move.to(), 0)).OR(new BB64Long(1 << move.from(), 0));
+    state.movements = state.movements.OR(idxBB(move.to())).OR(idxBB(move.from()));
 
     if (Piece.typeOf(state.items[move.from()]) === PieceType.PAWN) {
       state.halfMoveClock = 0;
@@ -248,7 +248,7 @@ export class BoardState {
         break;
       case Move.DOUBLE_PUSH:
         state.movePieceQuiet(move.from(), move.to());
-        state.enPassant = new BB64Long(1 << (move.from() + Square.direction(Square.FORWARD, state.sideToPlay)), 0);
+        state.enPassant = idxBB(move.from() + Square.direction(Square.FORWARD, state.sideToPlay));
         state.hash ^= Zobrist.EN_PASSANT[state.enPassant.LSB() & 0b111];
         break;
       case Move.OO:
@@ -304,7 +304,7 @@ export class BoardState {
     if (this.enPassant && !this.enPassant.empty()) {
       const lsb = this.enPassant.LSB();
       this.hash ^= Zobrist.EN_PASSANT[lsb & 0b111];
-      this.enPassant = new BB64Long(0, 0);
+      this.enPassant = BB_ZERO;
     }
   }
 

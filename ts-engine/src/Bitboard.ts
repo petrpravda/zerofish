@@ -183,7 +183,7 @@ export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB
   // console.info(bitboardToFormattedBinary(lower));
   const upper = patterns.upper.AND(occupied); // upper part of occupied & patterns.upper
 
-  const lowerSlide = lower.maskMostSignificantBit().subtract1().NOT().AND(patterns.lower);
+  const lowerSlide = lower.empty() ? patterns.lower : lower.maskMostSignificantBit().subtract1().NOT().AND(patterns.lower);
   // console.info(bitboardToFormattedBinary(lower));
   // console.info(bitboardToFormattedBinary(patterns.upper));
   // console.info(bitboardToFormattedBinary(upper));

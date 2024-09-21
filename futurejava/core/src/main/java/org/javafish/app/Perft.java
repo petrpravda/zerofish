@@ -1,6 +1,7 @@
 package org.javafish.app;
 
 import org.javafish.board.BoardState;
+import org.javafish.move.Move;
 import org.javafish.move.MoveList;
 
 import java.util.List;
@@ -75,7 +76,11 @@ public class Perft {
     public static void main(String[] args) {
         // BoardState board = BoardState.fromFen(START_POS);
         //BoardState board = BoardState.fromFen("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1");
-        BoardState board = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2");
+        BoardState board = BoardState.fromFen("r3k2r/8/5Q2/8/8/3q4/8/R3K2R w KQkq - 0 1");
+        board = board.doMove(Move.fromUciString("e1f2", board));
+        board = board.doMove(Move.fromUciString("e8d7", board));
+        board = board.doMove(Move.fromUciString("f6b2", board));
+        System.out.println(board.toFen());
         //BoardState board = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2");
         //BoardState state = fromFen("r6r/3k4/8/8/3Q4/3q4/8/3RK2R b K - 3 2");
         //System.out.println(perftString(board, 5));
