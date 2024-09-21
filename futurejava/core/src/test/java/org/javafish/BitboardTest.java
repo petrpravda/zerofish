@@ -4,6 +4,8 @@ import org.javafish.bitboard.Bitboard;
 import org.javafish.board.Side;
 import org.junit.jupiter.api.Test;
 
+import static org.javafish.bitboard.Bitboard.bitboardToString;
+import static org.javafish.bitboard.Bitboard.stringToBitboard;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BitboardTest {
@@ -75,6 +77,40 @@ class BitboardTest {
 //        System.out.println(bitboardToFormattedBinary(bishopAttacks));
         assertEquals(expectedAttacks, bishopAttacks);
     }
+
+    @Test
+    public void testGetBishopAttacks2() {
+        int bishopPosition = 2;
+
+        long occupied = stringToBitboard("""
+                . . . . . X . .
+                X . . . . . . X
+                . X . X . . . . 
+                . X X X . X . . 
+                . . X . . . . .
+                X . . . . X . . 
+                . . . . . . . . 
+                . . . . . . . X""");
+
+        // Define the expected attacks in the form of a string, using the stringToBitboard utility
+        long expectedAttacks = stringToBitboard(
+                ". . . . . . . .\n" +
+                ". . . . . . . .\n" +
+                ". . . . . . . X\n" +
+                ". . . . . . X .\n" +
+                ". . . . . X . .\n" +
+                "X . . . X . . .\n" +
+                ". X . X . . . .\n" +
+                ". . . . . . . ."
+        );
+
+        // Get the bishop attacks using the occupied bitboard
+        long bishopAttacks = Bitboard.getBishopAttacks(bishopPosition, occupied);
+
+        // Compare the generated bishop attacks with the expected attacks
+        assertEquals(bitboardToString(bishopAttacks), bitboardToString(expectedAttacks));
+    }
+
 
     @Test
     void testGetQueenAttacks() {
@@ -183,6 +219,19 @@ class BitboardTest {
         long expectedBlackMask = Bitboard.BLACK_QUEEN_SIDE_CASTLING_BLOCKERS_PATTERN;
         assertEquals(expectedBlackMask, Bitboard.castlingBlockersQueensideMask(Side.BLACK),
                 "Black queen-side castling blockers mask should match");
+    }
+
+    @Test
+    public void testRoundTripConversion() {
+        // Original bitboard represented as two long parts (lower 32 bits, upper 32 bits)
+        long originalBB = 0x12345678FEDCBA98L;
+
+        // Convert bitboard to string and back to bitboard
+        String bbString = bitboardToString(originalBB);
+        long convertedBB = stringToBitboard(bbString);
+
+        // The final bitboard should be equal to the original bitboard
+        assertEquals(bitboardToString(convertedBB), bitboardToString(originalBB));
     }
 }
 

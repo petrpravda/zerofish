@@ -256,7 +256,7 @@ describe('Bitboard', () => {
   describe('Round-trip conversion', () => {
     it('should maintain bitboard consistency when converting between string and bitboard', () => {
       // Original bitboard
-      const originalBB = makeBB(0xFFFFFFF0, 0xFFFFFFFF);
+      const originalBB = makeBB(0x12345678, 0xFEDCBA98);
 
       // Convert bitboard to string and back to bitboard
       const bbString = bitboardToString(originalBB);

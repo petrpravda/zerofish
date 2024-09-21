@@ -34,12 +34,28 @@ describe('Bitboard Tests', () => {
 
   test('testGetRookAttacks', () => {
     const rookPosition = 29;
-    const occupied =        fromBigInt(0b01010101_01110011_00001000_00101000_00100010_11010001_01010100_01110101n);
-    const expectedAttacks = fromBigInt(0b00000000_00000000_00000000_00100000_11011110_00100000_00100000_00100000n);
+    const occupied = stringToBitboard(`
+        X . X . X . X .
+        X X . . X X X .
+        . . . X . . . .
+        . . . X . X . .
+        . X . . . X . .
+        X . . . X . X X
+        . . X . X . X .
+        X . X . X X X .`);
+
+      const expectedAttacks = stringToBitboard(`
+        . . . . . . . . 
+        . . . . . . . . 
+        . . . . . . . . 
+        . . . . . X . . 
+        . X X X X . X X 
+        . . . . . X . . 
+        . . . . . X . . 
+        . . . . . X . .`);
+
     const rookAttacks = Bitboard.getRookAttacks(rookPosition, occupied);
-    // console.info(bitboardToString(expectedAttacks));
-    // console.info(bitboardToString(rookAttacks));
-    expect(rookAttacks.equals(expectedAttacks)).toBe(true);
+    expect(bitboardToString(rookAttacks)).toEqual(bitboardToString(expectedAttacks));
   });
 
   test('testGetRookAttacks2', () => {
@@ -62,16 +78,24 @@ describe('Bitboard Tests', () => {
 
   test('testGetBishopAttacks2', () => {
     const bishopPosition = 2;
-    const occupied = fromBigInt(0b00100000_10000001_00001010_00101110_00000100_00100001_00000000_10000000n);
-    const expectedAttacks = stringToBitboard(
-      `. . . . . . . . 
-. . . . . . . . 
-. . . . . . . X 
-. . . . . . X . 
-. . . . . X . . 
-. . . . X . . . 
-. X . X . . . . 
-. . . . . . . .`) ;
+    const occupied = stringToBitboard(`
+        . . . . . X . . 
+        X . . . . . . X 
+        . X . X . . . . 
+        . X X X . X . . 
+        . . X . . . . . 
+        X . . . . X . . 
+        . . . . . . . . 
+        . . . . . . . X`);
+    const expectedAttacks = stringToBitboard(`
+        . . . . . . . . 
+        . . . . . . . . 
+        . . . . . . . X 
+        . . . . . . X . 
+        . . . . . X . . 
+        X . . . X . . . 
+        . X . X . . . . 
+        . . . . . . . .`) ;
     const bishopAttacks = Bitboard.getBishopAttacks(bishopPosition, occupied);
     // console.info(bitboardToString(bishopAttacks));
     expect(bitboardToString(bishopAttacks)).toEqual(bitboardToString(expectedAttacks));

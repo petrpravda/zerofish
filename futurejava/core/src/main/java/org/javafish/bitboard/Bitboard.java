@@ -129,6 +129,39 @@ public class Bitboard {
         return side == Side.WHITE ? l << 8 : l >>> 8;
     }
 
+    public static long stringToBitboard(String bbString) {
+        // Normalize the string by removing spaces and newlines
+        String cleanString = bbString.replaceAll("\\s+", "");
+
+        // Check if the input string is the correct length (64 characters for an 8x8 board)
+        if (cleanString.length() != 64) {
+            throw new IllegalArgumentException("Invalid bitboard string length. Expected 64 characters.");
+        }
+
+        long bitboard = 0L;
+
+        // Iterate over the string, flipping only ranks (rows), but not files (columns)
+        for (int rank = 0; rank < 8; rank++) {
+            for (int file = 0; file < 8; file++) {
+                char charAtPosition = cleanString.charAt(rank * 8 + file);
+
+                // Calculate the correct bit index by flipping the rank
+                int flippedRank = 7 - rank;  // Flip rank, but not file
+                int bitIndex = flippedRank * 8 + file;
+
+                if (charAtPosition == 'X') {
+                    // Set the bit in the bitboard at the correct position
+                    bitboard |= (1L << bitIndex);
+                } else if (charAtPosition != '.') {
+                    throw new IllegalArgumentException("Invalid character in bitboard string. Only 'X' and '.' are allowed.");
+                }
+            }
+        }
+
+        // Return the populated bitboard as a long value
+        return bitboard;
+    }
+
     public record SquarePosition(int file, int rank) {
         public static SquarePosition fromSquareIndex(int square) {
             return new SquarePosition(square % 8, square / 8);

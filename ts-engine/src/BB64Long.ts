@@ -53,6 +53,10 @@ export class BB64Long implements BB64Long{
     return (BigInt(this.upper) << BigInt(32)) | BigInt(this.lower);
   }
 
+  asBitboardString(): string {
+    return bitboardToString(this);
+  }
+
   asBigBinary(): string {
     return bitboardToFormattedBinary(this);
   }

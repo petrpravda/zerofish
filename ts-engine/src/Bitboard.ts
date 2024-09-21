@@ -15,6 +15,7 @@ export class Bitboard {
   }
 
   static getRookAttacks(rookPosition: number, occupied: BB64Long): BB64Long {
+    // const xxx = getLineAttacks(occupied, LINE_MASKS[DirectionUtils.maskIndex(Directions.Vertical, rookPosition)]);
     return getLineAttacks(occupied, LINE_MASKS[DirectionUtils.maskIndex(Directions.Horizontal, rookPosition)])
       .OR(getLineAttacks(occupied, LINE_MASKS[DirectionUtils.maskIndex(Directions.Vertical, rookPosition)]));
   }
@@ -186,7 +187,8 @@ export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB
   // console.info(bitboardToFormattedBinary(lower));
   // console.info(bitboardToFormattedBinary(patterns.upper));
   // console.info(bitboardToFormattedBinary(upper));
-  const upperSlide = upper.maskLeastSignificantBit().subtract1().SHL(1).AND(patterns.upper);
+  const upperSlide = upper.empty() ? patterns.upper : upper.maskLeastSignificantBit().SHL(1).subtract1().AND(patterns.upper);
+  // const upperSlide = upper.empty() ? patterns.upper : upper.maskLeastSignificantBit().subtract1().SHL(1).AND(patterns.upper);
 
   return lowerSlide.OR(upperSlide);
 }
