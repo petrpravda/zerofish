@@ -41,6 +41,6 @@ public class Perft {
     }
 
     public static void main(String[] args) {
-        printPerft(fromFen(START_POS), 4);
+        printPerft(fromFen(START_POS), 6);
     }
 }

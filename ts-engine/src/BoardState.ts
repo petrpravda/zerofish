@@ -506,7 +506,7 @@ export class BoardState {
             while (!piecesAttackingChecker.empty()) {
               const sq = piecesAttackingChecker.LSB();
               piecesAttackingChecker = piecesAttackingChecker.popLSB();
-              if (this.pieceTypeAt(sq) === PieceType.PAWN && idxBB(sq).AND(PAWN_FINAL_RANKS).empty()) {
+              if (this.pieceTypeAt(sq) === PieceType.PAWN && !idxBB(sq).AND(PAWN_FINAL_RANKS).empty()) {
                 moves.makePC(sq, idxBB(checkerSquare));
               } else {
                 moves.makeC(sq, idxBB(checkerSquare));

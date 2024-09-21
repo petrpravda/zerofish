@@ -76,13 +76,15 @@ public class Perft {
     public static void main(String[] args) {
         // BoardState board = BoardState.fromFen(START_POS);
         //BoardState board = BoardState.fromFen("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1");
-        BoardState board = BoardState.fromFen("8/5bk1/8/2Pp4/8/1K6/8/8 w - d6 0 1");
-        int moves = 6;
-        board = board.doMove(Move.fromUciString("b3a4", board)); moves--;
-        board = board.doMove(Move.fromUciString("f7e8", board)); moves--;
-        board = board.doMove(Move.fromUciString("c5c6", board)); moves--;
-        board = board.doMove(Move.fromUciString("e8d7", board)); moves--;
-        System.out.println(board.toFen());
-        System.out.println(perftString(board, moves));
+        BoardState board = BoardState.fromFen("rnbqkb1r/pppppppp/8/8/4n3/3P4/PPPKPPPP/RNBQ1BNR w kq - 3 3");
+
+//        BoardState board = BoardState.fromFen("8/5bk1/8/2Pp4/8/1K6/8/8 w - d6 0 1");
+//        int moves = 6;
+//        board = board.doMove(Move.fromUciString("b3a4", board)); moves--;
+//        board = board.doMove(Move.fromUciString("f7e8", board)); moves--;
+//        board = board.doMove(Move.fromUciString("c5c6", board)); moves--;
+//        board = board.doMove(Move.fromUciString("e8d7", board)); moves--;
+//        System.out.println(board.toFen());
+        System.out.println(perftString(board, 1));
     }
 }
