@@ -5,7 +5,8 @@ module.exports = {
     testEnvironment: 'node',
     testPathIgnorePatterns: [
         '/node_modules/', // Default to ignore node_modules
-        '/src/__tests__/testing.helper.ts', // Add this to ignore the specific file
+        '/src/__tests__/testing.perft.helper.ts',
+        '/src/__tests__/testing.helper.ts',
     ],    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
     // Use transform instead of globals for ts-jest configuration
     transform: {

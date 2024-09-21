@@ -229,11 +229,16 @@ describe('BoardStateTest', () => {
     const state = BoardState.fromFen('r1bqkbnr/pppppppp/n7/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2');
     const moves: string[] = state.generateLegalMoves().map(m => m.toString());
 
-    // Assert that 'h2h4' is a legal move
     expect(moves).toContain('h2h4');
 
     // Assert that 'a1g1' is not a legal move
     expect(moves).not.toContain('a1g1');
   });
 
+  it('check that move c1g5 is not missing', () => {
+    const state = BoardState.fromFen('r1bqkbnr/pppppppp/n7/8/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2');
+    const moves: string[] = state.generateLegalMoves().map(m => m.toString());
+
+    expect(moves).toContain('c1g5');
+  });
 });

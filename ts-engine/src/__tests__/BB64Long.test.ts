@@ -1,4 +1,4 @@
-import {BB64Long, U32} from '../BB64Long';
+import {BB64Long, BB_ONE, bitboardToString, makeBB, stringToBitboard, U32} from '../BB64Long';
 
 describe('Bitboard', () => {
   test('constructor should initialize correctly', () => {
@@ -165,5 +165,105 @@ describe('Bitboard', () => {
     const bb1 = new BB64Long(0xFFFFFFFF, 0xFFFFFFFF);
     const bb2 = new BB64Long(0x00000000, 0xFFFFFFFF);
     expect(bb1.equals(bb2)).toBe(false);
+  });
+
+  describe('bitboardToString', () => {
+    it('should convert an empty bitboard to the correct string representation', () => {
+      const bb = new BB64Long(0, 0);
+      const expectedString =
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n";
+
+      expect(bitboardToString(bb)).toBe(expectedString);
+    });
+
+    it('should convert a bitboard with some bits set to the correct string representation', () => {
+      //console.info(bitboardToString(BB_ONE));
+
+      // Set bits 0 and 63 (corner positions)
+      const bb = makeBB(1, 0x80000000);
+      const expectedString =
+        ". . . . . . . X \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        "X . . . . . . . \n";
+
+      expect(bitboardToString(bb)).toBe(expectedString);
+    });
+  });
+
+  describe('stringToBitboard', () => {
+    it('should convert a string representation to an empty bitboard', () => {
+      const bbString =
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n";
+
+      const expectedBB = new BB64Long(0, 0);
+      expect(stringToBitboard(bbString)).toEqual(expectedBB);
+    });
+
+    it('should convert a string with some bits set to the correct bitboard', () => {
+      const bbString =
+        ". . . . . . . X \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        "X . . . . . . . \n";
+
+      const expectedBB = makeBB(1, 0x80000000);
+      expect(bbString).toEqual(bitboardToString(expectedBB));
+    });
+
+    it('should throw an error for invalid string input (wrong length)', () => {
+      const invalidBBString = ". . . ."; // Too short to be a valid bitboard
+      expect(() => stringToBitboard(invalidBBString)).toThrow("Invalid bitboard string length. Expected 64 characters.");
+    });
+
+    it('should throw an error for invalid characters', () => {
+      const invalidBBString =
+        "X . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . . \n" +
+        ". . . . . . . A \n"; // Invalid character 'A'
+
+      expect(() => stringToBitboard(invalidBBString)).toThrow("Invalid character in bitboard string. Only 'X' and '.' are allowed.");
+    });
+  });
+
+  describe('Round-trip conversion', () => {
+    it('should maintain bitboard consistency when converting between string and bitboard', () => {
+      // Original bitboard
+      const originalBB = makeBB(0xFFFFFFF0, 0xFFFFFFFF);
+
+      // Convert bitboard to string and back to bitboard
+      const bbString = bitboardToString(originalBB);
+      const convertedBB = stringToBitboard(bbString);
+
+      // The final bitboard should be equal to the original bitboard
+      expect(bitboardToString(convertedBB)).toEqual(bitboardToString(originalBB));
+    });
   });
 });

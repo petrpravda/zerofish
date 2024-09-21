@@ -1,4 +1,4 @@
-import {BB64Long, bitboardToFormattedBinary, bitboardToString, fromBigInt} from '../BB64Long';
+import {BB64Long, bitboardToFormattedBinary, bitboardToString, fromBigInt, stringToBitboard} from '../BB64Long';
 import {Side} from '../Side';
 import {Bitboard, getLineAttacks, LineAttackMask, WHITE_KING_SIDE_CASTLING_BIT_PATTERN} from '../Bitboard';
 
@@ -58,6 +58,45 @@ describe('Bitboard Tests', () => {
     const expectedAttacks = fromBigInt(0b00000000_01000001_00100010_00010100_00000000_00010100_00000010_00000001n);
     const bishopAttacks = Bitboard.getBishopAttacks(bishopPosition, occupied);
     expect(bishopAttacks.equals(expectedAttacks)).toBe(true);
+  });
+
+  test('testGetBishopAttacks2', () => {
+    const bishopPosition = 2;
+    const occupied = fromBigInt(0b00100000_10000001_00001010_00101110_00000100_00100001_00000000_10000000n);
+    const expectedAttacks = stringToBitboard(
+      `. . . . . . . . 
+. . . . . . . . 
+. . . . . . . X 
+. . . . . . X . 
+. . . . . X . . 
+. . . . X . . . 
+. X . X . . . . 
+. . . . . . . .`) ;
+    const bishopAttacks = Bitboard.getBishopAttacks(bishopPosition, occupied);
+    // console.info(bitboardToString(bishopAttacks));
+    expect(bitboardToString(bishopAttacks)).toEqual(bitboardToString(expectedAttacks));
+  });
+
+  test('attacks differ', () => {
+    const expectedAttacks1 = stringToBitboard(
+      `. . . . . . . . 
+. . . . . . . . 
+. . . . . . . X 
+. . . . . . X . 
+. . . . . X . . 
+. . . . X . . . 
+. X . X . . . . 
+. . . . . . . .`) ;
+    const expectedAttacks2 = stringToBitboard(
+      `. . . . . . . . 
+. . . . . . . . 
+. . . . . . . . 
+. . . . . . . . 
+. . . . . X . . 
+. . . . X . . . 
+. X . X . . . . 
+. . . . . . . .`) ;
+    expect(expectedAttacks1).not.toEqual(expectedAttacks2);
   });
 
   test('testGetQueenAttacks', () => {

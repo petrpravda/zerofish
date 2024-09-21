@@ -73,7 +73,10 @@ public class Perft {
     }
 
     public static void main(String[] args) {
-        BoardState board = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2");
+        // BoardState board = BoardState.fromFen(START_POS);
+        //BoardState board = BoardState.fromFen("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1");
+        BoardState board = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2");
+        //BoardState board = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2");
         //BoardState state = fromFen("r6r/3k4/8/8/3Q4/3q4/8/3RK2R b K - 3 2");
         //System.out.println(perftString(board, 5));
         System.out.println(perftString(board, 1));

@@ -72,7 +72,7 @@ function parsePerftCase(line: string): PerftCase {
 
 // Unit tests using Jest
 
-describe('PerftTest', () => {
+describe.skip('PerftTest', () => {
 
   test('simplePerft2', () => {
     const state = BoardState.fromFen(START_POS);

@@ -53,6 +53,10 @@ export class BB64Long implements BB64Long{
     return (BigInt(this.upper) << BigInt(32)) | BigInt(this.lower);
   }
 
+  asBigBinary(): string {
+    return bitboardToFormattedBinary(this);
+  }
+
   empty(): boolean {
     return !this.lower && !this.upper;
   }
@@ -364,6 +368,45 @@ export function bitboardToString(bb: BB64Long): string {
   }
 
   return result;
+}
+
+export function stringToBitboard(bbString: string): BB64Long {
+  // Normalize the string by removing spaces and newlines
+  const cleanString = bbString.replace(/\s+/g, '');
+
+  // Check if the input string is the correct length (64 characters for an 8x8 board)
+  if (cleanString.length !== 64) {
+    throw new Error("Invalid bitboard string length. Expected 64 characters.");
+  }
+
+  let lower = 0;
+  let upper = 0;
+
+  // Iterate over the string, flipping only ranks (rows), but not files (columns)
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const char = cleanString[rank * 8 + file];
+
+      // Calculate the correct index by flipping the rank
+      const flippedRank = 7 - rank;  // Flip rank, but not file
+      const bitIndex = flippedRank * 8 + file;
+
+      if (char === 'X') {
+        if (bitIndex < 32) {
+          // Set bit in the lower part for indices 0-31
+          lower |= (1 << bitIndex);
+        } else {
+          // Set bit in the upper part for indices 32-63
+          upper |= (1 << (bitIndex - 32));
+        }
+      } else if (char !== '.') {
+        throw new Error("Invalid character in bitboard string. Only 'X' and '.' are allowed.");
+      }
+    }
+  }
+
+  // Create and return the BB64Long instance with the populated lower and upper values
+  return new BB64Long(lower, upper);
 }
 
 export function bitboardToFormattedBinary(bb: BB64Long): string {

@@ -364,12 +364,22 @@ class BoardStateTest {
         assertEquals(START_POS, fen);
     }
 
+//    @Test
+//    void testGenMovesTester() {
+//        BoardState state = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2");
+//        MoveList moves = state.generateLegalMoves();
+//        //String fen = state.toFen();
+//        //assertEquals(START_POS, fen);
+//    }
+
     @Test
-    void testGenMovesTester() {
-        BoardState state = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2");
-        MoveList moves = state.generateLegalMoves();
-        //String fen = state.toFen();
-        //assertEquals(START_POS, fen);
+    void checkMoveC1G5IsNotMissing() {
+        BoardState state = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2");
+        List<String> moves = state.generateLegalMoves().stream()
+                .map(Object::toString)
+                .toList();
+
+        assertTrue(moves.contains("c1g5"), "Move c1g5 should be in the list of legal moves");
     }
 
     @Test
