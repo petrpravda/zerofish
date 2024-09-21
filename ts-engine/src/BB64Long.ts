@@ -26,15 +26,15 @@ export function getLSB32(v: number): number {
   return popcnt32((v & -v) - 1);
 }
 
-// Get the index of the most significant bit in a 32-bit unsigned integer
-export function getMSB32(v: number): number {
-  v = U32(v);
-
-  if (v === 0) return -1; // Return -1 if no bits are set
-
-  // 31 - number of leading zeros gives us the index of the MSB
-  return 31 - Math.clz32(v);
-}
+// // Get the index of the most significant bit in a 32-bit unsigned integer
+// export function getMSB32(v: number): number {
+//   v = U32(v);
+//
+//   if (v === 0) return -1; // Return -1 if no bits are set
+//
+//   // 31 - number of leading zeros gives us the index of the MSB
+//   return 31 - Math.clz32(v);
+// }
 
 
 // Bitboard class for handling 64-bit board represented as two 32-bit integers
@@ -45,8 +45,8 @@ export class BB64Long implements BB64Long{
   upper: number;
 
   constructor(lower: number, upper: number) {
-    this.lower = U32(lower);
-    this.upper = U32(upper);
+    this.lower = lower;
+    this.upper = upper;
   }
 
   asBigInt(): bigint {
@@ -106,11 +106,11 @@ export class BB64Long implements BB64Long{
 
     if (newUpper !== 0) {
       const msbIndex = 31 - Math.clz32(newUpper);
-      newUpper = U32(1 << msbIndex);
-      newLower = U32(0);
+      newUpper = 1 << msbIndex;
+      newLower = 0;
     } else if (newLower !== 0) {
       const msbIndex = 31 - Math.clz32(newLower);
-      newLower = U32(1 << msbIndex);
+      newLower = 1 << msbIndex;
     }
 
     return new BB64Long(newLower, newUpper);
@@ -302,7 +302,7 @@ export function idxBB(index: number): BB64Long {
 // }
 
 export function bitboardToString(bb: BB64Long): string {
-  const bigIntBoard = bb.asBigInt();
+  const bigIntBoard = new BB64Long(U32(bb.lower), U32(bb.upper)).asBigInt();
   let result = "";
 
   for (let rank = 56; rank >= 0; rank -= 8) {

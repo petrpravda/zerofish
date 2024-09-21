@@ -62,7 +62,8 @@ describe('Bitboard Tests', () => {
         . . . . . X . .`);
 
     const rookAttacks = Bitboard.getRookAttacks(rookPosition, occupied);
-    expect(bitboardToString(rookAttacks)).toEqual(bitboardToString(expectedAttacks));
+    const expectedAsString = bitboardToString(expectedAttacks);
+    expect(bitboardToString(rookAttacks)).toEqual(expectedAsString);
   });
 
   test('testGetRookAttacks2', () => {
