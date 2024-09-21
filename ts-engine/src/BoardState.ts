@@ -573,7 +573,7 @@ export class BoardState {
           const square = pinnedPawn.LSB();
           pinnedPawn = pinnedPawn.popLSB();
 
-          if (idxBB(square).AND(PAWN_FINAL_RANKS).empty()) {
+          if (!idxBB(square).AND(PAWN_FINAL_RANKS).empty()) {
             const pawnCaptures = Bitboard.pawnAttacksFromSquare(square, us).AND(captureMask).AND(Bitboard.line(ourKing, square));
             moves.makePC(square, pawnCaptures);
           } else {

@@ -89,11 +89,11 @@ describe('PerftTest', () => {
     expect(Perft.perft(state, 4)).toBe(197281);
   });
 
-  // test('simplePerft4Temp', () => {
-  //   const state = BoardState.fromFen("r3k2r/8/5Q2/8/8/3q4/8/R3K2R w KQkq - 0 1");
-  //   expect(Perft.perft(state, 4)).toBe(1720476);
-  // });
-  //
+  test('simplePerft6Temp', () => {
+    const state = BoardState.fromFen("8/5bk1/8/2Pp4/8/1K6/8/8 w - d6 0 1");
+    expect(Perft.perft(state, 6)).toBe(824064);
+  });
+
   test('simplePerft5', () => {
     const board = BoardState.fromFen( START_POS);
     expect(Perft.perft(board, 5)).toBe(4865609);

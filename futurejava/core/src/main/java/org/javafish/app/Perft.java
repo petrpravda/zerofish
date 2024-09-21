@@ -76,14 +76,13 @@ public class Perft {
     public static void main(String[] args) {
         // BoardState board = BoardState.fromFen(START_POS);
         //BoardState board = BoardState.fromFen("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1");
-        BoardState board = BoardState.fromFen("r3k2r/8/5Q2/8/8/3q4/8/R3K2R w KQkq - 0 1");
-        board = board.doMove(Move.fromUciString("e1f2", board));
-        board = board.doMove(Move.fromUciString("e8d7", board));
-        board = board.doMove(Move.fromUciString("f6b2", board));
+        BoardState board = BoardState.fromFen("8/5bk1/8/2Pp4/8/1K6/8/8 w - d6 0 1");
+        int moves = 6;
+        board = board.doMove(Move.fromUciString("b3a4", board)); moves--;
+        board = board.doMove(Move.fromUciString("f7e8", board)); moves--;
+        board = board.doMove(Move.fromUciString("c5c6", board)); moves--;
+        board = board.doMove(Move.fromUciString("e8d7", board)); moves--;
         System.out.println(board.toFen());
-        //BoardState board = BoardState.fromFen("r1bqkbnr/pppppppp/n7/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2");
-        //BoardState state = fromFen("r6r/3k4/8/8/3Q4/3q4/8/3RK2R b K - 3 2");
-        //System.out.println(perftString(board, 5));
-        System.out.println(perftString(board, 1));
+        System.out.println(perftString(board, moves));
     }
 }
