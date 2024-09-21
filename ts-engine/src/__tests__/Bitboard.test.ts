@@ -32,6 +32,13 @@ describe('Bitboard Tests', () => {
     expect(kingAttacks.equals(expectedAttacks)).toBe(true);
   });
 
+  test('testGetKingAttacks2', () => {
+    const kingPosition = 60;
+    const expectedAttacks = fromBigInt(0b00101000_00111000_00000000_00000000_00000000_00000000_00000000_00000000n);
+    const kingAttacks = Bitboard.getKingAttacks(kingPosition);
+    expect(kingAttacks.equals(expectedAttacks)).toBe(true);
+  });
+
   test('testGetRookAttacks', () => {
     const rookPosition = 29;
     const occupied = stringToBitboard(`

@@ -39,7 +39,8 @@ export class Perft {
     const moveList = state.generateLegalMoves();
 
     moveList.forEach((move: Move) => {
-      process.stdout.write(move.toString() + " "); // Print the move in UCI format on the same line
+      //process.stdout.write(move.toString() + " "); // Print the move in UCI format on the same line
+      console.info(move.toString() + " "); // Print the move in UCI format on the same line
       let moveNodes = 0;
 
       const newBoardState = state.doMove(move);

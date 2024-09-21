@@ -81,35 +81,6 @@ export class BB64Long implements BB64Long{
     else this.upper = U32(this.upper | (1 << (idx - 32)));
     return this;
   }
-  // Bypassing readonly with Object.defineProperty
-  // setBit(idx: number): this {
-  //   idx = U32(idx);
-  //
-  //   if (idx < 32) {
-  //     // Bypass readonly and update the 'lower' value
-  //     Object.defineProperty(this, 'lower', {
-  //       value: U32(this.lower | (1 << idx)),
-  //       writable: true,  // Optional if you want to make it writable again
-  //       configurable: true,  // Allows redefining the property again later if needed
-  //     });
-  //   } else {
-  //     // Bypass readonly and update the 'upper' value
-  //     Object.defineProperty(this, 'upper', {
-  //       value: U32(this.upper | (1 << (idx - 32))),
-  //       writable: true,
-  //       configurable: true,
-  //     });
-  //   }
-  //
-  //   return this;
-  // }
-  // // Clear a bit at a specific index
-  // clearBit(idx: number): this {
-  //   idx = U32(idx);
-  //   if (idx < 32) this.lower = U32(this.lower & ~(1 << idx));
-  //   else this.upper = U32(this.upper & ~(1 << (idx - 32)));
-  //   return this;
-  // }
 
   // Count the number of set bits
   popcnt(): number {
@@ -152,27 +123,6 @@ export class BB64Long implements BB64Long{
   LSB(): number {
     return this.lower ? getLSB32(this.lower) : 32 + getLSB32(this.upper);
   }
-
-  // MSB(): number {
-  //   //return this.lower ? getLSB32(this.lower) : 32 + getLSB32(this.upper);
-  //   return 333; // TODO TBD
-  // }
-
-  // countLeadingZeros64(): number {
-  //   if (this.upper === 0) {
-  //     return 32 + Math.clz32(this.lower);
-  //   } else {
-  //     return Math.clz32(this.upper);
-  //   }
-  // }
-
-
-// // Clear the least significant bit and return its previous index
-//   popRetLSB(): { index: number; board: BB64Long } {
-//     const idx = this.LSB();
-//     const updatedBoard = this.popLSB();
-//     return { index: idx, board: updatedBoard };
-//   }
 
 // Perform a bitwise AND with another bitboard
   AND(other: BB64Long): BB64Long {
@@ -330,12 +280,6 @@ export function rankBBs(): BB64Long[] {
 export function idxBB(index: number): BB64Long {
   return zeroBB().setBit(index);
 }
-// // TODO use idxBB
-// export function bitAtSquare(square: number): BB64Long {
-//   const result = makeBB(0, 0);
-//   result.setBit(square);
-//   return result;
-// }
 
 // export function diagBB(diagonal: number): BB64Long {
 //   return makeBB(0x10204080, 0x01020408).AND(fullBB().SHIFT(diagonal * 8)).SHIFT(diagonal);

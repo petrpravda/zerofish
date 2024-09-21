@@ -1,4 +1,4 @@
-import {BB64Long, BB_ZERO, fromBigInt, idxBB, zeroBB} from './BB64Long';
+import {BB64Long, BB_ZERO, fromBigInt, idxBB, U32, zeroBB} from './BB64Long';
 import {Side, SideType} from './Side';
 import {Square} from './Square';
 import {PieceType} from './PieceType';
@@ -164,34 +164,57 @@ export const WHITE_QUEENS_ROOK_MASK = fromBigInt(0b00000000_00000000_00000000_00
 export const BLACK_QUEENS_ROOK_MASK = fromBigInt(0b00000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000n);
 export const BLACK_KINGS_ROOK_MASK = fromBigInt(0b10000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000n);
 
-// Function to calculate the position of the most significant bit (MSB)
-function MSB(bigIntValue: BigInt): number {
-  // You would implement the MSB calculation here (or use a library function)
-  // This is a placeholder function that should return the position of the highest bit set.
-  return 0; // Implement actual logic based on your requirements
-}
-
 // Initial king square values calculated using MSB
 export const WHITE_KING_INITIAL_SQUARE = fromBigInt(0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000n).LSB();
 export const BLACK_KING_INITIAL_SQUARE = fromBigInt(0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000n).LSB();
 
 
 export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
-  const lower = patterns.lower.AND(occupied); // lower part of occupied & patterns.lower
-  // console.info(bitboardToFormattedBinary(occupied));
-  // console.info(bitboardToFormattedBinary(patterns.lower));
-  // console.info(bitboardToFormattedBinary(lower));
-  const upper = patterns.upper.AND(occupied); // upper part of occupied & patterns.upper
+  const dodirOccupied = patterns.dodir.AND(occupied); // lower part of occupied & patterns.lower
+  const updirOccupied = patterns.updir.AND(occupied); // upper part of occupied & patterns.upper
 
-  const lowerSlide = lower.empty() ? patterns.lower : lower.maskMostSignificantBit().subtract1().NOT().AND(patterns.lower);
-  // console.info(bitboardToFormattedBinary(lower));
-  // console.info(bitboardToFormattedBinary(patterns.upper));
-  // console.info(bitboardToFormattedBinary(upper));
-  const upperSlide = upper.empty() ? patterns.upper : upper.maskLeastSignificantBit().SHL(1).subtract1().AND(patterns.upper);
-  // const upperSlide = upper.empty() ? patterns.upper : upper.maskLeastSignificantBit().subtract1().SHL(1).AND(patterns.upper);
+  const dodirSlide = dodirOccupied.empty() ? patterns.dodir : dodirOccupied.maskMostSignificantBit().subtract1().NOT().AND(patterns.dodir);
+  const updirSlide = updirOccupied.empty() ? patterns.updir : updirOccupied.maskLeastSignificantBit().SHL(1).subtract1().AND(patterns.updir);
 
-  return lowerSlide.OR(upperSlide);
+  return dodirSlide.OR(updirSlide);
 }
+
+// export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
+//   // Precompute the AND operation once for dodir and updir
+//   const dodirOccupiedLower = occupied.lower & patterns.dodir.lower;
+//   const dodirOccupiedUpper = occupied.upper & patterns.dodir.upper;
+//   const updirOccupiedLower = occupied.lower & patterns.updir.lower;
+//   const updirOccupiedUpper = occupied.upper & patterns.updir.upper;
+//
+//   // Dodir slide logic (from low to high bits)
+//   const dodirSlideLower = dodirOccupiedLower === 0
+//     ? patterns.dodir.lower
+//     : ~(dodirOccupiedLower - 1) & patterns.dodir.lower;
+//
+//   const dodirSlideUpper = dodirOccupiedUpper === 0
+//     ? patterns.dodir.upper
+//     : ~(dodirOccupiedUpper - 1) & patterns.dodir.upper;
+//
+//   const dodirSlide = new BB64Long(dodirSlideLower, dodirSlideUpper);
+//
+//   // Updir slide logic (from high to low bits)
+//   const updirSlideLower = updirOccupiedLower === 0
+//     ? patterns.updir.lower
+//     : ((updirOccupiedLower & -updirOccupiedLower) << 1) - 1 & patterns.updir.lower;
+//
+//   const updirSlideUpper = updirOccupiedUpper === 0
+//     ? patterns.updir.upper
+//     : ((updirOccupiedUpper & -updirOccupiedUpper) << 1) - 1 & patterns.updir.upper;
+//
+//   const updirSlide = new BB64Long(updirSlideLower, updirSlideUpper);
+//
+//   const result = dodirSlide.OR(updirSlide);
+//   const resultRefOld = getLineAttacksOld(occupied, patterns);
+//   if (!result.equals(resultRefOld)) {
+//     throw new Error(`mismatch`);
+//   }
+//   return result;
+// }
 
 export class MoveDirection {
   constructor(public x: number, public y: number) {}
@@ -203,13 +226,13 @@ export class MoveDirection {
 
 export class LineAttackMask {
   constructor(
-    public lower: BB64Long,
-    public upper: BB64Long,
+    public dodir: BB64Long,
+    public updir: BB64Long,
     public combined: BB64Long
   ) {}
 
   toString(): string {
-    return `LineAttackMask[lower=${this.lower.asBigInt()}, upper=${this.upper.asBigInt()}, combined=${this.combined.asBigInt()}]`;
+    return `LineAttackMask[dodir=${this.dodir.asBigInt()}, updir=${this.updir.asBigInt()}, combined=${this.combined.asBigInt()}]`;
   }
 }
 

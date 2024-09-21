@@ -98,7 +98,7 @@ export class BoardState {
     this.eg += PieceSquareTable.EGS[piece][square];
 
     this.items[square] = piece;
-    this.piece_bb[piece] = this.piece_bb[piece].OR(new BB64Long(1, 0).SHL(square)); // TODO idxBB
+    this.piece_bb[piece] = this.piece_bb[piece].OR(idxBB(square));
 
     this.hash = this.hash ^ Zobrist.ZOBRIST_TABLE[piece][square];
   }
@@ -111,7 +111,7 @@ export class BoardState {
 
     this.hash = this.hash ^ Zobrist.ZOBRIST_TABLE[piece][square];
 
-    this.piece_bb[piece] = this.piece_bb[piece].AND_NOT(new BB64Long(1, 0).SHL(square));  // TODO idxBB
+    this.piece_bb[piece] = this.piece_bb[piece].AND_NOT(idxBB(square));
     this.items[square] = Piece.NONE;
   }
 
@@ -122,7 +122,7 @@ export class BoardState {
 
     this.hash = this.hash ^ Zobrist.ZOBRIST_TABLE[piece][fromSq] ^ Zobrist.ZOBRIST_TABLE[piece][toSq];
 
-    this.piece_bb[piece] = this.piece_bb[piece].XOR(new BB64Long(1, 0).SHL(fromSq)).XOR(new BB64Long(1, 0).SHL(toSq)); // TODO
+    this.piece_bb[piece] = this.piece_bb[piece].XOR(new BB64Long(1, 0).SHL(fromSq)).XOR(idxBB(toSq));
     this.items[toSq] = piece;
     this.items[fromSq] = Piece.NONE;
   }
@@ -454,7 +454,8 @@ export class BoardState {
       b1 = b1.popLSB();
     }
 
-    b1 = Bitboard.getKingAttacks(ourKing).AND_NOT(usBb.OR(underAttack));
+    const kingAttacks = Bitboard.getKingAttacks(ourKing); // TODO inline back
+    b1 = kingAttacks.AND_NOT(usBb.OR(underAttack));
 
     moves.makeQ(ourKing, b1.AND_NOT(themBb));
     moves.makeC(ourKing, b1.AND(themBb));
