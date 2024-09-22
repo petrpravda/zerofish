@@ -281,25 +281,6 @@ export function idxBB(index: number): BB64Long {
   return zeroBB().setBit(index);
 }
 
-// export function diagBB(diagonal: number): BB64Long {
-//   return makeBB(0x10204080, 0x01020408).AND(fullBB().SHIFT(diagonal * 8)).SHIFT(diagonal);
-// }
-//
-// export function diagBBs(): BB64Long[] {
-//   const b: BB64Long[] = [];
-//   for (let i = -7; i < 8; ++i) b.push(diagBB(i));
-//   return b;
-// }
-//
-// export function antiDiagBB(antidiagonal: number): BB64Long {
-//   return makeBB(0x08040201, 0x80402010).AND(fullBB().SHIFT(-antidiagonal * 8)).SHIFT(antidiagonal);
-// }
-//
-// export function antiDiagBBs(): BB64Long[] {
-//   const b: BB64Long[] = [];
-//   for (let i = -7; i < 8; ++i) b.push(antiDiagBB(i));
-//   return b;
-// }
 
 export function bitboardToString(bb: BB64Long): string {
   const bigIntBoard = new BB64Long(U32(bb.lower), U32(bb.upper)).asBigInt();

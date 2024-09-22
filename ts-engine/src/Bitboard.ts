@@ -174,10 +174,90 @@ export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB
   const updirOccupied = patterns.updir.AND(occupied); // upper part of occupied & patterns.upper
 
   const dodirSlide = dodirOccupied.empty() ? patterns.dodir : dodirOccupied.maskMostSignificantBit().subtract1().NOT().AND(patterns.dodir);
-  const updirSlide = updirOccupied.empty() ? patterns.updir : updirOccupied.maskLeastSignificantBit().SHL(1).subtract1().AND(patterns.updir);
+  const updirSlide = updirOccupied.empty() ? patterns.updir :
+    (updirOccupied.lower && patterns.updir.lower) != 0 ? new BB64Long((((updirOccupied.lower & -updirOccupied.lower) >>> 0) << 1) - 1, 0x00000000).AND(patterns.updir) :
+    (updirOccupied.upper && patterns.updir.upper) != 0 ? new BB64Long(0xffffffff, (((updirOccupied.upper & -updirOccupied.upper) >>> 0) << 1) - 1).AND(patterns.updir) :
+    BB_ZERO;
+  //const updirSlideSlow = updirOccupied.empty() ? patterns.updir : updirOccupied.maskLeastSignificantBit().SHL(1).subtract1().AND(patterns.updir);
+  // if (!updirSlide.equals(updirSlideSlow)) {
+  //   console.info(patterns.updir.asBitboardString());
+  //   console.info(occupied.asBitboardString());
+  //   console.info(updirSlideSlow.asBigBinary());
+  //   console.info(updirSlide.asBigBinary());
+  //   console.info('ble');
+  // }
 
   return dodirSlide.OR(updirSlide);
 }
+
+// export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
+//   // Inline AND operation between occupied and patterns.dodir / patterns.updir
+//   const dodirLower = patterns.dodir.lower & occupied.lower;
+//   const dodirUpper = patterns.dodir.upper & occupied.upper;
+//   const updirLower = patterns.updir.lower & occupied.lower;
+//   const updirUpper = patterns.updir.upper & occupied.upper;
+//
+//   let dodirSlideLower: number = 0, dodirSlideUpper: number = 0;
+//
+//   // If dodirOccupied is empty, no mask required, use patterns directly
+//   if (dodirLower === 0 && dodirUpper === 0) {
+//     dodirSlideLower = patterns.dodir.lower;
+//     dodirSlideUpper = patterns.dodir.upper;
+//   } else {
+//     // Mask most significant bit in dodir
+//     if (dodirUpper !== 0) {
+//       const msbIndexDodirUpper = 31 - Math.clz32(dodirUpper); // Find MSB index in upper
+//       const maskUpper = (1 << msbIndexDodirUpper) - 1;        // Create mask from MSB
+//       dodirSlideLower = 0;
+//       dodirSlideUpper = ~maskUpper & patterns.dodir.upper;    // Apply the mask and invert
+//     } else if (dodirLower !== 0) {
+//       const msbIndexDodirLower = 31 - Math.clz32(dodirLower); // Find MSB index in lower
+//       const maskLower = (1 << msbIndexDodirLower) - 1;        // Create mask from MSB
+//       dodirSlideLower = ~maskLower & patterns.dodir.lower;    // Apply the mask and invert
+//       dodirSlideUpper = patterns.dodir.upper;
+//     }
+//   }
+//
+//   let updirSlideLower: number = 0, updirSlideUpper: number = 0;
+//
+//   // If updirOccupied is empty, no mask required, use patterns directly
+//   if (updirLower === 0 && updirUpper === 0) {
+//     updirSlideLower = patterns.updir.lower;
+//     updirSlideUpper = patterns.updir.upper;
+//   } else {
+//     // Mask least significant bit in updir
+//     if (updirUpper !== 0) {
+//       const lsbIndexUpdirUpper = Math.clz32(updirUpper);          // Find LSB index in upper
+//       const maskUpper = (1 << (31 - lsbIndexUpdirUpper + 1)) - 1; // Create mask from LSB
+//       updirSlideLower = 0;
+//       updirSlideUpper = maskUpper & patterns.updir.upper;         // Apply the mask
+//     } else if (updirLower !== 0) {
+//       const lsbIndexUpdirLower = Math.clz32(updirLower);          // Find LSB index in lower
+//       const maskLower = (1 << (31 - lsbIndexUpdirLower + 1)) - 1; // Create mask from LSB
+//       updirSlideLower = maskLower & patterns.updir.lower;         // Apply the mask
+//       updirSlideUpper = patterns.updir.upper;
+//     }
+//
+//     // Shift updirSlide left by 1 and subtract 1
+//     if (updirSlideLower !== 0 || updirSlideUpper !== 0) {
+//       if (updirSlideLower !== 0) {
+//         updirSlideLower = ((updirSlideLower << 1) >>> 0) - 1;
+//       } else {
+//         updirSlideUpper = ((updirSlideUpper << 1) >>> 0) - 1;
+//       }
+//     }
+//   }
+//
+//   // Perform OR between dodirSlide and updirSlide, return result
+//   const resultLower = dodirSlideLower | updirSlideLower;
+//   const resultUpper = dodirSlideUpper | updirSlideUpper;
+//
+//   if (resultLower === undefined || resultUpper === undefined) {
+//     throw Error('je to nejaky divny');
+//   }
+//   return new BB64Long(resultLower >>> 0, resultUpper >>> 0); // Ensure 32-bit unsigned integer
+// }
+
 
 // export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
 //   // Precompute the AND operation once for dodir and updir
