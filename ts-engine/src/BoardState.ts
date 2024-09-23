@@ -7,9 +7,10 @@ import {Move} from './Move';
 import {PieceSquareTable} from './PieceSquareTable';
 import {Zobrist} from './Zobrist';
 import {PieceType} from './PieceType';
-import {Square} from './Square';
-import {MoveList} from './MoveList';
+// import {Square} from './Square';
+// import {MoveList} from './MoveList';
 import {Constants} from './Constants';
+import {MoveList, Square } from './index';
 
 export class BoardState {
   static TOTAL_PHASE = 24;
@@ -27,7 +28,7 @@ export class BoardState {
   mg: number = 0;
   private eg: number = 0;
 
-  private checkers: BB64Long = zeroBB();
+  //private checkers: BB64Long = zeroBB();
   movements: BB64Long;
   enPassant: BB64Long;
   sideToPlay: SideType;
@@ -317,7 +318,9 @@ export class BoardState {
       return true;
     }
 
-    if (Bitboard.getKnightAttacks(ourKing).AND(this.bitboardOfSideAndType(them, PieceType.KNIGHT)).empty()) {
+    const knightAttacks = Bitboard.getKnightAttacks(ourKing);
+    const knights = this.bitboardOfSideAndType(them, PieceType.KNIGHT);
+    if (!knightAttacks.AND(knights).empty()) {
       return true;
     }
 
@@ -328,11 +331,11 @@ export class BoardState {
     const theirDiagonalSliders = this.diagonalSliders(them);
     const theirOrthogonalSliders = this.orthogonalSliders(them);
 
-    if (Bitboard.getRookAttacks(ourKing, all).AND(theirOrthogonalSliders).empty()) {
+    if (!Bitboard.getRookAttacks(ourKing, all).AND(theirOrthogonalSliders).empty()) {
       return true;
     }
 
-    return Bitboard.getBishopAttacks(ourKing, all).AND(theirDiagonalSliders).empty();
+    return !Bitboard.getBishopAttacks(ourKing, all).AND(theirDiagonalSliders).empty();
   }
 
   attackedPieces(side: number): BB64Long {
@@ -762,11 +765,11 @@ export class BoardState {
     return (this.getMg() * (256 - phase) + this.getEg() * phase) / 256;
   }
 
-  // Check if the current side is in check
-  public isInCheck(): boolean {
-    this.generateLegalMoves();
-    return !this.checkers.empty();
-  }
+  // // Check if the current side is in check
+  // public isInCheck(): boolean {
+  //   this.generateLegalMoves();
+  //   //return !this.checkers.empty();
+  // }
 
   // Check if the current side is in checkmate
   public isInCheckMate(): boolean {
@@ -829,4 +832,8 @@ export class BoardState {
     const piece = this.pieceAt(square);
     return PieceSquareTable.BASIC_MATERIAL_VALUE[Piece.typeOf(piece)] * (Piece.sideOf(piece) === Side.WHITE ? 1 : -1);
   }
+
+  // public generateUciMoves(): string[] {
+  //
+  // }
 }

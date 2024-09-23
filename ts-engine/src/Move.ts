@@ -97,6 +97,10 @@ export class Move {
     return (this.bits & Move.PROMOTION) !== 0;
   }
 
+  isCapture(): boolean {
+    return (this.bits & Move.CAPTURE) !== 0;
+  }
+
   equals(other: Move): boolean {
     return other !== null && this.bits === other.bitsValue();
   }

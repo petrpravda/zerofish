@@ -458,14 +458,16 @@ const KING_MOVE_DIRECTIONS: MoveDirection[] = [
   MoveDirection.dir(-1, 0), MoveDirection.dir(-1, -1)
 ];
 
+
+const startTimestamp = performance.now();
+
 const LINE_MASKS: LineAttackMask[] = calculateLinePatterns();
 const BB_SQUARES_BETWEEN: BB64Long[][] = generateSquaresBetween();
 const BB_LINES: BB64Long[][] = createBBLines();
 const KNIGHT_ATTACKS: BB64Long[] = generateAttacks(KNIGHT_MOVE_DIRECTIONS);
-const KING_ATTACKS: BB64Long[] = generateAttacks(KING_MOVE_DIRECTIONS);
+const KING_ATTACKS: BB64Long[] = generateAttacks(KING_MOVE_DIRECTIONS);const endTimestamp = performance.now(); // End measuring time
 
-//console.info(LINE_MASKS.map(mask => mask.toString()));
-// LINE_MASKS.forEach(mask => console.info(mask.toString()));
-
+const initializationTime = endTimestamp - startTimestamp; // Calculate the elapsed time
+console.info(`Initialization took ${initializationTime.toFixed(2)} milliseconds.`);
 
 

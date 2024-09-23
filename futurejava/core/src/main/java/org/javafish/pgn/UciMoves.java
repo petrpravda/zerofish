@@ -116,32 +116,9 @@ public class UciMoves {
             halfResult = "O-O-O";
         } else {
             throw new IllegalStateException("TBD");
-//            if ((!move.isPromotion() /*&& move.piece_id() == EnumPieceType.P*/)
-//                || move.isPromotion()) { // TODO lze zjednodusit
-//                capturing = Square.getFile(move.from()) != Square.getFile(move.to());
-//                if (capturing) {
-////                        sourceFile = Square.getFile(move.start());
-//                    fileNeeded = true;
-//                }
-//            } else {
-//                capturing = move.typ() == EnumMoveType.CAPTURE
-//                    || move.typ() == EnumMoveType.KING_CAPTURE;
-//                pieceIdentification = move.piece_id().name().toUpperCase();
-//            }
-//            halfResult = new StringBuffer()
-//                    .append(pieceIdentification)
-//                    .append(fileNeeded ? Square.getFile(move.from()) : "")
-//                    .append(rankNeeded ? Square.getRank(move.from()) : "")
-//                    .append(capturing ? "x" : "")
-//                    .append(destination)
-//                    .toString();
         }
         boolean checking = false; // state.isMoveChecking(move);
         StringBuilder result = new StringBuilder(halfResult);
-//        if (move.typ() == EnumMoveType.PROMOTION) {
-//            result.append('=');
-//            result.append(move.piece_id().name());
-//        }
 
         this.state = state.doMove(move);
 

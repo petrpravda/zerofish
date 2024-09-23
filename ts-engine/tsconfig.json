@@ -1,17 +1,42 @@
+//{
+//  "compilerOptions": {
+//    "target": "es2020",                  // or whatever version of JS you need
+//    "module": "commonjs",              // or "es6" if you're using ES modules
+//    "outDir": "./dist",                // where to output compiled js files
+//    "sourceMap": false,                // if you don't want source maps
+//    "declaration": false,              // don't output type declaration files
+//    "removeComments": true,            // remove comments in the output
+//    "moduleResolution": "node",
+//    "strict": true,
+//    "esModuleInterop": true,
+//    "skipLibCheck": true,
+//    "forceConsistentCasingInFileNames": true
+//  },
+//  "include": ["src/**/*.ts"],          // specify the location of your .ts files
+//  "exclude": ["node_modules"]
+//}
+
 {
   "compilerOptions": {
-    "target": "es2020",                  // or whatever version of JS you need
-    "module": "commonjs",              // or "es6" if you're using ES modules
+    "target": "esnext",
+    "module": "esnext",              // or "es6" if you're using ES modules
+    //"outFile": "./dist/bundle.js",
     "outDir": "./dist",                // where to output compiled js files
-    "sourceMap": false,                // if you don't want source maps
-    "declaration": false,              // don't output type declaration files
+    "rootDir": "./src",
+    "sourceMap": true,                // if you don't want source maps
+    "declaration": true,                 // Enable declaration files
+    //"declarationDir": "./dist/types",    // Directory for .d.ts files
     "removeComments": true,            // remove comments in the output
-    "moduleResolution": "node",
+    //"moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts"],          // specify the location of your .ts files
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "baseUrl": "./src",
+  "paths": {
+    "*": ["*", "src/*"]
+  }
 }

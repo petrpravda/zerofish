@@ -14,4 +14,4 @@ const board = BoardState.fromFen(START_POS);
 // board = board.doMove(Move.fromUciString("c5c6", board)); moves--;
 // board = board.doMove(Move.fromUciString("e8d7", board)); moves--;
 
-console.info(Perft.perftString(board, 6));
+console.info(Perft.perftString(board, 1));
