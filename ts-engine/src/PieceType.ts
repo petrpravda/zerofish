@@ -13,7 +13,7 @@ export class PieceType {
    * @returns The corresponding PieceType value, or throws an error if the input is invalid.
    */
   static fromSan(pieceCode: string): number | undefined {
-    switch (pieceCode.toUpperCase()) {
+    switch (pieceCode) {
       case 'P':
         return PieceType.PAWN;
       case 'N':

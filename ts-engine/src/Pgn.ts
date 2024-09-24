@@ -27,6 +27,37 @@ export class Pgn {
     return result;
   }
 
+  /**
+   * Converts a list of PGN (Portable Game Notation) moves (SAN - Standard Algebraic Notation)
+   * into UCI (Universal Chess Interface) moves starting from the provided FEN.
+   *
+   * @param {string} startFen - The starting position in FEN (Forsyth–Edwards Notation).
+   * @param {string[]} sans - The list of SAN moves in PGN format.
+   * @returns {string[]} - The corresponding list of UCI moves.
+   *
+   * This function will interpret each SAN move in the context of the current board state,
+   * convert it into a UCI move, and then apply it to update the board for the next move.
+   */
+  public static pgnToUci(startFen: string, sans: string[]): string[] {
+    let board = BoardState.fromFen(startFen);  // Initialize the board state from FEN
+    const result: string[] = [];
+
+    // Iterate through each SAN move
+    for (const san of sans) {
+      // Parse the SAN move into a Move object, using the current board state
+      const move = Pgn.parseOneSan(san, board);
+
+      // Ensure the move is valid, otherwise throw an error
+      if (!move) {
+        throw new Error(`Invalid SAN move: ${san}`);
+      }
+
+      result.push(move.uci());
+      board = board.doMove(move);
+    }
+
+    return result;  // Return the list of UCI moves
+  }
 
   /**
    * Parses a SAN (Standard Algebraic Notation) move into a corresponding UCI move.
@@ -121,61 +152,6 @@ export class Pgn {
 
     return matchingMoves.length === 1 ? matchingMoves[0] : undefined;
   }
-
-
-  // public static oneUciToSan(uciMove: string, state: BoardState): string {
-  //   const uciMoves: MoveList = state.generateLegalMoves();
-  //
-  //   // Try to find the exact move by its UCI string
-  //   const moveCheating = uciMoves.find(move => move.uci() === uciMove);
-  //
-  //   const piece = moveCheating ? moveCheating.getPieceType() : null;
-  //   const uciDestination = uciMove.substring(2, 4);
-  //   const sourceFile = uciMove.charAt(0);
-  //   const sourceRank = uciMove.charAt(1);
-  //
-  //   // Step 1: Find all moves going to the same destination and with the same piece type
-  //   let matchingMoves = uciMoves
-  //     .filter(move => Square.getName(move.to()) === uciDestination)
-  //     .filter(move => piece === null || piece === move.getPieceType());
-  //
-  //   if (matchingMoves.length === 1) {
-  //     return this.moveToPgn(matchingMoves[0], false, false, state);
-  //   }
-  //
-  //   // Step 2: Narrow down using the source file
-  //   matchingMoves = matchingMoves
-  //     .filter(move => Square.getFile(move.from()) === sourceFile);
-  //
-  //   if (matchingMoves.length === 1) {
-  //     return this.moveToPgn(matchingMoves[0], true, false, state);
-  //   }
-  //
-  //   // Step 3: Narrow down using the source rank
-  //   matchingMoves = uciMoves
-  //     .filter(move => Square.getName(move.to()) === uciDestination)
-  //     .filter(move => piece === null || piece === move.getPieceType())
-  //     .filter(move => Square.getRank(move.from()) === sourceRank);
-  //
-  //   if (matchingMoves.length === 1) {
-  //     return this.moveToPgn(matchingMoves[0], false, true, state);
-  //   }
-  //
-  //   // Step 4: Finally, check both source file and rank
-  //   matchingMoves = matchingMoves
-  //     .filter(move => Square.getFile(move.from()) === sourceFile)
-  //     .filter(move => Square.getRank(move.from()) === sourceRank);
-  //
-  //   if (matchingMoves.length === 1) {
-  //     return this.moveToPgn(matchingMoves[0], true, true, state);
-  //   }
-  //
-  //   if (matchingMoves.length > 1) {
-  //     throw new Error(`Ambiguous possible moves: ${matchingMoves} for ${uciMove}`);
-  //   } else {
-  //     throw new Error(`Move ${uciMove} not found`);
-  //   }
-  // }
 
   public static oneUciToSan(uciMove: string, state: BoardState): string {
     const uciMoves: MoveList = state.generateLegalMoves();

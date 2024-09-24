@@ -4,6 +4,11 @@ import {START_POS} from '../Fen';
 import {Perft} from '../Perft';
 import {Move} from '../Move';
 
+// await new Promise(resolve => setTimeout(resolve, 15000));
+
+// deno run --unstable-sloppy-imports --inspect src/__tests__/testing.perft.helper.ts
+// deno run --inspect-brk --unstable-sloppy-imports src/__tests__/testing.perft.helper.ts
+
 const board = BoardState.fromFen(START_POS);
 //const board = BoardState.fromFen("rnbqkb1r/pppppppp/8/8/4n3/3P4/PPPKPPPP/RNBQ1BNR w kq - 3 3");
 
@@ -14,4 +19,7 @@ const board = BoardState.fromFen(START_POS);
 // board = board.doMove(Move.fromUciString("c5c6", board)); moves--;
 // board = board.doMove(Move.fromUciString("e8d7", board)); moves--;
 
-console.info(Perft.perftString(board, 1));
+console.info(Perft.perftString(board, 6));
+
+
+// await new Promise(() => {}); // Keeps the script running indefinitely

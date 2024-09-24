@@ -833,7 +833,7 @@ export class BoardState {
     return PieceSquareTable.BASIC_MATERIAL_VALUE[Piece.typeOf(piece)] * (Piece.sideOf(piece) === Side.WHITE ? 1 : -1);
   }
 
-  // public generateUciMoves(): string[] {
-  //
-  // }
+  public generateUciMoves(): string[] {
+    return this.generateLegalMoves().map(m => m.uci());
+  }
 }

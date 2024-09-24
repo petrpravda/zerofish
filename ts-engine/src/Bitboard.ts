@@ -171,13 +171,22 @@ export const BLACK_KING_INITIAL_SQUARE = fromBigInt(0b00010000_00000000_00000000
 
 export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
   const dodirOccupied = patterns.dodir.AND(occupied); // lower part of occupied & patterns.lower
-  const updirOccupied = patterns.updir.AND(occupied); // upper part of occupied & patterns.upper
+//  const updirOccupied = patterns.updir.AND(occupied); // upper part of occupied & patterns.upper
 
-  const dodirSlide = dodirOccupied.empty() ? patterns.dodir : dodirOccupied.maskMostSignificantBit().subtract1().NOT().AND(patterns.dodir);
-  const updirSlide = updirOccupied.empty() ? patterns.updir :
-    (updirOccupied.lower && patterns.updir.lower) != 0 ? new BB64Long((((updirOccupied.lower & -updirOccupied.lower) >>> 0) << 1) - 1, 0x00000000).AND(patterns.updir) :
-    (updirOccupied.upper && patterns.updir.upper) != 0 ? new BB64Long(0xffffffff, (((updirOccupied.upper & -updirOccupied.upper) >>> 0) << 1) - 1).AND(patterns.updir) :
+  const dodirSlide = dodirOccupied.empty() ? patterns.dodir :
+    dodirOccupied.maskMostSignificantBit().subtract1().NOT().AND(patterns.dodir);
+
+  const updirOccupiedLower = patterns.updir.lower & occupied.lower;
+  const updirOccupiedUpper = patterns.updir.upper & occupied.upper;
+  const updirSlide = updirOccupiedLower === 0 && updirOccupiedUpper === 0 ? patterns.updir :
+    updirOccupiedLower !== 0 ? new BB64Long((((updirOccupiedLower & -updirOccupiedLower) >>> 0) << 1) - 1, 0x00000000).AND(patterns.updir) :
+    updirOccupiedUpper !== 0 ? new BB64Long(0xffffffff, (((updirOccupiedUpper & -updirOccupiedUpper) >>> 0) << 1) - 1).AND(patterns.updir) :
     BB_ZERO;
+
+  // if (updirSlideOld.equals(updirSlide)) {
+  //   console.info('rozdil');
+  // }
+
   //const updirSlideSlow = updirOccupied.empty() ? patterns.updir : updirOccupied.maskLeastSignificantBit().SHL(1).subtract1().AND(patterns.updir);
   // if (!updirSlide.equals(updirSlideSlow)) {
   //   console.info(patterns.updir.asBitboardString());
@@ -189,6 +198,59 @@ export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB
 
   return dodirSlide.OR(updirSlide);
 }
+
+// export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
+//   const dodirOccupied = patterns.dodir.AND(occupied); // lower part of occupied & patterns.lower
+// //  const updirOccupied = patterns.updir.AND(occupied); // upper part of occupied & patterns.upper
+//
+//   const dodirSlide = dodirOccupied.empty() ? patterns.dodir : dodirOccupied.maskMostSignificantBit().subtract1().NOT().AND(patterns.dodir);
+//
+//   const updirOccupiedLower = patterns.updir.lower & occupied.lower;
+//   const updirOccupiedUpper = patterns.updir.upper & occupied.upper;
+//   const updirSlide = updirOccupiedLower === 0 && updirOccupiedUpper === 0 ? patterns.updir :
+//     updirOccupiedLower !== 0 ? new BB64Long((((updirOccupiedLower & -updirOccupiedLower) >>> 0) << 1) - 1, 0x00000000).AND(patterns.updir) :
+//     updirOccupiedUpper !== 0 ? new BB64Long(0xffffffff, (((updirOccupiedUpper & -updirOccupiedUpper) >>> 0) << 1) - 1).AND(patterns.updir) :
+//     BB_ZERO;
+//
+//   // if (updirSlideOld.equals(updirSlide)) {
+//   //   console.info('rozdil');
+//   // }
+//
+//   //const updirSlideSlow = updirOccupied.empty() ? patterns.updir : updirOccupied.maskLeastSignificantBit().SHL(1).subtract1().AND(patterns.updir);
+//   // if (!updirSlide.equals(updirSlideSlow)) {
+//   //   console.info(patterns.updir.asBitboardString());
+//   //   console.info(occupied.asBitboardString());
+//   //   console.info(updirSlideSlow.asBigBinary());
+//   //   console.info(updirSlide.asBigBinary());
+//   //   console.info('ble');
+//   // }
+//
+//   return dodirSlide.OR(updirSlide);
+// }
+//
+// export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
+//   const dodirOccupied = patterns.dodir.AND(occupied); // lower part of occupied & patterns.lower
+//
+//   const dodirSlide = dodirOccupied.empty() ? patterns.dodir : dodirOccupied.maskMostSignificantBit().subtract1().NOT().AND(patterns.dodir);
+//
+//   //const updirOccupied = patterns.updir.AND(occupied); // upper part of occupied & patterns.upper
+//   const updirOccupiedLower = patterns.dodir.lower && occupied.lower;
+//   const updirOccupiedUpper = patterns.dodir.upper && occupied.upper;
+//   const updirSlide = updirOccupiedLower === 0 && updirOccupiedUpper === 0 ? patterns.updir :
+//     updirOccupiedLower !== 0 ? new BB64Long((((updirOccupiedLower & -updirOccupiedLower) >>> 0) << 1) - 1, 0x00000000).AND(patterns.updir) :
+//     updirOccupiedUpper !== 0 ? new BB64Long(0xffffffff, (((updirOccupiedUpper & -updirOccupiedUpper) >>> 0) << 1) - 1).AND(patterns.updir) :
+//     BB_ZERO;
+//   //const updirSlideSlow = updirOccupied.empty() ? patterns.updir : updirOccupied.maskLeastSignificantBit().SHL(1).subtract1().AND(patterns.updir);
+//   // if (!updirSlide.equals(updirSlideSlow)) {
+//   //   console.info(patterns.updir.asBitboardString());
+//   //   console.info(occupied.asBitboardString());
+//   //   console.info(updirSlideSlow.asBigBinary());
+//   //   console.info(updirSlide.asBigBinary());
+//   //   console.info('ble');
+//   // }
+//
+//   return dodirSlide.OR(updirSlide);
+// }
 
 // export function getLineAttacks(occupied: BB64Long, patterns: LineAttackMask): BB64Long {
 //   // Inline AND operation between occupied and patterns.dodir / patterns.updir

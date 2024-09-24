@@ -1,5 +1,5 @@
 import {Side} from '../Side';
-import {BB64Long, BB_ZERO, bitboardToString} from '../BB64Long';
+import {BB_ZERO} from '../BB64Long';
 import {BoardState} from '../BoardState';
 import {Square} from '../Square';
 import {Piece} from '../Piece';
@@ -102,7 +102,7 @@ describe('BoardStateTest', () => {
   });
 
   it('fromFailingSts', () => {
-    const state = BoardState.fromFen("2r5/p3k1p1/1p5p/4Pp2/1PPnK3/PB1R2P1/7P/8 w - f6 0 4");
+      const state = BoardState.fromFen("2r5/p3k1p1/1p5p/4Pp2/1PPnK3/PB1R2P1/7P/8 w - f6 0 4");
     const moves = state.generateLegalMoves();
 
     const expectedMoves = ["e4e3", "e4f4", "e4d5", "e4d4", "e5f6"];
@@ -240,5 +240,122 @@ describe('BoardStateTest', () => {
     const moves: string[] = state.generateLegalMoves().map(m => m.toString());
 
     expect(moves).toContain('c1g5');
+  });
+
+  describe('generateUciMoves', () => {
+    it('should generate the correct UCI moves from the starting position', () => {
+      const board = BoardState.fromFen('r1b1k2r/p2pbppp/1p2pn2/1PpP4/8/2B1PN1P/5PP1/R2QKB1R w KQkq - 0 14');
+      const expectedUciMoves = ["e1d2", "e1e2", "f3g1",
+"f3d2",
+"f3h2",
+"f3d4",
+"f3h4",
+"f3e5",
+"f3g5",
+"d1c2",
+"d1e2",
+"d1b3",
+"d1a4",
+"f1e2",
+"f1d3",
+"f1c4",
+"c3f6",
+"c3b2",
+"c3d2",
+"c3b4",
+"c3d4",
+"c3a5",
+"c3e5",
+"a1a7",
+"a1b1",
+"a1c1",
+"a1a2",
+"a1a3",
+"a1a4",
+"a1a5",
+"a1a6",
+"d1b1",
+"d1c1",
+"d1d2",
+"d1d3",
+"d1d4",
+"h1g1",
+"h1h2",
+"g2g3",
+"e3e4",
+"h3h4",
+"d5d6",
+"g2g4",
+"d5e6"
+      ];
+
+      const uciMoves = board.generateUciMoves();
+
+      expect(uciMoves).toEqual(expectedUciMoves);
+    });
+
+    it('should generate the correct UCI moves after some moves', () => {
+      let board = BoardState.fromFen('r1b1k2r/p2pbppp/1p2pn2/1PpP4/8/2B1PN1P/5PP1/R2QKB1R w KQkq - 0 14');
+      // Make some moves
+      board = board.doMove(Move.fromUciString('f3d4', board));
+      board = board.doMove(Move.fromUciString('e7d6', board));
+      board = board.doMove(Move.fromUciString('d1c2', board));
+      board = board.doMove(Move.fromUciString('e6e5', board));
+
+      const expectedUciMovesAfterMoves = [
+        "e1d1",
+        "e1d2",
+        "e1e2",
+        "e1c1",
+        "d4e2",
+        "d4b3",
+        "d4f3",
+        "d4f5",
+        "d4c6",
+        "d4e6",
+        "f1e2",
+        "f1d3",
+        "f1c4",
+        "c2h7",
+        "c2b1",
+        "c2d1",
+        "c2b3",
+        "c2d3",
+        "c2a4",
+        "c2e4",
+        "c2f5",
+        "c2g6",
+        "c3b2",
+        "c3d2",
+        "c3b4",
+        "c3a5",
+        "a1a7",
+        "a1b1",
+        "a1c1",
+        "a1d1",
+        "a1a2",
+        "a1a3",
+        "a1a4",
+        "a1a5",
+        "a1a6",
+        "h1g1",
+        "h1h2",
+        "c2c1",
+        "c2a2",
+        "c2b2",
+        "c2d2",
+        "c2e2",
+        "f2f3",
+        "g2g3",
+        "e3e4",
+        "h3h4",
+        "f2f4",
+        "g2g4"
+      ];
+
+      const uciMovesAfterMoves = board.generateUciMoves();
+
+      expect(uciMovesAfterMoves).toEqual(expectedUciMovesAfterMoves);
+    });
   });
 });
