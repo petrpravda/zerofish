@@ -5,14 +5,17 @@ import {TTEntry} from './TTEntry';
 import {Statistics} from './Statistics';
 import {Limits} from './Limits';
 import {Evaluation} from './Evaluation';
+import {START_POS} from './Fen';
 
 export class Search {
+  public static readonly GIGA = 1000000000;
+  public static readonly MEGA = 1000000.;
   static readonly INF = 999999;
   private static readonly NULL_MIN_DEPTH = 2;
   private static readonly LMR_MIN_DEPTH = 2;
   private static readonly LMR_MOVES_WO_REDUCTION = 1;
   private static readonly ASPIRATION_WINDOW = 25;
-  private static readonly LMR_TABLE: number[][] = [];
+  private static LMR_TABLE: number[][] = Array.from({ length: 64 }, () => Array(64).fill(0));
 
   private stop: boolean = false;
   private selDepth: number = 0;
@@ -249,11 +252,30 @@ export class Search {
     this.stop = true;
   }
 
-  private printInfo(state: BoardState, result: SearchResult, depth: number): void {
-    console.log(`info currmove ${result.move ? result.move.toString() : "(none)"} depth ${depth} seldepth ${this.selDepth}`);
-    console.log(`score cp ${result.score} nodes ${this.statistics.totalNodes()}`);
-    console.log(`pv ${this.getPv(state, depth)}`);
-    console.log(`hashfull ${this.transpositionTable.hashFull()} time ${performance.now() - Limits.startTime}`);
+  public printInfo(state: BoardState, result: SearchResult, depth: number): void {
+    const streamOut = process.stdout;  // Assuming you're writing to the console
+
+    streamOut.write("info");
+
+    const currMove = result.move ? result.move.toString() : "(none)";
+    streamOut.write(` currmove ${currMove}`);
+
+    streamOut.write(` depth ${depth}`);
+
+    streamOut.write(` seldepth ${this.selDepth}`);
+
+    const timeElapsed = Math.floor(Limits.timeElapsed() / Search.MEGA);
+    streamOut.write(` time ${timeElapsed}`);
+
+    streamOut.write(` score cp ${result.score}`);
+
+    streamOut.write(` nodes ${this.statistics.totalNodes()}`);
+
+    const nps = this.statistics.totalNodes() / (Limits.timeElapsed() / Search.GIGA);
+    streamOut.write(` nps ${nps.toFixed(0)}`);
+
+    const pv = this.getPv(state, depth);
+    streamOut.write(` pv ${pv}\n`);
   }
 }
 
@@ -266,3 +288,6 @@ class SearchResult {
     this.score = score;
   }
 }
+
+const state = BoardState.fromFen(START_POS);
+new Search(new TranspositionTable()).itDeep(state, 8);

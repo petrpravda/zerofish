@@ -2,7 +2,7 @@ import {BB64Long, BB_ZERO, bitboardToString, idxBB, zeroBB} from './BB64Long';
 import {Piece} from './Piece';
 import {Side, SideType, SideUtils} from './Side';
 import {Bitboard, PAWN_DOUBLE_PUSH_LINES, PAWN_FINAL_RANKS, PAWN_RANKS} from './Bitboard';
-import {Fen} from './Fen';
+import {Fen, START_POS} from './Fen';
 import {Move} from './Move';
 import {PieceSquareTable} from './PieceSquareTable';
 import {Zobrist} from './Zobrist';

@@ -63,8 +63,10 @@ export class Limits {
   */
 
   public static timeElapsed(): number {
-    return (process.hrtime.bigint() - BigInt(this.startTime)) as unknown as number;
+    return performance.now() - this.startTime;
   }
+
+
 
   // Uncomment if you need the phase factor for time allocation:
   /*
