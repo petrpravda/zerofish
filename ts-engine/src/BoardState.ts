@@ -16,8 +16,6 @@ export class BoardState {
   static TOTAL_PHASE = 24;
   static PIECE_PHASES = [0, 1, 1, 2, 4, 0];
 
-  ply: number;
-  private history: number[];
   private piece_bb: BB64Long[] = new Array(Piece.PIECES_COUNT).fill(new BB64Long(0, 0));
   items: number[] = new Array(64).fill(Piece.NONE);
   hash: number = 0;
@@ -65,8 +63,7 @@ export class BoardState {
 
     this.halfMoveClock = halfMoveClock;
     this.fullMoveNormalized = (fullMoveCount - 1) * 2 + (sideToPlay === Side.WHITE ? 0 : 1);
-    this.history = new Array(maxSearchDepth).fill(0);
-    this.ply = 0;
+    //this.history = new Array(maxSearchDepth).fill(0);
   }
 
   static fromFen(fen: string): BoardState {
@@ -81,7 +78,7 @@ export class BoardState {
     const result = Object.create(this) as BoardState;
     result.piece_bb = this.piece_bb.map(bb => new BB64Long(bb.lower, bb.upper));
     result.items = [...this.items];
-    result.history = [...this.history];
+    //result.history = [...this.history];
     return result;
   }
 
@@ -234,7 +231,7 @@ export class BoardState {
     const state = oldBoardState.clone();
     state.fullMoveNormalized += 1;
     state.halfMoveClock += 1;
-    state.history[state.ply++] = move.bitsValue();
+    // state.history[state.ply++] = move.bitsValue();
     state.movements = state.movements.OR(idxBB(move.to())).OR(idxBB(move.from()));
 
     if (Piece.typeOf(state.items[move.from()]) === PieceType.PAWN) {
@@ -835,5 +832,16 @@ export class BoardState {
 
   public generateUciMoves(): string[] {
     return this.generateLegalMoves().map(m => m.uci());
+  }
+
+  public hasNonPawnMaterial(side: SideType): boolean {
+    const start = Piece.makePiece(side, PieceType.KNIGHT);
+    const end = Piece.makePiece(side, PieceType.QUEEN);
+    for (let piece = start; piece <= end; piece++) {
+      if (!this.bitboardOf(piece).empty()) {
+        return true;
+      }
+    }
+    return false;
   }
 }

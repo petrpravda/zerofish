@@ -339,15 +339,6 @@ class BoardStateTest {
 //    }
 
     @Test
-    void testHasNonPawnMaterial() {
-        BoardState state = BoardState.fromFen("8/k7/8/8/8/8/8/7K w - - 0 1");
-        assertFalse(state.hasNonPawnMaterial(Side.WHITE)); // Only White King left
-
-        state = BoardState.fromFen("8/k7/8/8/8/8/8/R3K2R w KQ - 0 1");
-        assertTrue(state.hasNonPawnMaterial(Side.WHITE)); // White has two Rooks
-    }
-
-    @Test
     void testDoMove() {
         BoardState state = BoardState.fromFen(START_POS);
         BoardState nextState = state.doMove("e2e4");
@@ -396,5 +387,98 @@ class BoardStateTest {
 
         assertTrue(state.isCapture("b2c3"));
         assertFalse(state.isCapture("e1d1"));
+    }
+
+    @Test
+    void testHasNonPawnMaterial() {
+        // 1. Normal position with non-pawn material for both sides
+        BoardState state1 = BoardState.fromFen("rnb1k2r/ppp1nppp/4p3/3pP3/6QN/2b5/PPP2PPP/R1B1KB1R w KQkq - 0 10");
+        assertTrue(state1.hasNonPawnMaterial(Side.WHITE)); // White has non-pawn material (Knight, Queen, Rook)
+        assertTrue(state1.hasNonPawnMaterial(Side.BLACK)); // Black has non-pawn material (Knight, Bishop, Rook)
+
+        // 2. Only pawns on the board for both sides
+        BoardState state2 = BoardState.fromFen("8/8/8/4p3/4P3/8/8/8 w - - 0 1");
+        assertFalse(state2.hasNonPawnMaterial(Side.WHITE)); // White has no non-pawn material
+        assertFalse(state2.hasNonPawnMaterial(Side.BLACK)); // Black has no non-pawn material
+
+        // 3. White has only pawns, Black has knights
+        BoardState state3 = BoardState.fromFen("8/8/8/8/8/8/PPPPPPPP/NNNNNNNN w - - 0 1");
+        assertTrue(state3.hasNonPawnMaterial(Side.WHITE)); // White has non-pawn material (Knights)
+        assertFalse(state3.hasNonPawnMaterial(Side.BLACK)); // Black only has pawns
+
+        // 4. Empty board, no material
+        BoardState state4 = BoardState.fromFen("8/8/8/8/8/8/8/8 w - - 0 1");
+        assertFalse(state4.hasNonPawnMaterial(Side.WHITE)); // White has no non-pawn material
+        assertFalse(state4.hasNonPawnMaterial(Side.BLACK)); // Black has no non-pawn material
+
+        // 5. White has only a queen, Black has only pawns
+        BoardState state5 = BoardState.fromFen("8/8/8/8/8/8/8/Q7 w - - 0 1");
+        assertTrue(state5.hasNonPawnMaterial(Side.WHITE)); // White has a queen (non-pawn material)
+        assertFalse(state5.hasNonPawnMaterial(Side.BLACK)); // Black has no non-pawn material
+
+        // 6. Black has a bishop and a rook, White has only pawns
+        BoardState state6 = BoardState.fromFen("8/8/8/8/8/8/pppppppp/rb6 w - - 0 1");
+        assertFalse(state6.hasNonPawnMaterial(Side.WHITE)); // White has no non-pawn material
+        assertTrue(state6.hasNonPawnMaterial(Side.BLACK)); // Black has non-pawn material (Bishop, Rook)
+
+        // 7. Both sides have only kings (no other material)
+        BoardState state7 = BoardState.fromFen("8/8/8/8/8/8/8/K7 w - - 0 1");
+        assertFalse(state7.hasNonPawnMaterial(Side.WHITE)); // White has no non-pawn material
+        assertFalse(state7.hasNonPawnMaterial(Side.BLACK)); // Black has no non-pawn material
+
+        // 8. White has a rook and pawns, Black has only a queen
+        BoardState state8 = BoardState.fromFen("8/8/8/8/8/8/8/R7 w - - 0 1");
+        assertTrue(state8.hasNonPawnMaterial(Side.WHITE)); // White has a rook (non-pawn material)
+        assertFalse(state8.hasNonPawnMaterial(Side.BLACK)); // Black has no non-pawn material
+
+        // 9. White has bishops, Black has only pawns
+        BoardState state9 = BoardState.fromFen("8/8/8/8/8/8/pppppppp/BBBBBBBB w - - 0 1");
+        assertTrue(state9.hasNonPawnMaterial(Side.WHITE)); // White has bishops
+        assertFalse(state9.hasNonPawnMaterial(Side.BLACK)); // Black only has pawns
+
+        // 10. White and Black both have queens only
+        BoardState state10 = BoardState.fromFen("8/8/8/8/8/8/qqqqqqqq/QQQQQQQQ w - - 0 1");
+        assertTrue(state10.hasNonPawnMaterial(Side.WHITE)); // White has queens
+        assertTrue(state10.hasNonPawnMaterial(Side.BLACK)); // Black has queens
+
+        // 11. White has a knight, Black has nothing
+        BoardState state11 = BoardState.fromFen("8/8/8/8/8/8/8/N7 w - - 0 1");
+        assertTrue(state11.hasNonPawnMaterial(Side.WHITE)); // White has a knight
+        assertFalse(state11.hasNonPawnMaterial(Side.BLACK)); // Black has nothing
+
+        // 12. Black has a knight, White has nothing
+        BoardState state12 = BoardState.fromFen("8/8/8/8/8/8/8/8/8/n7 w - - 0 1");
+        assertFalse(state12.hasNonPawnMaterial(Side.WHITE)); // White has nothing
+        assertTrue(state12.hasNonPawnMaterial(Side.BLACK)); // Black has a knight
+
+        // 13. White has a bishop and pawns, Black has a rook
+        BoardState state13 = BoardState.fromFen("8/8/8/8/8/8/PPP5/B7 w - - 0 1");
+        assertTrue(state13.hasNonPawnMaterial(Side.WHITE)); // White has a bishop
+        assertFalse(state13.hasNonPawnMaterial(Side.BLACK)); // Black has no non-pawn material
+
+        // 14. White and Black both have knights and bishops
+        BoardState state14 = BoardState.fromFen("8/8/8/8/8/8/nnnnnnnn/BBBBBBBB w - - 0 1");
+        assertTrue(state14.hasNonPawnMaterial(Side.WHITE)); // White has bishops
+        assertTrue(state14.hasNonPawnMaterial(Side.BLACK)); // Black has knights
+
+        // 15. White has no material, Black has pawns
+        BoardState state15 = BoardState.fromFen("8/8/8/8/8/8/8/p7 w - - 0 1");
+        assertFalse(state15.hasNonPawnMaterial(Side.WHITE)); // White has no non-pawn material
+        assertFalse(state15.hasNonPawnMaterial(Side.BLACK)); // Black has no non-pawn material
+
+        // 16. Full material for both sides
+        BoardState state16 = BoardState.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        assertTrue(state16.hasNonPawnMaterial(Side.WHITE)); // White has knights, bishops, rooks, and queens
+        assertTrue(state16.hasNonPawnMaterial(Side.BLACK)); // Black has knights, bishops, rooks, and queens
+
+        // 17. Only White King left
+        BoardState state17 = BoardState.fromFen("8/k7/8/8/8/8/8/7K w - - 0 1");
+        assertFalse(state17.hasNonPawnMaterial(Side.WHITE)); // Only White King left
+        assertFalse(state17.hasNonPawnMaterial(Side.BLACK)); // Only Black King left
+
+        // 18. White has two Rooks, Black has only a King
+        BoardState state18 = BoardState.fromFen("8/k7/8/8/8/8/8/R3K2R w KQ - 0 1");
+        assertTrue(state18.hasNonPawnMaterial(Side.WHITE)); // White has two Rooks
+        assertFalse(state18.hasNonPawnMaterial(Side.BLACK)); // Only Black King left
     }
 }
