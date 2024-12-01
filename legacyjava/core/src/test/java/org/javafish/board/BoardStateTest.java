@@ -386,5 +386,7 @@ class BoardStateTest {
         MoveList legalMoves = state.generateLegalMoves();
         List<String> movesAsStrings = legalMoves.stream().map(Move::toString).toList();
         assertEquals(33, movesAsStrings.size());
+
+        assertTrue(movesAsStrings.contains("f2e1q"), "Move list should contain the promotion move f2e1q");
     }
 }

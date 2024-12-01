@@ -374,6 +374,17 @@ class BoardStateTest {
     }
 
     @Test
+    void checkMoveF2E1QIsNotMissing() {
+        BoardState state = BoardState.fromFen("8/7p/p7/P3P3/4b3/R2rN1kn/1P3p2/4BK2 b - - 3 50");
+        List<String> moves = state.generateLegalMoves().stream()
+                .map(Object::toString)
+                .toList();
+        assertEquals(33, moves.size());
+        assertTrue(moves.contains("f2e1q"), "Move list should contain the promotion move f2e1q");
+    }
+
+
+    @Test
     void testInterpolatedScore() {
         BoardState state = BoardState.fromFen(START_POS);
         MoveList moves = state.generateLegalMoves();

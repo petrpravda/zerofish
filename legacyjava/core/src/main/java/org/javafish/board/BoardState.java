@@ -10,6 +10,7 @@ import java.util.List;
 import static org.javafish.Constants.CHESSBOARD_LINE;
 import static org.javafish.bitboard.Bitboard.PAWN_DOUBLE_PUSH_LINES;
 import static org.javafish.bitboard.Bitboard.PAWN_FINAL_RANKS;
+import static org.javafish.bitboard.Bitboard.PAWN_PREFINAL_RANKS;
 import static org.javafish.bitboard.Bitboard.PAWN_RANKS;
 import static org.javafish.bitboard.Bitboard.attacks;
 import static org.javafish.bitboard.Bitboard.between;
@@ -690,7 +691,7 @@ public class BoardState implements Cloneable {
                     s = Long.numberOfTrailingZeros(b1);
                     b1 = Bitboard.extractLsb(b1);
 
-                    if (((1L << s) & PAWN_FINAL_RANKS) != 0L) {
+                    if (((1L << s) & PAWN_PREFINAL_RANKS) != 0L) {
                         b2 = pawnAttacks(s, us) & captureMask & line(ourKing, s);
                         moves.makePC(s, b2);
                     }
