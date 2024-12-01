@@ -590,7 +590,7 @@ impl BoardState {
             // for each pinned pawn
             let b1 = !not_pinned & self.bitboard_of(us, PAWN);
             for s in BitIter(b1) {
-                if ((1u64 << s) & Bitboard::PAWN_FINAL_RANKS) != 0 {
+                if ((1u64 << s) & Bitboard::PAWN_PREFINAL_RANKS) != 0 {
                     let b2 = Bitboard::pawn_attacks_from_square(s as u8, us) & capture_mask & BITBOARD.line(our_king as u8, s as u8);
                     moves.make_promotion_captures(s as u8, b2);
                 } else {
@@ -1189,5 +1189,28 @@ mod tests {
         let state = Fen::from_fen_default("6k1/5pp1/4p2p/8/5P2/4RQP1/rq1rR2P/5K2 b - - 3 33");
         let result = state.see_score(12, BLACK);
         assert_eq!(0, result.score);
+    }
+
+    #[test]
+    fn check_f2e1q_is_not_missing() {
+        let state = Fen::from_fen_default("8/7p/p7/P3P3/4b3/R2rN1kn/1P3p2/4BK2 b - - 3 50");
+        let moves = state.generate_legal_moves();
+
+        // Assert that there are exactly 33 legal moves
+        assert_eq!(
+            moves.moves.len(),
+            33,
+            "Expected 33 legal moves, but found {} instead.",
+            moves.moves.len()
+        );
+
+        let move_uci = "f2e1q";
+        let move_exists = moves.moves.iter().any(|m| m.uci() == move_uci);
+
+        assert!(
+            move_exists,
+            "Expected move {} to be in the list of legal moves, but it was missing!",
+            move_uci
+        );
     }
 }
