@@ -379,4 +379,12 @@ class BoardStateTest {
         assertTrue(state.isCapture("b2c3"));
         assertFalse(state.isCapture("e1d1"));
     }
+
+    @Test
+    void moveGenerationForPromotion() {
+        BoardState state = BoardState.fromFen("8/7p/p7/P3P3/4b3/R2rN1kn/1P3p2/4BK2 b - - 3 50");
+        MoveList legalMoves = state.generateLegalMoves();
+        List<String> movesAsStrings = legalMoves.stream().map(Move::toString).toList();
+        assertEquals(33, movesAsStrings.size());
+    }
 }
