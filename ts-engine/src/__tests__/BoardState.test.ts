@@ -242,6 +242,13 @@ describe('BoardStateTest', () => {
     expect(moves).toContain('c1g5');
   });
 
+  it('check that move f2e1q is not missing', () => {
+    const state = BoardState.fromFen('8/7p/p7/P3P3/4b3/R2rN1kn/1P3p2/4BK2 b - - 3 50');
+    const moves: string[] = state.generateLegalMoves().map(m => m.toString());
+
+    expect(moves).toContain('f2e1q');
+  });
+
   describe('generateUciMoves', () => {
     it('should generate the correct UCI moves from the starting position', () => {
       const board = BoardState.fromFen('r1b1k2r/p2pbppp/1p2pn2/1PpP4/8/2B1PN1P/5PP1/R2QKB1R w KQkq - 0 14');

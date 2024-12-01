@@ -1,7 +1,7 @@
 import {BB64Long, BB_ZERO, bitboardToString, idxBB, zeroBB} from './BB64Long';
 import {Piece} from './Piece';
 import {Side, SideType, SideUtils} from './Side';
-import {Bitboard, PAWN_DOUBLE_PUSH_LINES, PAWN_FINAL_RANKS, PAWN_RANKS} from './Bitboard';
+import {Bitboard, PAWN_DOUBLE_PUSH_LINES, PAWN_FINAL_RANKS, PAWN_PREFINAL_RANKS, PAWN_RANKS} from './Bitboard';
 import {Fen, START_POS} from './Fen';
 import {Move} from './Move';
 import {PieceSquareTable} from './PieceSquareTable';
@@ -574,7 +574,7 @@ export class BoardState {
           const square = pinnedPawn.LSB();
           pinnedPawn = pinnedPawn.popLSB();
 
-          if (!idxBB(square).AND(PAWN_FINAL_RANKS).empty()) {
+          if (!idxBB(square).AND(PAWN_PREFINAL_RANKS).empty()) {
             const pawnCaptures = Bitboard.pawnAttacksFromSquare(square, us).AND(captureMask).AND(Bitboard.line(ourKing, square));
             moves.makePC(square, pawnCaptures);
           } else {
