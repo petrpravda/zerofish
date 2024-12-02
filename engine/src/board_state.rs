@@ -590,7 +590,7 @@ impl BoardState {
             // for each pinned pawn
             let b1 = !not_pinned & self.bitboard_of(us, PAWN);
             for s in BitIter(b1) {
-                if ((1u64 << s) & Bitboard::PAWN_PREFINAL_RANKS) != 0 {
+                if ((1u64 << s) & Bitboard::PAWN_RANKS[us as usize]) != 0 {
                     let b2 = Bitboard::pawn_attacks_from_square(s as u8, us) & capture_mask & BITBOARD.line(our_king as u8, s as u8);
                     moves.make_promotion_captures(s as u8, b2);
                 } else {
