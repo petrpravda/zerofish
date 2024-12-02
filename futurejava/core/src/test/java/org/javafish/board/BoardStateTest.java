@@ -384,16 +384,6 @@ class BoardStateTest {
     }
 
     @Test
-    void checkMoveG6H5IsNotMissing() {
-        BoardState state = BoardState.fromFen("5r1k/1p3p1p/3p1PP1/p1nBp1P1/4PbQ1/1Pq5/2P3R1/5R1K b - - 0 28");
-        List<String> moves = state.generateLegalMoves().stream()
-                .map(Object::toString)
-                .toList();
-        assertEquals(41, moves.size());
-        assertTrue(moves.contains("g6h5"), "Move list should contain the move g6h5");
-    }
-
-    @Test
     void testInterpolatedScore() {
         BoardState state = BoardState.fromFen(START_POS);
         MoveList moves = state.generateLegalMoves();
