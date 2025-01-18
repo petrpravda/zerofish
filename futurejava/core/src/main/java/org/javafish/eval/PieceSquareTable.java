@@ -17,6 +17,7 @@ public class PieceSquareTable {
     public static int[][] EGS = new int[Piece.BLACK_KING + 1][];
 
     public final static int[] BASIC_MATERIAL_VALUE = {1, 3, 3, 5, 9};
+    public final static int BASIC_MATERIAL_KING_VALUE_SEE = 1000;
 
     static {
         InputStream piecesStream = PieceSquareTable.class.getResourceAsStream("piece.square.table.txt");

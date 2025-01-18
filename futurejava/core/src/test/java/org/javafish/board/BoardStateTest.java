@@ -1,5 +1,6 @@
 package org.javafish.board;
 
+import org.javafish.bitboard.Bitboard;
 import org.javafish.move.Move;
 import org.javafish.move.MoveList;
 import org.junit.jupiter.api.Test;
@@ -490,5 +491,27 @@ class BoardStateTest {
         BoardState state18 = BoardState.fromFen("8/k7/8/8/8/8/8/R3K2R w KQ - 0 1");
         assertTrue(state18.hasNonPawnMaterial(Side.WHITE)); // White has two Rooks
         assertFalse(state18.hasNonPawnMaterial(Side.BLACK)); // Only Black King left
+    }
+
+    @Test
+    void attackedPiecesFromSquareUnderdefended() {
+        BoardState state = BoardState.fromFen("1r5r/1p4q1/3pN3/1P2p1k1/2PpPpP1/3PbP2/4Q1K1/7R b - - 1 2");
+        System.out.println(state.toString());
+        long attacked = state.attackedPiecesFromSquareUnderdefended(Side.BLACK, Square.getSquareFromName("e6"));
+        System.out.println(Bitboard.bitboardToString(attacked));
+    }
+
+    @Test
+    void seeScoreForkQ() {
+        BoardState state = BoardState.fromFen("1r5r/1p4q1/3pN3/1P2p1k1/2PpPpP1/3PbP2/4Q1K1/7R b - - 1 2");
+        var result = state.seeScore(Square.getSquareFromName("g7"), Side.WHITE);
+        assertEquals(9, result.score());
+    }
+
+    @Test
+    void seeScoreForkK() {
+        BoardState state = BoardState.fromFen("1r5r/1p4q1/3pN3/1P2p1k1/2PpPpP1/3PbP2/4Q1K1/7R b - - 1 2");
+        var result = state.seeScore(Square.getSquareFromName("g5"), Side.WHITE);
+        assertEquals(1000, result.score());
     }
 }

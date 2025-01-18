@@ -46,6 +46,7 @@ import static org.javafish.board.Square.G8;
 import static org.javafish.board.Square.H1;
 import static org.javafish.board.Square.H8;
 import static org.javafish.board.Square.NO_SQUARE;
+import static org.javafish.eval.PieceSquareTable.BASIC_MATERIAL_KING_VALUE_SEE;
 import static org.javafish.eval.PieceSquareTable.BASIC_MATERIAL_VALUE;
 import static org.javafish.eval.PieceSquareTable.EGS;
 import static org.javafish.eval.PieceSquareTable.MGS;
@@ -351,7 +352,6 @@ public class BoardState implements Cloneable {
     }
 
 
-    /* not    side of the attacker */
     /**
      * @param side attacked side
      * @return attacked pieces
@@ -368,7 +368,26 @@ public class BoardState implements Cloneable {
             result |= 1L << move.to();
         }
         return result;
+    }
 
+    /**
+     * @param side attacked side
+     * @return attacked pieces
+     */
+    public final long attackedPiecesFromSquare(int side, int fromSquare) {
+        BoardState workingState = this.getSideToPlay() == side ? this.doNullMove() : this;
+        MoveList quiescence = workingState.generateLegalQuiescence();
+        //BoardState finalWorkingState = workingState;
+        List<Move> attackingMoves = quiescence.stream()
+                .filter(m -> workingState.pieceAt(m.to()) != Piece.NONE)
+                .toList();
+        long result = 0L;
+        for (Move move : attackingMoves) {
+            if (move.from() == fromSquare) {
+                result |= 1L << move.to();
+            }
+        }
+        return result;
     }
 
     /**
@@ -891,7 +910,7 @@ public class BoardState implements Cloneable {
 
     /**
      * @param square battle square
-     * @param side perspective of score, starting move
+     * @param side perspective of score, starting move - "attacking" side
      * @return score in basic material values, the higher, the better, no matter if white or black
      */
     public final ScoreOutcome seeScore(int square, int side) {
@@ -922,13 +941,13 @@ public class BoardState implements Cloneable {
 //            }
             int pieceType = evaluatedState.pieceTypeAt(square);
             if (pieceType == PieceType.KING) {
-                score = 0;
+                score = -BASIC_MATERIAL_KING_VALUE_SEE;
                 break;
             }
             score += evaluatedState.getBasicMaterialValue(square);
             piecesTaken++;
             processedSide = Side.flip(processedSide);
-            evaluatedState = evaluatedState.doMove(possibleMoves.get(0));
+            evaluatedState = evaluatedState.doMove(possibleMoves.getFirst());
         }
         return new ScoreOutcome(-score * Side.multiplicator(side), piecesTaken);
     }
@@ -946,6 +965,28 @@ public class BoardState implements Cloneable {
         int sideThem = Side.flip(side);
 
         long attackedPieces = this.attackedPieces(side);
+        long attackedUnderdefendedPieces = 0L;
+        long work = attackedPieces;
+        while (work != 0){
+            int square = Long.numberOfTrailingZeros(work);
+            int score = this.seeScore(square, sideThem).score();
+            if (score > 0) {
+                attackedUnderdefendedPieces |= 1L << square;
+            }
+            work = Bitboard.extractLsb(work);
+        }
+
+        return attackedUnderdefendedPieces;
+    }
+
+    /**
+     * @param side attacked side
+     * @return attacked pieces
+     */
+    public final long attackedPiecesFromSquareUnderdefended(int side, int fromSquare) {
+        int sideThem = Side.flip(side);
+
+        long attackedPieces = this.attackedPiecesFromSquare(side, fromSquare);
         long attackedUnderdefendedPieces = 0L;
         long work = attackedPieces;
         while (work != 0){
