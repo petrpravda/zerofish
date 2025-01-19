@@ -1049,6 +1049,16 @@ public class BoardState implements Cloneable {
         return pinned;
     }
 
+    public int computeMaterialDifference() {
+        int materialDiff = 0;
+        for (int pieceType = PieceType.PAWN; pieceType <= PieceType.QUEEN; pieceType++) {
+            materialDiff += (Long.bitCount(this.bitboardOf(Side.WHITE, pieceType))
+                    - Long.bitCount(this.bitboardOf(Side.BLACK, pieceType)))
+                    * BASIC_MATERIAL_VALUE[pieceType];
+        }
+        return materialDiff;
+    }
+
 //    public record Params(byte[] pieces, int wKingPos, int bKingPos) {}
 //
 //    public Params toParams() {
