@@ -1006,7 +1006,7 @@ public class BoardState implements Cloneable {
      * @param attackedSide attacked side
      * @return pinned pieces
      */
-    public final long pinnedPieces(int attackerSquare, int attackedSide) {
+    public final long piecesBehindPin(int attackerSquare, int attackedSide) {
         final int pieceType = this.pieceTypeAt(attackerSquare);
         final int us = Side.flip(attackedSide);
         final int them = attackedSide;
