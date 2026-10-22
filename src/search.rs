@@ -336,6 +336,10 @@ impl Search {
         let improving = !in_check && ply >= 2 && self.static_evals[ply - 2] != UNKNOWN_EVAL && static_eval > self.static_evals[ply - 2];
         let pruning = selective && state.has_non_pawn_material(state.side_to_play()) && safe_pruning_window(in_check, alpha, beta);
         let tt_move = entry.map(|e| e.mv).filter(|mv| !mv.is_null());
+        if selective && excluded.is_none() && (pv || cut_node) && depth >= 4 && tt_move.is_none() {
+            self.counters.internal_reductions += 1;
+            depth -= 1;
+        }
         let margin = depth * 140 - (if improving { 60 } else { 0 });
         if pruning && depth <= 8 && !is_score_checkmate(static_eval) && static_eval - margin >= beta {
             self.counters.reverse_futility_cuts += 1;

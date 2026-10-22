@@ -27,6 +27,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 22. Cut shallow nodes with reverse futility margins
 23. Confirm low evaluations through tactical search
 24. Try null moves with material guards and verification
+25. Reduce search depth when hash guidance is absent
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.
