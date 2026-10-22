@@ -338,7 +338,7 @@ impl Search {
             };
             let child = self.child(state, mv, ply);
             let gives_check = child.is_king_attacked();
-            let extension = 0;
+            let extension = i32::from(self.extensions[ply] < 8 && in_check);
             self.extensions[ply + 1] += extension;
             let full_depth = depth - 1 + extension;
             move_index += 1;

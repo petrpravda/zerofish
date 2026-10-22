@@ -21,6 +21,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 16. Produce ordered moves in lazy stages
 17. Probe nonprincipal moves with narrow windows
 18. Retry iterations with expanding score windows
+19. Extend checked positions within a path budget
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.
