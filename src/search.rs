@@ -1,7 +1,11 @@
 //! Negamax search over the classical evaluation.
 
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::Arc;
+
 use crate::board::BoardState;
 use crate::evaluation;
+use crate::limits::Limits;
 use crate::moves::Move;
 
 pub const INF: i32 = 999_999;
@@ -19,6 +23,8 @@ pub fn is_score_checkmate(score: i32) -> bool {
 
 #[derive(Default)]
 pub struct Search {
+    stop: Arc<AtomicBool>,
+    limits: Limits,
 }
 
 impl Search {
@@ -26,14 +32,29 @@ impl Search {
         Self::default()
     }
 
-    pub fn it_deep(&mut self, state: &BoardState, search_depth: i32) -> SearchResult {
+    pub fn it_deep(&mut self, state: &BoardState, search_depth: i32, limits: Limits) -> SearchResult {
         assert!(search_depth >= 1, "depth must be positive");
-        let mut result = self.nega_max_root(state, 1, -INF, INF);
-        for depth in 2..=search_depth.min(MAX_PLY as i32 - 1) {
-            if result.mv.is_none() || is_score_checkmate(result.score) {
+        self.limits = limits;
+        let legal = state.generate_legal_moves();
+        let mut result = SearchResult {
+            mv: legal.iter().next(),
+            score: if legal.is_empty() && state.is_king_attacked() { -INF } else { 0 },
+        };
+        if legal.is_empty() {
+            return result;
+        }
+        for depth in 1..=search_depth.min(MAX_PLY as i32 - 1) {
+            if self.aborted() {
                 break;
             }
-            result = self.nega_max_root(state, depth, -INF, INF);
+            let completed = self.nega_max_root(state, depth, -INF, INF);
+            if self.stop.load(Relaxed) {
+                break;
+            }
+            result = completed;
+            if self.limits.soft_expired() || result.mv.is_none() || is_score_checkmate(result.score) {
+                break;
+            }
         }
         result
     }
@@ -44,6 +65,9 @@ impl Search {
         for mv in state.generate_legal_moves().iter() {
             let child = state.do_move(mv);
             let score = -self.nega_max(&child, depth - 1, 1, -beta, -alpha);
+            if self.stop.load(Relaxed) {
+                return SearchResult { mv: None, score: 0 };
+            }
             if best_move.is_none() || score > best_score {
                 best_move = Some(mv);
                 best_score = score;
@@ -60,6 +84,9 @@ impl Search {
     }
 
     fn nega_max(&mut self, state: &BoardState, depth: i32, ply: usize, mut alpha: i32, beta: i32) -> i32 {
+        if self.aborted() {
+            return 0;
+        }
         let moves = state.generate_legal_moves();
         if moves.is_empty() {
             return if state.is_king_attacked() { -INF + ply as i32 } else { 0 };
@@ -71,6 +98,9 @@ impl Search {
         for mv in moves.iter() {
             let child = state.do_move(mv);
             let score = -self.nega_max(&child, depth - 1, ply + 1, -beta, -alpha);
+            if self.stop.load(Relaxed) {
+                return 0;
+            }
             best_score = best_score.max(score);
             alpha = alpha.max(score);
             if alpha >= beta {
@@ -82,5 +112,24 @@ impl Search {
 
     fn evaluate(&self, state: &BoardState) -> i32 {
         evaluation::evaluate_state(state)
+    }
+
+    fn aborted(&mut self) -> bool {
+        if self.limits.expired() {
+            self.stop.store(true, Relaxed);
+        }
+        self.stop.load(Relaxed)
+    }
+
+    pub fn stop_flag(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.stop)
+    }
+
+    pub fn stop(&self) {
+        self.stop.store(true, Relaxed);
+    }
+
+    pub fn reset_stop(&self) {
+        self.stop.store(false, Relaxed);
     }
 }

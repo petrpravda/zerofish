@@ -1,5 +1,6 @@
 //! Sanity checks of the incremental rebuild; each test arrives with the feature it covers.
 
+use zerofish::limits::Limits;
 use zerofish::position::BoardPosition;
 use zerofish::search::{Search, SearchResult, INF};
 
@@ -7,18 +8,18 @@ fn position(fen: &str) -> BoardPosition {
     BoardPosition::from_fen(fen).unwrap()
 }
 
-fn search_with(position: &BoardPosition, depth: i32) -> SearchResult {
-    Search::new().it_deep(position.state(), depth)
+fn search_with(position: &BoardPosition, depth: i32, limits: Limits) -> SearchResult {
+    Search::new().it_deep(position.state(), depth, limits)
 }
 
 fn search(fen: &str, depth: i32) -> SearchResult {
-    search_with(&position(fen), depth)
+    search_with(&position(fen), depth, Limits::infinite())
 }
 
 #[test]
 fn returns_legal_move_without_changing_root() {
     let start = position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    let result = search_with(&start, 2);
+    let result = search_with(&start, 2, Limits::infinite());
     assert!(start.state().is_legal_move(result.mv.unwrap()));
     assert_eq!(start.state().to_fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
@@ -46,4 +47,14 @@ fn deeper_iterations_stop_at_a_found_mate() {
     let result = search("6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", 64);
     assert_eq!(result.mv.unwrap().uci(), "d1d8");
     assert_eq!(result.score, INF - 1);
+}
+
+#[test]
+fn expired_search_and_pre_start_cancellation_keep_legal_fallback() {
+    let start = position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    assert!(start.state().is_legal_move(search_with(&start, 100, Limits::with_millis(0, 0)).mv.unwrap()));
+    let mut engine = Search::new();
+    engine.stop();
+    let result = engine.it_deep(start.state(), 100, Limits::infinite());
+    assert!(start.state().is_legal_move(result.mv.unwrap()));
 }

@@ -4,6 +4,7 @@ pub mod bitboard;
 pub mod board;
 pub mod evaluation;
 pub mod fen;
+pub mod limits;
 pub mod moves;
 pub mod perft;
 pub mod position;
