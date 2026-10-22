@@ -578,6 +578,7 @@ impl Search {
                 continue;
             }
             if pruning && mv.to() != previous_target {
+                let good = self.pickers[ply].last_stage() == 1;
                 if !mv.is_promotion() {
                     let captured = state.piece_at(mv.to());
                     let gain = if captured == NONE { value(PAWN) } else { value(type_of(captured)) };
@@ -590,6 +591,10 @@ impl Search {
                         self.counters.delta_prunes += 1;
                         continue;
                     }
+                }
+                if !good && !see(state, mv, -42) {
+                    self.counters.see_prunes += 1;
+                    continue;
                 }
             }
             let child = self.child(state, mv, ply);
