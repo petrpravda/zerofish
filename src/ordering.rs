@@ -79,8 +79,14 @@ impl MoveOrdering {
         0
     }
 
-    fn capture_score(&self, _state: &BoardState, _mv: Move) -> i32 {
-        0
+    fn capture_score(&self, state: &BoardState, mv: Move) -> i32 {
+        let victim = state.piece_at(mv.to());
+        let victim_type = if victim == NONE { PAWN } else { type_of(victim) };
+        let mut score = if mv.flags() & Move::CAPTURE != 0 { value(victim_type) } else { 0 };
+        if mv.is_promotion() {
+            score += value(mv.piece_type()) - value(PAWN);
+        }
+        score
     }
 
     fn update(&self, state: &BoardState, mv: Move, previous: i32, bonus: i32) {
@@ -171,6 +177,9 @@ impl Picker {
                 self.scores[index] = 0;
                 self.stages[index] = if mv == self.tt_move {
                     0
+                } else if tactical(mv) {
+                    self.scores[index] = ordering.capture_score(state, mv);
+                    1
                 } else {
                     3
                 };
