@@ -262,6 +262,8 @@ impl Nnue {
         forward(&self.stack[ply][side], &self.stack[ply][1 - side])
     }
 
+    pub fn clocked(state: &BoardState, score: i32) -> i32 { score * (200 - state.half_move_clock) / 200 }
+
     pub fn evaluate(&mut self, state: &BoardState, ply: usize) -> i32 {
         self.evaluate_position(state, ply) * (200 - state.half_move_clock) / 200
     }

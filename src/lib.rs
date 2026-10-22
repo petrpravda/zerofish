@@ -7,11 +7,14 @@ pub mod evaluation;
 pub mod fen;
 pub mod limits;
 pub mod moves;
-#[cfg(not(feature = "stockfish-nnue"))]
+#[cfg(not(feature = "rust-stockfish-nnue"))]
+pub mod nnue;
+#[cfg(feature = "rust-stockfish-nnue")]
+#[path = "stockfish_rust/mod.rs"]
 pub mod nnue;
 #[cfg(feature = "stockfish-nnue")]
 #[path = "stockfish_nnue.rs"]
-pub mod nnue;
+pub mod stockfish_reference;
 pub mod ordering;
 pub mod parallel;
 pub mod perft;

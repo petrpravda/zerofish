@@ -1,4 +1,5 @@
-//! Stockfish NNUE inference only; move selection stays in Rust.
+//! Optional linked NNUE reference for differential tests and timing comparisons.
+//! The default engine evaluates through stockfish_rust and never calls this module.
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use crate::{board::BoardState, moves::Move, search::MAX_PLY};
 
@@ -8,10 +9,12 @@ extern "C" {
     fn jf_nnue_create() -> *mut c_void;
     fn jf_nnue_destroy(context: *mut c_void);
     fn jf_nnue_error() -> *const c_char;
+    fn jf_nnue_reset_full(context: *mut c_void, fen: *const c_char, chess960: c_int, base: c_int) -> c_int;
     fn jf_nnue_reset(context: *mut c_void, fen: *const c_char, chess960: c_int, base: c_int) -> c_int;
     fn jf_nnue_push(context: *mut c_void, ply: c_int, from: c_int, to: c_int, flag: c_int) -> c_int;
     fn jf_nnue_raw(context: *mut c_void, ply: c_int) -> c_int;
     fn jf_nnue_eval(context: *mut c_void, ply: c_int) -> c_int;
+    fn jf_nnue_accumulator(context: *mut c_void, ply: c_int, perspective: c_int, output: *mut i16) -> c_int;
     fn jf_nnue_full_internal(context: *mut c_void, ply: c_int) -> c_int;
 }
 fn check(value: i32) -> i32 {
@@ -37,6 +40,13 @@ impl Nnue {
         Self { context, positions: vec![None; MAX_PLY + 2], base: 0, depth: 0 }
     }
     pub fn reset(&mut self, state: &BoardState) { self.positions.fill(None); self.refresh(state, 0); }
+    /// Reset with empty selected Finny entries: no previously accumulated features.
+    pub fn refresh_full(&mut self, state: &BoardState, ply: usize) {
+        let fen = CString::new(state.to_fen()).unwrap();
+        check(unsafe { jf_nnue_reset_full(self.context, fen.as_ptr(), state.is_chess960() as i32, ply as i32) });
+        self.positions[ply] = Some((state.hash(), state.half_move_clock));
+        self.base = ply; self.depth = ply;
+    }
     pub fn refresh(&mut self, state: &BoardState, ply: usize) {
         let fen = CString::new(state.to_fen()).unwrap();
         check(unsafe { jf_nnue_reset(self.context, fen.as_ptr(), state.is_chess960() as i32, ply as i32) });
@@ -58,6 +68,14 @@ impl Nnue {
         check(unsafe { jf_nnue_push(self.context, ply as i32, mv.from() as i32, to as i32, (mv.flags() >> 12) as i32) });
         self.positions[ply] = Some((after.hash(), after.half_move_clock));
         self.depth = ply;
+    }
+    pub fn accumulator(&mut self, state: &BoardState, ply: usize, perspective: usize) -> Vec<i16> {
+        assert!(perspective < 2);
+        self.ensure(state, ply);
+        let mut output = vec![0; 1024];
+        check(unsafe { jf_nnue_accumulator(self.context, ply as i32, perspective as i32, output.as_mut_ptr()) });
+        self.depth = ply;
+        output
     }
     pub fn raw(&mut self, state: &BoardState, ply: usize) -> i32 {
         self.ensure(state, ply);

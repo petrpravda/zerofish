@@ -16,4 +16,4 @@ args=()
 for source in "${sources[@]}"; do args+=("$root/native/stockfish/$source"); done
 cd "$build"
 "${CXX:-g++}" "${flags[@]}" -I"$root/native/stockfish" -shared "$root/native/bridge.cpp" "${args[@]}" -Wl,--gc-sections,-z,defs -pthread -o libzerofish_nnue.so
-printf '\nBuild Rust with:\nZEROFISH_NNUE_LIBRARY=%q cargo build --release --offline --features stockfish-nnue\n' "$build/libzerofish_nnue.so"
+printf '\nRun the reference comparison with:\nZEROFISH_NNUE_LIBRARY=%q cargo run --release --offline --features stockfish-nnue --example nnue_compare -- 5\n' "$build/libzerofish_nnue.so"

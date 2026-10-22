@@ -16,6 +16,7 @@ namespace Stockfish { Value scale_evaluation(Value, int, const Position&); }
 namespace {
 std::once_flag once;
 std::unique_ptr<Eval::NNUE::Network> network;
+std::unique_ptr<Eval::NNUE::AccumulatorCaches> emptyCaches;
 thread_local std::string error;
 constexpr int Failure = std::numeric_limits<int>::min();
 void initialize() {
@@ -25,6 +26,7 @@ void initialize() {
         Eval::NNUE::EvalFile file;
         network->load_internal(file);
         if (!file.current) throw std::runtime_error("Embedded Stockfish weights failed to load");
+        emptyCaches = std::make_unique<Eval::NNUE::AccumulatorCaches>(*network);
     });
 }
 struct Context {
@@ -100,5 +102,44 @@ API int jf_nnue_eval(void* pointer, int ply) {
 API int jf_nnue_full_internal(void* pointer, int ply) {
     try { auto& c=*static_cast<Context*>(pointer); c.rewind(ply);
         return scale_evaluation(network->evaluate(c.position,*c.stack,*c.cache),0,c.position);
+    } catch (const std::exception& e) { error=e.what(); return Failure; }
+}
+// Canonical (serialized neuron order) accumulator export for differential tests.
+// This diagnostic API is never called by the Rust engine's inference backend.
+API int jf_nnue_accumulator(void* pointer, int ply, int perspective, i16* output) {
+    try {
+        if (perspective < 0 || perspective > 1) throw std::runtime_error("Invalid perspective");
+        auto& c = *static_cast<Context*>(pointer); c.rewind(ply);
+        network->evaluate(c.position, *c.stack, *c.cache);
+        const auto& values = c.stack->latest().accumulation[perspective];
+#if defined(USE_AVX512)
+        constexpr int order[8] = {0,2,4,6,1,3,5,7};
+#elif defined(USE_AVX2)
+        constexpr int order[8] = {0,2,1,3,4,6,5,7};
+#else
+        constexpr int order[8] = {0,1,2,3,4,5,6,7};
+#endif
+        for (int base = 0; base < 1024; base += 64)
+            for (int block = 0; block < 8; ++block)
+                for (int lane = 0; lane < 8; ++lane)
+                    output[base + order[block] * 8 + lane] = values[base + block * 8 + lane];
+        return 0;
+    } catch (const std::exception& e) { error=e.what(); return Failure; }
+}
+
+// Full-refresh timing oracle: discard only the two selected cached entries,
+// retaining no piece/accumulator history for this position. Clearing all 256
+// entries here would measure unrelated cache initialization instead of inference.
+API int jf_nnue_reset_full(void* pointer, const char* fen, int chess960, int base) {
+    int status = jf_nnue_reset(pointer, fen, chess960, base);
+    if (status == Failure) return status;
+    try {
+        auto& c = *static_cast<Context*>(pointer);
+        for (Color side : {WHITE, BLACK}) {
+            bool queen = bool(c.position.pieces(~side, QUEEN));
+            Square king = c.position.square<KING>(side);
+            (*c.cache)[queen][king][side] = (*emptyCaches)[queen][king][side];
+        }
+        return 0;
     } catch (const std::exception& e) { error=e.what(); return Failure; }
 }

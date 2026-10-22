@@ -6,7 +6,9 @@ description = "UCI chess engine, a Rust port of the Java javafish engine"
 license = "GPL-3.0-or-later"
 
 [features]
-default = []
+default = ["rust-stockfish-nnue"]
+rust-stockfish-nnue = []
+# Optional linked oracle for comparisons; engine evaluation stays in Rust.
 stockfish-nnue = []
 
 [dependencies]

@@ -4,5 +4,5 @@
   "license": "GPL-3.0-or-later",
   "default_network": "nn-c9e480e92425.nnue",
   "network_sha256": "c9e480e92425f887df6ab9b05c6180fbd762b07879df9d9845f1aa75440caa73",
-  "role": "Exact incremental NNUE inference and native position state only. Zerofish supplies search, move generation, time management and game rules."
+  "role": "Optional NNUE correctness/performance oracle, including native position state. The default engine uses direct Rust NNUE inference and Rust search."
 }
