@@ -7,6 +7,7 @@ use crate::board::BoardState;
 use crate::evaluation;
 use crate::limits::Limits;
 use crate::moves::{Move, MoveList};
+use crate::position::{is_rule_draw, is_search_draw};
 
 pub const INF: i32 = 999_999;
 pub const MAX_PLY: usize = 128;
@@ -25,6 +26,8 @@ pub fn is_score_checkmate(score: i32) -> bool {
 pub struct Search {
     stop: Arc<AtomicBool>,
     limits: Limits,
+    // position keys of the game and the current search path, the current node last
+    keys: Vec<u64>,
 }
 
 impl Search {
@@ -32,7 +35,7 @@ impl Search {
         Self::default()
     }
 
-    pub fn it_deep(&mut self, state: &BoardState, search_depth: i32, limits: Limits) -> SearchResult {
+    pub fn it_deep(&mut self, state: &BoardState, keys: &[u64], search_depth: i32, limits: Limits) -> SearchResult {
         assert!(search_depth >= 1, "depth must be positive");
         self.limits = limits;
         let legal = state.generate_legal_moves();
@@ -40,9 +43,11 @@ impl Search {
             mv: legal.iter().next(),
             score: if legal.is_empty() && state.is_king_attacked() { -INF } else { 0 },
         };
-        if legal.is_empty() {
+        if legal.is_empty() || is_rule_draw(state, keys) {
             return result;
         }
+        self.keys.clear();
+        self.keys.extend_from_slice(keys);
         for depth in 1..=search_depth.min(MAX_PLY as i32 - 1) {
             if self.aborted() {
                 break;
@@ -64,7 +69,9 @@ impl Search {
         let mut best_score = -INF;
         for mv in state.generate_legal_moves().iter() {
             let child = state.do_move(mv);
+            self.keys.push(child.hash());
             let score = -self.nega_max(&child, depth - 1, 1, -beta, -alpha);
+            self.keys.pop();
             if self.stop.load(Relaxed) {
                 return SearchResult { mv: None, score: 0 };
             }
@@ -91,6 +98,9 @@ impl Search {
         if moves.is_empty() {
             return if state.is_king_attacked() { -INF + ply as i32 } else { 0 };
         }
+        if is_search_draw(state, &self.keys) {
+            return 0;
+        }
         if depth <= 0 {
             return self.quiescence(state, ply, alpha, beta);
         }
@@ -100,7 +110,9 @@ impl Search {
         let mut best_score = -INF;
         for mv in moves.iter() {
             let child = state.do_move(mv);
+            self.keys.push(child.hash());
             let score = -self.nega_max(&child, depth - 1, ply + 1, -beta, -alpha);
+            self.keys.pop();
             if self.stop.load(Relaxed) {
                 return 0;
             }
@@ -128,6 +140,9 @@ impl Search {
         } else {
             state.generate_legal_tactical(&mut moves);
         }
+        if is_search_draw(state, &self.keys) {
+            return 0;
+        }
         if ply >= MAX_PLY {
             return if in_check { 0 } else { self.evaluate(state) };
         }
@@ -140,7 +155,9 @@ impl Search {
         }
         for mv in moves.iter() {
             let child = state.do_move(mv);
+            self.keys.push(child.hash());
             let score = -self.quiescence(&child, ply + 1, -beta, -alpha);
+            self.keys.pop();
             if self.stop.load(Relaxed) {
                 return 0;
             }

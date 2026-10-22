@@ -9,7 +9,7 @@ fn position(fen: &str) -> BoardPosition {
 }
 
 fn search_with(position: &BoardPosition, depth: i32, limits: Limits) -> SearchResult {
-    Search::new().it_deep(position.state(), depth, limits)
+    Search::new().it_deep(position.state(), position.keys(), depth, limits)
 }
 
 fn search(fen: &str, depth: i32) -> SearchResult {
@@ -55,11 +55,19 @@ fn expired_search_and_pre_start_cancellation_keep_legal_fallback() {
     assert!(start.state().is_legal_move(search_with(&start, 100, Limits::with_millis(0, 0)).mv.unwrap()));
     let mut engine = Search::new();
     engine.stop();
-    let result = engine.it_deep(start.state(), 100, Limits::infinite());
+    let result = engine.it_deep(start.state(), start.keys(), 100, Limits::infinite());
     assert!(start.state().is_legal_move(result.mv.unwrap()));
 }
 
 #[test]
 fn avoids_losing_the_queen_beyond_the_depth_one_horizon() {
     assert_ne!(search("4k3/8/4p3/3p4/8/8/3Q4/4K3 w - - 0 1", 1).mv.unwrap().uci(), "d2d5");
+}
+
+#[test]
+fn adjudicates_rule_draw_before_searching() {
+    let drawn = position("4k3/8/8/8/8/8/8/3QK3 w - - 100 90");
+    let result = search_with(&drawn, 3, Limits::infinite());
+    assert_eq!(result.score, 0);
+    assert!(drawn.state().is_legal_move(result.mv.unwrap()));
 }
