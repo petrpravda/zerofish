@@ -31,7 +31,7 @@ impl Search {
         self.nega_max_root(state, search_depth, -INF, INF)
     }
 
-    fn nega_max_root(&mut self, state: &BoardState, depth: i32, alpha: i32, beta: i32) -> SearchResult {
+    fn nega_max_root(&mut self, state: &BoardState, depth: i32, mut alpha: i32, beta: i32) -> SearchResult {
         let mut best_move = None;
         let mut best_score = -INF;
         for mv in state.generate_legal_moves().iter() {
@@ -41,6 +41,10 @@ impl Search {
                 best_move = Some(mv);
                 best_score = score;
             }
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                break;
+            }
         }
         match best_move {
             Some(_) => SearchResult { mv: best_move, score: best_score },
@@ -48,7 +52,7 @@ impl Search {
         }
     }
 
-    fn nega_max(&mut self, state: &BoardState, depth: i32, ply: usize, alpha: i32, beta: i32) -> i32 {
+    fn nega_max(&mut self, state: &BoardState, depth: i32, ply: usize, mut alpha: i32, beta: i32) -> i32 {
         let moves = state.generate_legal_moves();
         if moves.is_empty() {
             return if state.is_king_attacked() { -INF + ply as i32 } else { 0 };
@@ -61,6 +65,10 @@ impl Search {
             let child = state.do_move(mv);
             let score = -self.nega_max(&child, depth - 1, ply + 1, -beta, -alpha);
             best_score = best_score.max(score);
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                break;
+            }
         }
         best_score
     }
