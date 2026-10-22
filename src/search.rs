@@ -16,6 +16,7 @@ use crate::types::*;
 pub const INF: i32 = 999_999;
 pub const MAX_PLY: usize = 128;
 
+const NULL_MIN_DEPTH: i32 = 2;
 const ASPIRATION_WINDOW: i32 = 25;
 const TIME_CHECK_INTERVAL: i32 = 1024;
 static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
@@ -126,6 +127,11 @@ pub fn score_from_table(score: i32, ply: usize) -> i32 {
 
 fn safe_pruning_window(in_check: bool, alpha: i32, beta: i32) -> bool {
     !in_check && beta - alpha == 1 && !is_score_checkmate(alpha) && !is_score_checkmate(beta)
+}
+
+fn non_pawn_count(state: &BoardState) -> u32 {
+    let side = state.side_to_play();
+    (state.orthogonal_sliders(side) | state.bitboard_of_side(side, BISHOP) | state.bitboard_of_side(side, KNIGHT)).count_ones()
 }
 
 fn advanced_pawn(state: &BoardState, mv: Move) -> bool {
@@ -343,6 +349,40 @@ impl Search {
             if score < alpha {
                 self.counters.razor_cuts += 1;
                 return score;
+            }
+        }
+        let non_pawns = non_pawn_count(state);
+        if pruning
+            && can_apply_null
+            && depth >= NULL_MIN_DEPTH
+            && non_pawns >= 2
+            && state.half_move_clock < 90
+            && static_eval >= beta
+            && entry.is_none_or(|e| cut_node || e.flag == EVAL_ONLY || score_from_table(e.score, ply) >= beta)
+        {
+            let reduction = depth.min(3 + depth / 3 + ((static_eval - beta) / 200).min(3));
+            self.counters.null_attempts += 1;
+            let null_state = state.do_null_move();
+            self.contexts[ply + 1] = -1;
+            self.verification[ply + 1] = false;
+            self.extensions[ply + 1] = self.extensions[ply];
+            let mut score = self.search_child(&null_state, depth - reduction, ply + 1, -beta, -beta + 1, !cut_node, false);
+            if self.aborted() {
+                return 0;
+            }
+            if score >= beta && !is_score_checkmate(score) {
+                if depth >= 14 || non_pawns <= 2 {
+                    self.counters.null_verifications += 1;
+                    self.verification[ply] = true;
+                    score = self.nega_max(state, depth - reduction, ply, beta - 1, beta, false);
+                    self.verification[ply] = false;
+                    if self.aborted() {
+                        return 0;
+                    }
+                }
+                if score >= beta {
+                    return score;
+                }
             }
         }
 

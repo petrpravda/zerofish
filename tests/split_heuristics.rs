@@ -27,4 +27,5 @@ fn reached_heuristics_are_exercised() {
     let counters = counters();
     assert!(counters["rfp"] > 0, "reverse-futility: {counters:?}");
     assert!(counters["razor"] > 0, "razoring: {counters:?}");
+    assert!(counters["null"] > 0, "null-move: {counters:?}");
 }
