@@ -597,6 +597,9 @@ impl Search {
                     continue;
                 }
             }
+            if in_check && searched > 0 && !is_tactical && !is_score_checkmate(best_score) {
+                break;
+            }
             let child = self.child(state, mv, ply);
             searched += 1;
             self.keys.push(child.hash());
