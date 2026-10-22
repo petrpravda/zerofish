@@ -335,6 +335,16 @@ impl Search {
             self.counters.reverse_futility_cuts += 1;
             return beta + (static_eval - beta) / 3;
         }
+        if pruning && depth <= 3 && static_eval + 400 * depth < alpha {
+            let score = self.quiescence(state, ply, alpha, alpha + 1);
+            if self.aborted() {
+                return 0;
+            }
+            if score < alpha {
+                self.counters.razor_cuts += 1;
+                return score;
+            }
+        }
 
         let mut best_score = -INF;
         let mut best_move = Move::NULL_MOVE;
