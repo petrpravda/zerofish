@@ -41,6 +41,16 @@ impl Kernel {
         removed: &[u32],
         added: &[u32],
     ) {
+        // Nnue accepts public BoardState values. Check the unsafe kernel's
+        // row-address contract even if a caller supplies an invalid chess position.
+        let rows = weights.len() / HIDDEN;
+        assert!(
+            removed
+                .iter()
+                .chain(added)
+                .all(|&row| (row as usize) < rows),
+            "NNUE feature row outside network"
+        );
         #[cfg(target_arch = "x86_64")]
         if self == Self::Avx512Vnni {
             // Construction of a SIMD evaluator verifies host support. Every feature

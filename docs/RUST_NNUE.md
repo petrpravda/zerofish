@@ -53,7 +53,9 @@ Finny entries before an uncached full rebuild.
   en passant, orthodox castling and Chess960 castling geometries.
 - SIMD/scalar boundary checks cover signed-short accumulator overflow, negative
   and extreme activation inputs, every output stack and randomized affine inputs.
-- Full suites passed: 67 tests for the direct-Rust default, 71 with the linked
+- Invalid-board/feature-index checks run before SIMD memory reads, with regression
+  coverage for pawns on promotion ranks and out-of-range network rows.
+- Full suites passed: 68 tests for the direct-Rust default, 72 with the linked
   oracle enabled, and 66 for the preserved legacy evaluator.
 - `ldd target/release/zerofish` shows only normal runtime libraries; no NNUE or
   C++ library is linked. Disassembly contains actual ZMM `vpdpbusd` instructions.
@@ -72,14 +74,15 @@ Median of seven batches, five repetitions of all 6,033 positions per batch:
 
 | Path | Rust AVX-512/VNNI | Rust scalar | Linked reference |
 |---|---:|---:|---:|
-| Full rebuild + inference | 3.736 µs | 17.763 µs | 4.449 µs |
-| Incremental push + inference | 2.925 µs | 14.200 µs | 1.620 µs |
+| Full rebuild + inference | 3.845 µs | 17.837 µs | 4.639 µs |
+| Incremental push + inference | 2.726 µs | 13.971 µs | 1.518 µs |
 
-Rust SIMD was about 16% faster than the linked full-rebuild path in this harness.
-For incremental evaluation it was about 1.81 times the library's cost; the linked
-implementation remains faster. The Rust SIMD kernels were about 4.8 times faster
-than Rust scalar in both paths. The two modes and all backends produced the same
-checksum, 10,283,525, in every timed batch.
+Rust SIMD was about 17% faster than the linked full-rebuild path in this harness.
+For incremental evaluation it was about 1.80 times the library's cost; the linked
+implementation remains faster. Relative to Rust scalar, SIMD was 4.64 times
+faster for full rebuilds and 5.13 times faster for incremental evaluation.
+The two modes and all backends produced the same checksum, 10,283,525, in every
+timed batch.
 
 Timings include feature encoding/updates and propagation, not just dot products.
 The library's full-rebuild path also includes its FEN/native-position reset and

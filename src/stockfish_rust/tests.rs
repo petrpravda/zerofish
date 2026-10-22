@@ -321,3 +321,24 @@ fn full_and_incremental_match_linked_reference() {
     }
     println!("Exact full/incremental reference comparisons: {checked} positions, both 1024-lane accumulators and raw/scaled scores");
 }
+
+#[test]
+fn invalid_positions_and_feature_rows_fail_before_simd_reads() {
+    let state = BoardState::from_fen("4k3/8/8/8/8/8/8/P3K3 w - - 0 1").unwrap();
+    let mut evaluator = Nnue::new();
+    assert!(std::panic::catch_unwind(
+        std::panic::AssertUnwindSafe(|| evaluator.refresh(&state, 0))
+    )
+    .is_err());
+    let mut accumulator = [0; HIDDEN];
+    let weights = vec![0; HIDDEN];
+    assert!(
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Kernel::best().update(
+            &mut accumulator,
+            &weights,
+            &[],
+            &[1]
+        )))
+        .is_err()
+    );
+}

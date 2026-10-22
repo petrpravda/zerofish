@@ -114,6 +114,19 @@ fn collect(
     for list in output.iter_mut() {
         list.clear();
     }
+    let pawns = state.bitboard_of_side(WHITE, PAWN) | state.bitboard_of_side(BLACK, PAWN);
+    assert_eq!(
+        pawns & PAWN_FINAL_RANKS,
+        0,
+        "NNUE cannot encode pawns on promotion ranks"
+    );
+    for side in [WHITE, BLACK] {
+        assert_eq!(
+            state.bitboard_of_side(side, KING).count_ones(),
+            1,
+            "NNUE needs one king per side"
+        );
+    }
     let kings = [
         state.bitboard_of_side(WHITE, KING).trailing_zeros() as usize,
         state.bitboard_of_side(BLACK, KING).trailing_zeros() as usize,
