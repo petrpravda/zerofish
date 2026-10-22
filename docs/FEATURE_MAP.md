@@ -38,6 +38,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 33. Verify and extend singular transposition moves
 34. Learn bounded position evaluation corrections
 35. Adapt iteration budgets to clock and search stability
+36. Load quantized king-bucket neural evaluation
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

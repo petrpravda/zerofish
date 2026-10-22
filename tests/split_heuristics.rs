@@ -13,7 +13,7 @@ const START: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const KIWIPETE: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 
 fn counters(fens: &[&str], depth: i32) -> std::collections::HashMap<String, u64> {
-    let mut search = Search::new(Arc::new(TranspositionTable::default()), false, MoveOrdering::new(), Arc::new(CorrectionHistory::new()));
+    let mut search = Search::new(Arc::new(TranspositionTable::default()), false, None, MoveOrdering::new(), Arc::new(CorrectionHistory::new()));
     for fen in fens {
         let position = BoardPosition::from_fen(fen).unwrap();
         let result = search.it_deep(position.state(), position.keys(), depth, Limits::infinite());

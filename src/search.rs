@@ -8,6 +8,7 @@ use crate::correction::CorrectionHistory;
 use crate::evaluation;
 use crate::limits::Limits;
 use crate::moves::{Move, MoveList};
+use crate::nnue::Nnue;
 use crate::ordering::{tactical, MoveOrdering, Picker};
 use crate::position::{is_rule_draw, is_search_draw};
 use crate::see::{see, value};
@@ -83,6 +84,7 @@ struct SelectiveCounters {
 pub struct Search {
     tt: Arc<TranspositionTable>,
     stats: Statistics,
+    nnue: Option<Box<Nnue>>,
     ordering: MoveOrdering,
     pickers: Vec<Picker>,
     correction: Arc<CorrectionHistory>,
@@ -142,10 +144,11 @@ fn advanced_pawn(state: &BoardState, mv: Move) -> bool {
 }
 
 impl Search {
-    pub fn new(tt: Arc<TranspositionTable>, verbose: bool, ordering: MoveOrdering, correction: Arc<CorrectionHistory>) -> Self {
+    pub fn new(tt: Arc<TranspositionTable>, verbose: bool, nnue: Option<Box<Nnue>>, ordering: MoveOrdering, correction: Arc<CorrectionHistory>) -> Self {
         Search {
             tt,
             stats: Statistics::default(),
+            nnue,
             ordering,
             pickers: (0..MAX_PLY + 2).map(|_| Picker::new()).collect(),
             correction,
@@ -172,7 +175,7 @@ impl Search {
 
     /// A single-threaded searcher with classical evaluation and silent output.
     pub fn classical(tt: Arc<TranspositionTable>) -> Self {
-        Self::new(tt, false, MoveOrdering::new(), Arc::new(CorrectionHistory::new()))
+        Self::new(tt, false, None, MoveOrdering::new(), Arc::new(CorrectionHistory::new()))
     }
 
     pub fn set_table(&mut self, tt: Arc<TranspositionTable>) {
@@ -186,6 +189,9 @@ impl Search {
         self.completed_depth = 0;
         self.completed_result = None;
         self.stats.cumulative = 0;
+        if let Some(nnue) = self.nnue.as_mut() {
+            nnue.reset(state);
+        }
         self.contexts.fill(-1);
         self.static_evals.fill(UNKNOWN_EVAL);
         self.extensions.fill(0);
@@ -257,6 +263,9 @@ impl Search {
         while let Some(mv) = self.pickers[0].next_move(&self.ordering, state) {
             let before = self.stats.total_nodes();
             let child = self.child(state, mv, 0);
+            if let Some(nnue) = self.nnue.as_mut() {
+                nnue.push_move(state, &child, mv, 1);
+            }
             let index = move_index;
             move_index += 1;
             let mut value;
@@ -352,7 +361,7 @@ impl Search {
             self.counters.internal_reductions += 1;
             depth -= 1;
         }
-        let margin = depth * 140 - (if improving { 60 } else { 0 });
+        let margin = depth * (if self.nnue.is_none() { 140 } else { 70 }) - (if improving { 60 } else { 0 });
         if pruning && depth <= 8 && !is_score_checkmate(static_eval) && static_eval - margin >= beta {
             self.counters.reverse_futility_cuts += 1;
             return beta + (static_eval - beta) / 3;
@@ -382,6 +391,9 @@ impl Search {
             self.contexts[ply + 1] = -1;
             self.verification[ply + 1] = false;
             self.extensions[ply + 1] = self.extensions[ply];
+            if let Some(nnue) = self.nnue.as_mut() {
+                nnue.push(state, &null_state, ply + 1);
+            }
             let mut score = self.search_child(&null_state, depth - reduction, ply + 1, -beta, -beta + 1, !cut_node, false);
             if self.aborted() {
                 return 0;
@@ -469,7 +481,7 @@ impl Search {
                     self.pickers[ply].skip_quiets();
                     continue;
                 }
-                let futility_base = 140;
+                let futility_base = if self.nnue.is_none() { 140 } else { 96 };
                 if !is_tactical && lmr_depth <= 8 && static_eval + futility_base + 76 * lmr_depth + history / 87 - 3 * searched <= alpha {
                     self.counters.futility_prunes += 1;
                     self.pickers[ply].skip_quiets();
@@ -511,6 +523,9 @@ impl Search {
             }
             move_index += 1;
             let probe = self.use_pvs && searched > 0;
+            if let Some(nnue) = self.nnue.as_mut() {
+                nnue.push_move(state, &child, mv, ply + 1);
+            }
             let probe_alpha = if probe { -alpha - 1 } else { -beta };
             let mut score;
             if reduction > 0 {
@@ -655,6 +670,9 @@ impl Search {
                 break;
             }
             let child = self.child(state, mv, ply);
+            if let Some(nnue) = self.nnue.as_mut() {
+                nnue.push_move(state, &child, mv, ply + 1);
+            }
             searched += 1;
             self.keys.push(child.hash());
             let value = -self.quiescence(&child, ply + 1, -beta, -alpha);
@@ -706,12 +724,19 @@ impl Search {
         child
     }
 
-    fn evaluate(&mut self, state: &BoardState, _ply: usize) -> i32 {
-        evaluation::evaluate_state(state)
+    fn evaluate(&mut self, state: &BoardState, ply: usize) -> i32 {
+        match self.nnue.as_mut() {
+            None => evaluation::evaluate_state(state),
+            Some(nnue) => nnue.evaluate_position(state, ply),
+        }
     }
 
-    fn clocked(&self, _state: &BoardState, evaluation: i32) -> i32 {
-        evaluation
+    fn clocked(&self, state: &BoardState, evaluation: i32) -> i32 {
+        if self.nnue.is_none() {
+            evaluation
+        } else {
+            evaluation * (200 - state.half_move_clock) / 200
+        }
     }
 
     fn clocked_evaluation(&mut self, state: &BoardState, ply: usize) -> i32 {
@@ -862,4 +887,15 @@ mod tests {
         assert_eq!(search_position("7k/8/6QK/8/8/8/8/8 b - - 0 1", 3), SearchResult { mv: None, score: 0 });
     }
 
+    #[test]
+    fn nnue_search_is_deterministic() {
+        let run = || {
+            let position = BoardPosition::start_pos();
+            let tt = Arc::new(TranspositionTable::default());
+            let mut search = Search::new(tt, false, Some(Box::new(Nnue::new())), MoveOrdering::new(), Arc::new(CorrectionHistory::new()));
+            let result = search.it_deep(position.state(), position.keys(), 7, Limits::infinite());
+            (result, search.searched_nodes())
+        };
+        assert_eq!(run(), run());
+    }
 }

@@ -10,6 +10,7 @@ pub mod evaluation;
 pub mod fen;
 pub mod limits;
 pub mod moves;
+pub mod nnue;
 pub mod ordering;
 pub mod perft;
 pub mod position;
