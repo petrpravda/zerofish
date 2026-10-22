@@ -75,8 +75,10 @@ impl MoveOrdering {
     }
 
     #[inline(always)]
-    pub fn quiet_score(&self, _state: &BoardState, _mv: Move, _previous: i32) -> i32 {
-        0
+    pub fn quiet_score(&self, state: &BoardState, mv: Move, previous: i32) -> i32 {
+        let h = &*self.histories;
+        let mut score = h.quiet[state.side_to_play() * 4096 + mv.from() * 64 + mv.to()].load(Relaxed);
+        score
     }
 
     fn capture_score(&self, state: &BoardState, mv: Move) -> i32 {
@@ -95,15 +97,18 @@ impl MoveOrdering {
         } else {
             let entry = &h.quiet[state.side_to_play() * 4096 + mv.from() * 64 + mv.to()];
             entry.store(adjusted(entry.load(Relaxed), bonus), Relaxed);
-            if previous >= 0 {
-                let entry = &h.continuation[previous as usize * CONTEXTS + state.piece_at(mv.from()) * 64 + mv.to()];
-                entry.store(adjusted(entry.load(Relaxed) as i32, bonus) as i16, Relaxed);
-            }
         }
     }
 
     /// Rewards the cutoff move, penalises the earlier moves of the same kind and records a quiet killer.
     pub fn cutoff(&mut self, state: &BoardState, mv: Move, ply: usize, previous: i32, depth: i32, picker: &Picker) {
+        let bonus = (depth * depth * 16).min(2048);
+        self.update(state, mv, previous, bonus);
+        for &earlier in &picker.moves[..picker.cursor.saturating_sub(1)] {
+            if tactical(earlier) == tactical(mv) {
+                self.update(state, earlier, previous, -bonus);
+            }
+        }
         if !tactical(mv) && self.killers[ply][0] != mv.bits() {
             self.killers[ply][1] = self.killers[ply][0];
             self.killers[ply][0] = mv.bits();
