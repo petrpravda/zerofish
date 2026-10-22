@@ -51,6 +51,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 46. Convert legal moves to and from SAN
 47. Read, write and replay PGN game streams
 48. Add Chess960 with specialized variant search paths
+49. Finalize crate exports, engine tools and usage notes
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

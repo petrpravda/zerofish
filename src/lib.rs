@@ -1,7 +1,4 @@
-//! zerofish: a chess engine, rebuilt one feature at a time.
-
-// Search code comes from the final engine with later features removed; their scaffolding stays.
-#![allow(unused)]
+//! zerofish: a UCI chess engine with magic bitboards, NNUE evaluation and Lazy SMP search.
 
 pub mod bitboard;
 pub mod board;
