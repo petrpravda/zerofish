@@ -56,6 +56,9 @@ pub struct Nnue {
     stack: Vec<[Accumulator; 2]>,
     // piece placement each stack entry was computed for
     positions: Vec<Option<[u64; 16]>>,
+    // accumulator refresh cache indexed by (perspective * 8 + bucket) * 2 + mirrored
+    cached_accumulators: Vec<Accumulator>,
+    cached_boards: Vec<[u64; 16]>,
 }
 
 impl Default for Nnue {
@@ -66,9 +69,12 @@ impl Default for Nnue {
 
 impl Nnue {
     pub fn new() -> Self {
+        let network = &*NETWORK;
         Nnue {
             stack: vec![[[0; HIDDEN]; 2]; MAX_PLY + 2],
             positions: vec![None; MAX_PLY + 2],
+            cached_accumulators: vec![*network.biases; 32],
+            cached_boards: vec![[0; 16]; 32],
         }
     }
 
@@ -88,21 +94,33 @@ impl Nnue {
     fn refresh_perspective(&mut self, state: &BoardState, ply: usize, perspective: usize) {
         let king = state.bitboard_of_side(perspective, KING).trailing_zeros() as usize;
         let bucket = bucket(king, perspective);
-        let accumulator = &mut self.stack[ply][perspective];
-        *accumulator = *NETWORK.biases;
+        let slot = (perspective * 8 + bucket) * 2 + usize::from((king & 7) > 3);
+        let cached = &mut self.cached_accumulators[slot];
+        let boards = &mut self.cached_boards[slot];
         for side in 0..2 {
             for piece_type in PAWN..=KING {
                 let piece = make_piece(side, piece_type);
-                let mut pieces = state.bitboard_of(piece);
-                while pieces != 0 {
-                    let offset = (bucket * FEATURES + feature(piece, pieces.trailing_zeros() as usize, perspective, king)) * HIDDEN;
-                    for (value, weight) in accumulator.iter_mut().zip(weights(offset)) {
+                let now = state.bitboard_of(piece);
+                let mut added = now & !boards[piece];
+                while added != 0 {
+                    let offset = (bucket * FEATURES + feature(piece, added.trailing_zeros() as usize, perspective, king)) * HIDDEN;
+                    for (value, weight) in cached.iter_mut().zip(weights(offset)) {
                         *value = value.wrapping_add(*weight);
                     }
-                    pieces &= pieces - 1;
+                    added &= added - 1;
                 }
+                let mut removed = boards[piece] & !now;
+                while removed != 0 {
+                    let offset = (bucket * FEATURES + feature(piece, removed.trailing_zeros() as usize, perspective, king)) * HIDDEN;
+                    for (value, weight) in cached.iter_mut().zip(weights(offset)) {
+                        *value = value.wrapping_sub(*weight);
+                    }
+                    removed &= removed - 1;
+                }
+                boards[piece] = now;
             }
         }
+        self.stack[ply][perspective] = *cached;
     }
 
     /// For a null move or any transition whose changed squares are not known.
