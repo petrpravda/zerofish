@@ -46,6 +46,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 41. Choose worker results using depth and weighted votes
 42. Stagger helper search depths optionally
 43. Coordinate helpers by deferring occupied moves
+44. Allow workers to share learned ordering statistics
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

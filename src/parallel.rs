@@ -67,7 +67,7 @@ impl ParallelSearch {
         let busy = (options.defer_moves && options.threads > 1).then(|| Arc::new((0..1 << 15).map(|_| AtomicU64::new(0)).collect::<Vec<_>>()));
         let mut searches = Vec::with_capacity(options.threads);
         for index in 0..options.threads {
-            let shared = false;
+            let shared = options.shared_history && index > 0;
             let ordering = if index == 0 {
                 main_ordering.take().unwrap()
             } else if shared {

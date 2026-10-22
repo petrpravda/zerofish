@@ -16,7 +16,7 @@ fn helper_searches_return_legal_moves_and_stop() {
             threads: 3,
             skip_depths: true,
             defer_moves: true,
-            shared_history: false,
+            shared_history: true,
             selection,
             nnue: false,
             ..Options::default()
