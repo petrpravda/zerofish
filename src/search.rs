@@ -1,6 +1,6 @@
 //! Principal variation search with iterative deepening, aspiration windows, quiescence and selectivity.
 
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, LazyLock};
 
 use crate::board::BoardState;
@@ -21,6 +21,7 @@ pub const MAX_PLY: usize = 128;
 const NULL_MIN_DEPTH: i32 = 2;
 const ASPIRATION_WINDOW: i32 = 25;
 const TIME_CHECK_INTERVAL: i32 = 1024;
+const DEFER_MIN_DEPTH: i32 = 3;
 const SKIP_SIZE: [i32; 20] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
 const SKIP_PHASE: [i32; 20] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
 
@@ -84,6 +85,13 @@ struct SelectiveCounters {
     internal_reductions: u64,
 }
 
+struct Deferred {
+    mv: Move,
+    stage: u8,
+    score: i32,
+    index: i32,
+}
+
 pub struct Search {
     tt: Arc<TranspositionTable>,
     stats: Statistics,
@@ -105,6 +113,9 @@ pub struct Search {
     pub thread_index: usize,
     pub skip_depths: bool,
     pub owns_table_generation: bool,
+    // shared by all threads of a search: move keys currently being searched, for deferring them elsewhere
+    pub busy_moves: Option<Arc<Vec<AtomicU64>>>,
+    deferred: Vec<Vec<Deferred>>,
     completed_depth: i32,
     completed_result: Option<SearchResult>,
     stop: Arc<AtomicBool>,
@@ -172,6 +183,8 @@ impl Search {
             thread_index: 0,
             skip_depths: false,
             owns_table_generation: true,
+            busy_moves: None,
+            deferred: (0..MAX_PLY + 2).map(|_| Vec::new()).collect(),
             completed_depth: 0,
             completed_result: None,
             stop: Arc::new(AtomicBool::new(false)),
@@ -470,11 +483,32 @@ impl Search {
         } else {
             self.pickers[ply].reset(&self.ordering, state, None, entry, ply, self.contexts[ply], false);
         }
-        while let Some(mv) = self.pickers[ply].next_move(&self.ordering, state) {
-            let stage = self.pickers[ply].last_stage();
-            let pick_score = self.pickers[ply].last_score();
-            let original_index = move_index;
-            legal += 1;
+        let busy = if depth >= DEFER_MIN_DEPTH { self.busy_moves.clone() } else { None };
+        self.deferred[ply].clear();
+        let mut deferred_index = 0;
+        let mut deferred_phase = false;
+        loop {
+            let mv;
+            let stage;
+            let pick_score;
+            let mut original_index = move_index;
+            let picked = if deferred_phase { None } else { self.pickers[ply].next_move(&self.ordering, state) };
+            if let Some(next) = picked {
+                mv = next;
+                stage = self.pickers[ply].last_stage();
+                pick_score = self.pickers[ply].last_score();
+                legal += 1;
+            } else if deferred_index < self.deferred[ply].len() {
+                deferred_phase = true;
+                let deferred = &self.deferred[ply][deferred_index];
+                mv = deferred.mv;
+                stage = deferred.stage;
+                original_index = deferred.index;
+                pick_score = deferred.score;
+                deferred_index += 1;
+            } else {
+                break;
+            }
             if Some(mv) == excluded {
                 continue;
             }
@@ -487,7 +521,8 @@ impl Search {
             } else {
                 self.ordering.quiet_score(state, mv, self.contexts[ply])
             };
-            if pruning && searched > 0 && !protected_move && !is_score_checkmate(best_score) {
+            // a deferred move already passed pruning at its original place in the move order
+            if pruning && !deferred_phase && searched > 0 && !protected_move && !is_score_checkmate(best_score) {
                 let lmr_depth = (depth - 1 - lmr(depth, move_index + 1)).max(0);
                 let late_move_limit = if improving { 4 + 5 * depth } else { 3 + 4 * depth };
                 if !is_tactical && depth <= 8 && move_index >= late_move_limit {
@@ -515,6 +550,17 @@ impl Search {
                     }
                 }
             }
+            let mut move_key = 0u64;
+            let mut busy_slot = 0usize;
+            if let Some(busy) = &busy {
+                move_key = state.hash() ^ ((mv.bits() as i16 as i64 + 1) as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+                busy_slot = (move_key >> 48) as usize & (busy.len() - 1);
+                if !deferred_phase && searched > 0 && busy[busy_slot].load(Relaxed) == move_key {
+                    self.deferred[ply].push(Deferred { mv, stage, score: pick_score, index: move_index });
+                    move_index += 1;
+                    continue;
+                }
+            }
             let child = self.child(state, mv, ply);
             let gives_check = child.is_king_attacked();
             let extension = i32::from(self.extensions[ply] < 8 && (in_check || Some(mv) == singular_move));
@@ -540,6 +586,9 @@ impl Search {
             if let Some(nnue) = self.nnue.as_mut() {
                 nnue.push_move(state, &child, mv, ply + 1);
             }
+            if let Some(busy) = &busy {
+                busy[busy_slot].store(move_key, Relaxed);
+            }
             let probe_alpha = if probe { -alpha - 1 } else { -beta };
             let mut score;
             if reduction > 0 {
@@ -553,6 +602,11 @@ impl Search {
             }
             if probe && pv && score > alpha && score < beta && !self.aborted() {
                 score = self.search_child(&child, full_depth, ply + 1, -beta, -alpha, false, true);
+            }
+            if let Some(busy) = &busy {
+                if busy[busy_slot].load(Relaxed) == move_key {
+                    busy[busy_slot].store(0, Relaxed);
+                }
             }
             if self.aborted() {
                 return 0;

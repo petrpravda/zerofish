@@ -15,7 +15,7 @@ fn helper_searches_return_legal_moves_and_stop() {
         let options = Options {
             threads: 3,
             skip_depths: true,
-            defer_moves: false,
+            defer_moves: true,
             shared_history: false,
             selection,
             nnue: false,

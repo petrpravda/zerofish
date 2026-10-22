@@ -1,7 +1,7 @@
 //! Lazy SMP: every thread searches the root with its own state and shares the transposition table.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering::Relaxed};
 use std::sync::Arc;
 use std::thread;
 
@@ -64,6 +64,7 @@ impl ParallelSearch {
         let shared_histories = MoveOrdering::sharing(&main_ordering);
         let mut main_ordering = Some(main_ordering);
         let main_correction = Arc::new(CorrectionHistory::new());
+        let busy = (options.defer_moves && options.threads > 1).then(|| Arc::new((0..1 << 15).map(|_| AtomicU64::new(0)).collect::<Vec<_>>()));
         let mut searches = Vec::with_capacity(options.threads);
         for index in 0..options.threads {
             let shared = false;
@@ -79,6 +80,7 @@ impl ParallelSearch {
             let mut search = Search::new(Arc::clone(&table), index == 0, nnue, ordering, correction);
             search.thread_index = index;
             search.skip_depths = options.skip_depths;
+            search.busy_moves = busy.clone();
             search.owns_table_generation = false;
             searches.push(search);
         }
