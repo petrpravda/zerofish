@@ -47,6 +47,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 42. Stagger helper search depths optionally
 43. Coordinate helpers by deferring occupied moves
 44. Allow workers to share learned ordering statistics
+45. Connect asynchronous search to the UCI protocol
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

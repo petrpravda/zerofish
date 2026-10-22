@@ -1,9 +1,11 @@
+use std::io::{self, BufRead};
 use std::time::Instant;
 
-use zerofish::bitboard;
 use zerofish::board::BoardState;
 use zerofish::fen::START_POS;
 use zerofish::perft::{perft, perft_string};
+use zerofish::uci::{Uci, BANNER};
+use zerofish::{bitboard, nnue};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -21,11 +23,22 @@ fn main() {
                 }
             }
         }
-        _ => {
-            eprintln!("usage: zerofish bench | perft [depth] [fen]");
-            std::process::exit(2);
+        _ => uci_loop(),
+    }
+}
+
+fn uci_loop() {
+    nnue::init();
+    println!("{BANNER}");
+    let mut uci = Uci::new();
+    for line in io::stdin().lock().lines() {
+        let Ok(line) = line else { break };
+        if !uci.handle(&line) {
+            return;
         }
     }
+    // end of input acts as quit
+    uci.stop_search();
 }
 
 /// Perft 6 from the start position, ten runs; the first is warm-up and excluded from the average.
