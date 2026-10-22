@@ -220,7 +220,15 @@ impl Search {
             let child = self.child(state, mv, 0);
             let index = move_index;
             move_index += 1;
-            let value = self.search_child(&child, depth - 1, 1, -beta, -alpha, false, true);
+            let mut value;
+            if !self.use_pvs || index == 0 {
+                value = self.search_child(&child, depth - 1, 1, -beta, -alpha, false, true);
+            } else {
+                value = self.search_child(&child, depth - 1, 1, -alpha - 1, -alpha, true, true);
+                if value > alpha && value < beta && !self.aborted() {
+                    value = self.search_child(&child, depth - 1, 1, -beta, -alpha, false, true);
+                }
+            }
             if self.stop.load(Relaxed) {
                 return SearchResult { mv: None, score: 0 };
             }
@@ -323,9 +331,12 @@ impl Search {
             self.extensions[ply + 1] += extension;
             let full_depth = depth - 1 + extension;
             move_index += 1;
-            let probe = false;
+            let probe = self.use_pvs && searched > 0;
             let probe_alpha = if probe { -alpha - 1 } else { -beta };
             let mut score = self.search_child(&child, full_depth, ply + 1, probe_alpha, -alpha, !(pv && searched == 0) && !cut_node, true);
+            if probe && pv && score > alpha && score < beta && !self.aborted() {
+                score = self.search_child(&child, full_depth, ply + 1, -beta, -alpha, false, true);
+            }
             if self.aborted() {
                 return 0;
             }
