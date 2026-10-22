@@ -1,7 +1,7 @@
 //! Principal variation search with iterative deepening, aspiration windows, quiescence and selectivity.
 
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use crate::board::BoardState;
 use crate::evaluation;
@@ -18,6 +18,22 @@ pub const MAX_PLY: usize = 128;
 
 const ASPIRATION_WINDOW: i32 = 25;
 const TIME_CHECK_INTERVAL: i32 = 1024;
+static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
+    let mut table = [[0; 64]; 64];
+    for depth in 1..64 {
+        for move_number in 1..64 {
+            // float constants widened to double, as in the Java original
+            table[depth][move_number] = (0.92f32 as f64 + (depth as f64).ln() * (move_number as f64).ln() / 3.09f32 as f64) as i32;
+        }
+    }
+    table
+});
+
+#[inline(always)]
+fn lmr(depth: i32, move_number: i32) -> i32 {
+    LMR_TABLE[depth.clamp(0, 63) as usize][move_number.clamp(0, 63) as usize]
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SearchResult {
     pub mv: Option<Move>,
@@ -235,7 +251,15 @@ impl Search {
             if !self.use_pvs || index == 0 {
                 value = self.search_child(&child, depth - 1, 1, -beta, -alpha, false, true);
             } else {
-                value = self.search_child(&child, depth - 1, 1, -alpha - 1, -alpha, true, true);
+                let reduction = if self.use_selective && depth >= 3 && index >= 4 && !tactical(mv) && !state.is_king_attacked() && !child.is_king_attacked() {
+                    (lmr(depth, index + 1) - 1).clamp(0, depth - 2)
+                } else {
+                    0
+                };
+                value = self.search_child(&child, depth - 1 - reduction, 1, -alpha - 1, -alpha, true, true);
+                if reduction > 0 && value > alpha && !self.aborted() {
+                    value = self.search_child(&child, depth - 1, 1, -alpha - 1, -alpha, false, true);
+                }
                 if value > alpha && value < beta && !self.aborted() {
                     value = self.search_child(&child, depth - 1, 1, -beta, -alpha, false, true);
                 }
@@ -341,10 +365,31 @@ impl Search {
             let extension = i32::from(self.extensions[ply] < 8 && in_check);
             self.extensions[ply + 1] += extension;
             let full_depth = depth - 1 + extension;
+            let mut reduction = 0;
+            let reduce_from = if pv { 3 } else { 2 };
+            if selective && !in_check && depth >= 2 && original_index >= reduce_from && !(pv && is_tactical && stage <= 1) {
+                let mut r = lmr(depth, original_index + 1) * 1024;
+                r -= if pv { 1264 } else { 0 };
+                r += if cut_node { 1910 } else { 0 };
+                r += if improving { 0 } else { 275 };
+                r -= if gives_check { 1024 } else { 0 };
+                r -= history * 1024 / 3419;
+                r += if static_eval + 101 + 80 * depth + history / 71 <= alpha { 966 } else { 0 };
+                reduction = (r / 1024).clamp(0, (full_depth - 1).max(0));
+            }
             move_index += 1;
             let probe = self.use_pvs && searched > 0;
             let probe_alpha = if probe { -alpha - 1 } else { -beta };
-            let mut score = self.search_child(&child, full_depth, ply + 1, probe_alpha, -alpha, !(pv && searched == 0) && !cut_node, true);
+            let mut score;
+            if reduction > 0 {
+                score = self.search_child(&child, full_depth - reduction, ply + 1, probe_alpha, -alpha, true, true);
+                if score > alpha && !self.aborted() {
+                    let new_depth = full_depth + i32::from(score > best_score + 37 + 5 * full_depth) - i32::from(score < best_score + full_depth);
+                    score = self.search_child(&child, new_depth, ply + 1, probe_alpha, -alpha, !cut_node, true);
+                }
+            } else {
+                score = self.search_child(&child, full_depth, ply + 1, probe_alpha, -alpha, !(pv && searched == 0) && !cut_node, true);
+            }
             if probe && pv && score > alpha && score < beta && !self.aborted() {
                 score = self.search_child(&child, full_depth, ply + 1, -beta, -alpha, false, true);
             }
