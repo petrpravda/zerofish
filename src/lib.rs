@@ -5,6 +5,7 @@
 
 pub mod bitboard;
 pub mod board;
+pub mod correction;
 pub mod evaluation;
 pub mod fen;
 pub mod limits;

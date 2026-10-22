@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::{Arc, LazyLock};
 
 use crate::board::BoardState;
+use crate::correction::CorrectionHistory;
 use crate::evaluation;
 use crate::limits::Limits;
 use crate::moves::{Move, MoveList};
@@ -84,6 +85,7 @@ pub struct Search {
     stats: Statistics,
     ordering: MoveOrdering,
     pickers: Vec<Picker>,
+    correction: Arc<CorrectionHistory>,
     contexts: [i32; MAX_PLY + 2],
     static_evals: [i32; MAX_PLY + 2],
     extensions: [i32; MAX_PLY + 2],
@@ -140,12 +142,13 @@ fn advanced_pawn(state: &BoardState, mv: Move) -> bool {
 }
 
 impl Search {
-    pub fn new(tt: Arc<TranspositionTable>, verbose: bool, ordering: MoveOrdering) -> Self {
+    pub fn new(tt: Arc<TranspositionTable>, verbose: bool, ordering: MoveOrdering, correction: Arc<CorrectionHistory>) -> Self {
         Search {
             tt,
             stats: Statistics::default(),
             ordering,
             pickers: (0..MAX_PLY + 2).map(|_| Picker::new()).collect(),
+            correction,
             contexts: [-1; MAX_PLY + 2],
             static_evals: [UNKNOWN_EVAL; MAX_PLY + 2],
             extensions: [0; MAX_PLY + 2],
@@ -169,7 +172,7 @@ impl Search {
 
     /// A single-threaded searcher with classical evaluation and silent output.
     pub fn classical(tt: Arc<TranspositionTable>) -> Self {
-        Self::new(tt, false, MoveOrdering::new())
+        Self::new(tt, false, MoveOrdering::new(), Arc::new(CorrectionHistory::new()))
     }
 
     pub fn set_table(&mut self, tt: Arc<TranspositionTable>) {
@@ -331,7 +334,13 @@ impl Search {
         }
         let raw_eval = if in_check { UNKNOWN_EVAL } else { self.static_evaluation(state, ply, entry) };
         let base_eval = if in_check { raw_eval } else { self.clocked(state, raw_eval) };
-        let static_eval = if in_check { raw_eval } else { base_eval };
+        let static_eval = if in_check {
+            raw_eval
+        } else if selective {
+            self.correction.corrected(state, base_eval)
+        } else {
+            base_eval
+        };
         self.static_evals[ply] = static_eval;
         let improving = !in_check && ply >= 2 && self.static_evals[ply - 2] != UNKNOWN_EVAL && static_eval > self.static_evals[ply - 2];
         let pruning = selective && state.has_non_pawn_material(state.side_to_play()) && safe_pruning_window(in_check, alpha, beta);
@@ -543,6 +552,15 @@ impl Search {
         } else {
             EXACT
         };
+        if selective
+            && !in_check
+            && !tactical(best_move)
+            && !is_score_checkmate(best_score)
+            && (flag == EXACT || flag == LOWER_BOUND && best_score > static_eval || flag == UPPER_BOUND && best_score < static_eval)
+        {
+            self.correction.update(state, depth, base_eval, best_score);
+            self.counters.correction_updates += 1;
+        }
         if !self.verification[ply] {
             self.tt.set(state.transposition_key(), score_to_table(best_score, ply), depth, flag, best_move, raw_eval);
         }
@@ -588,7 +606,7 @@ impl Search {
         if !in_check {
             raw_eval = self.static_evaluation(state, ply, entry);
             let base_eval = self.clocked(state, raw_eval);
-            stand_pat = base_eval;
+            stand_pat = if self.use_selective && !self.verification[ply] { self.correction.corrected(state, base_eval) } else { base_eval };
             if stand_pat >= beta {
                 self.store_quiescence(state, ply, stand_pat, LOWER_BOUND, best_move, raw_eval, entry);
                 return stand_pat;
@@ -751,6 +769,7 @@ impl Search {
 
     pub fn reset_histories(&mut self) {
         self.ordering.reset();
+        self.correction.reset();
     }
 
     pub fn completed_depth(&self) -> i32 {
