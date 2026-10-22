@@ -224,6 +224,9 @@ impl Search {
                 result = iteration;
                 self.completed_depth = depth;
                 self.completed_result = Some(result);
+                if let Some(mv) = result.mv {
+                    self.limits.on_iteration(mv, result.score, self.root_node_share);
+                }
                 self.print_info(state, result, depth);
                 depth += 1;
                 window = ASPIRATION_WINDOW;
