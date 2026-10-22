@@ -58,3 +58,8 @@ fn expired_search_and_pre_start_cancellation_keep_legal_fallback() {
     let result = engine.it_deep(start.state(), 100, Limits::infinite());
     assert!(start.state().is_legal_move(result.mv.unwrap()));
 }
+
+#[test]
+fn avoids_losing_the_queen_beyond_the_depth_one_horizon() {
+    assert_ne!(search("4k3/8/4p3/3p4/8/8/3Q4/4K3 w - - 0 1", 1).mv.unwrap().uci(), "d2d5");
+}

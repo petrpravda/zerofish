@@ -9,6 +9,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 4. Bound negamax with alpha and beta
 5. Deepen the search one completed iteration at a time
 6. Honor stop requests and search deadlines
+7. Resolve tactical leaves with quiescence
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

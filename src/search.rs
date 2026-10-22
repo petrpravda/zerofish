@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::board::BoardState;
 use crate::evaluation;
 use crate::limits::Limits;
-use crate::moves::Move;
+use crate::moves::{Move, MoveList};
 
 pub const INF: i32 = 999_999;
 pub const MAX_PLY: usize = 128;
@@ -91,13 +91,56 @@ impl Search {
         if moves.is_empty() {
             return if state.is_king_attacked() { -INF + ply as i32 } else { 0 };
         }
-        if depth <= 0 || ply >= MAX_PLY {
-            return self.evaluate(state);
+        if depth <= 0 {
+            return self.quiescence(state, ply, alpha, beta);
+        }
+        if ply >= MAX_PLY {
+            return if state.is_king_attacked() { 0 } else { self.evaluate(state) };
         }
         let mut best_score = -INF;
         for mv in moves.iter() {
             let child = state.do_move(mv);
             let score = -self.nega_max(&child, depth - 1, ply + 1, -beta, -alpha);
+            if self.stop.load(Relaxed) {
+                return 0;
+            }
+            best_score = best_score.max(score);
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                break;
+            }
+        }
+        best_score
+    }
+
+    /// Captures and promotions until the position is quiet; every legal evasion when in check.
+    fn quiescence(&mut self, state: &BoardState, ply: usize, mut alpha: i32, beta: i32) -> i32 {
+        if self.aborted() {
+            return 0;
+        }
+        let in_check = state.is_king_attacked();
+        let mut moves = MoveList::new();
+        if in_check {
+            state.generate_legal_moves_into(&mut moves);
+            if moves.is_empty() {
+                return -INF + ply as i32;
+            }
+        } else {
+            state.generate_legal_tactical(&mut moves);
+        }
+        if ply >= MAX_PLY {
+            return if in_check { 0 } else { self.evaluate(state) };
+        }
+        let mut best_score = if in_check { -INF } else { self.evaluate(state) };
+        if !in_check {
+            if best_score >= beta {
+                return best_score;
+            }
+            alpha = alpha.max(best_score);
+        }
+        for mv in moves.iter() {
+            let child = state.do_move(mv);
+            let score = -self.quiescence(&child, ply + 1, -beta, -alpha);
             if self.stop.load(Relaxed) {
                 return 0;
             }
