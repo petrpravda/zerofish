@@ -20,6 +20,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 15. Use exchange analysis to rank tactics
 16. Produce ordered moves in lazy stages
 17. Probe nonprincipal moves with narrow windows
+18. Retry iterations with expanding score windows
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

@@ -16,6 +16,7 @@ use crate::types::*;
 pub const INF: i32 = 999_999;
 pub const MAX_PLY: usize = 128;
 
+const ASPIRATION_WINDOW: i32 = 25;
 const TIME_CHECK_INTERVAL: i32 = 1024;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SearchResult {
@@ -170,9 +171,10 @@ impl Search {
         self.sel_depth = 0;
         self.keys.clear();
         self.keys.extend_from_slice(keys);
-        let alpha = -INF;
-        let beta = INF;
+        let mut alpha = -INF;
+        let mut beta = INF;
         let mut depth = 1;
+        let mut window = ASPIRATION_WINDOW;
         let legal_moves = state.generate_legal_moves();
         let mut result = SearchResult {
             mv: legal_moves.iter().next(),
@@ -187,12 +189,21 @@ impl Search {
             if self.stop.load(Relaxed) {
                 break;
             }
-            {
+            if iteration.score <= alpha {
+                alpha = (iteration.score - window).max(-INF);
+                window = (window * 2).min(INF);
+            } else if iteration.score >= beta {
+                beta = (iteration.score + window).min(INF);
+                window = (window * 2).min(INF);
+            } else {
                 result = iteration;
                 self.completed_depth = depth;
                 self.completed_result = Some(result);
                 self.print_info(state, result, depth);
                 depth += 1;
+                window = ASPIRATION_WINDOW;
+                alpha = if depth < 4 { -INF } else { (result.score - window).max(-INF) };
+                beta = if depth < 4 { INF } else { (result.score + window).min(INF) };
                 self.stats.reset();
                 if self.limits.soft_expired() || is_score_checkmate(result.score) {
                     break;
