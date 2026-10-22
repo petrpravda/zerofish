@@ -24,6 +24,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 19. Extend checked positions within a path budget
 20. Reduce late moves and verify promising results
 21. Store raw evaluation alongside transposition bounds
+22. Cut shallow nodes with reverse futility margins
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

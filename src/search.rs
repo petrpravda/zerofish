@@ -330,6 +330,11 @@ impl Search {
         let improving = !in_check && ply >= 2 && self.static_evals[ply - 2] != UNKNOWN_EVAL && static_eval > self.static_evals[ply - 2];
         let pruning = selective && state.has_non_pawn_material(state.side_to_play()) && safe_pruning_window(in_check, alpha, beta);
         let tt_move = entry.map(|e| e.mv).filter(|mv| !mv.is_null());
+        let margin = depth * 140 - (if improving { 60 } else { 0 });
+        if pruning && depth <= 8 && !is_score_checkmate(static_eval) && static_eval - margin >= beta {
+            self.counters.reverse_futility_cuts += 1;
+            return beta + (static_eval - beta) / 3;
+        }
 
         let mut best_score = -INF;
         let mut best_move = Move::NULL_MOVE;
