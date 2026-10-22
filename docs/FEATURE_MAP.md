@@ -43,6 +43,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 38. Accelerate neural kernels with runtime AVX2 and SSE2
 39. Reuse cached neural king-bucket accumulators
 40. Run independent search workers over a shared table
+41. Choose worker results using depth and weighted votes
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

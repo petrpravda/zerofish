@@ -11,7 +11,7 @@ use zerofish::tt::TranspositionTable;
 #[test]
 fn helper_searches_return_legal_moves_and_stop() {
     let position = BoardPosition::from_fen("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3").unwrap();
-    for selection in [Selection::Main] {
+    for selection in [Selection::Main, Selection::Deepest, Selection::Vote] {
         let options = Options {
             threads: 3,
             skip_depths: false,

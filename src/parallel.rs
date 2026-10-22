@@ -1,5 +1,6 @@
 //! Lazy SMP: every thread searches the root with its own state and shares the transposition table.
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::Arc;
 use std::thread;
@@ -9,7 +10,7 @@ use crate::limits::Limits;
 use crate::nnue::Nnue;
 use crate::ordering::MoveOrdering;
 use crate::position::BoardPosition;
-use crate::search::{Search, SearchResult};
+use crate::search::{is_score_checkmate, Search, SearchResult};
 use crate::tt::TranspositionTable;
 
 pub const SEARCH_STACK_BYTES: usize = 64 * 1024 * 1024;
@@ -45,7 +46,7 @@ pub struct Options {
 
 impl Default for Options {
     fn default() -> Self {
-        Options { threads: 1, lockless: true, skip_depths: false, defer_moves: false, shared_history: false, selection: Selection::Main, nnue: true }
+        Options { threads: 1, lockless: true, skip_depths: false, defer_moves: false, shared_history: false, selection: Selection::Vote, nnue: true }
     }
 }
 
@@ -154,7 +155,39 @@ impl ParallelSearch {
     }
 
     fn select(&self, main_result: SearchResult) -> SearchResult {
-        main_result
+        if self.searches.len() == 1 || self.options.selection == Selection::Main || main_result.mv.is_none() {
+            return main_result;
+        }
+        let mut best = &self.searches[0];
+        if self.options.selection == Selection::Deepest {
+            for search in &self.searches {
+                if search.completed_result().is_some() && search.completed_depth() > best.completed_depth() {
+                    best = search;
+                }
+            }
+        } else {
+            let minimum = self.searches.iter().filter_map(|s| s.completed_result()).map(|r| r.score).min().unwrap_or(i32::MAX);
+            let mut votes: HashMap<u16, i64> = HashMap::new();
+            for search in &self.searches {
+                if let Some(SearchResult { mv: Some(mv), score }) = search.completed_result() {
+                    *votes.entry(mv.bits()).or_default() += (score as i64 - minimum as i64 + 14) * search.completed_depth() as i64;
+                }
+            }
+            for search in &self.searches {
+                let (Some(result), Some(current)) = (search.completed_result(), best.completed_result()) else { continue };
+                let (Some(mv), Some(current_mv)) = (result.mv, current.mv) else { continue };
+                let winning = is_score_checkmate(result.score) && result.score > 0;
+                let better = if winning {
+                    result.score > current.score
+                } else {
+                    !(is_score_checkmate(current.score) && current.score > 0) && votes[&mv.bits()] > votes[&current_mv.bits()]
+                };
+                if better {
+                    best = search;
+                }
+            }
+        }
+        best.completed_result().unwrap_or(main_result)
     }
 
     pub fn reset_histories(&mut self) {
