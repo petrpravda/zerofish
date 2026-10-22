@@ -29,4 +29,5 @@ fn reached_heuristics_are_exercised() {
     assert!(counters["razor"] > 0, "razoring: {counters:?}");
     assert!(counters["null"] > 0, "null-move: {counters:?}");
     assert!(counters["iir"] > 0, "internal-reduction: {counters:?}");
+    assert!(counters["lmp"] > 0, "late-pruning: {counters:?}");
 }

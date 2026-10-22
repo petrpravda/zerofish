@@ -419,6 +419,15 @@ impl Search {
             } else {
                 self.ordering.quiet_score(state, mv, self.contexts[ply])
             };
+            if pruning && searched > 0 && !protected_move && !is_score_checkmate(best_score) {
+                let lmr_depth = (depth - 1 - lmr(depth, move_index + 1)).max(0);
+                let late_move_limit = if improving { 4 + 5 * depth } else { 3 + 4 * depth };
+                if !is_tactical && depth <= 8 && move_index >= late_move_limit {
+                    self.counters.late_move_skips += 1;
+                    self.pickers[ply].skip_quiets();
+                    continue;
+                }
+            }
             let child = self.child(state, mv, ply);
             let gives_check = child.is_king_attacked();
             let extension = i32::from(self.extensions[ply] < 8 && in_check);
