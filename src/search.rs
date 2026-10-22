@@ -21,6 +21,9 @@ pub const MAX_PLY: usize = 128;
 const NULL_MIN_DEPTH: i32 = 2;
 const ASPIRATION_WINDOW: i32 = 25;
 const TIME_CHECK_INTERVAL: i32 = 1024;
+const SKIP_SIZE: [i32; 20] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
+const SKIP_PHASE: [i32; 20] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
+
 static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table = [[0; 64]; 64];
     for depth in 1..64 {
@@ -100,6 +103,7 @@ pub struct Search {
     root_node_share: f64,
     time_check_countdown: i32,
     pub thread_index: usize,
+    pub skip_depths: bool,
     pub owns_table_generation: bool,
     completed_depth: i32,
     completed_result: Option<SearchResult>,
@@ -166,6 +170,7 @@ impl Search {
             root_node_share: 0.5,
             time_check_countdown: 0,
             thread_index: 0,
+            skip_depths: false,
             owns_table_generation: true,
             completed_depth: 0,
             completed_result: None,
@@ -241,6 +246,9 @@ impl Search {
                 }
                 self.print_info(state, result, depth);
                 depth += 1;
+                while self.skip_depths && self.thread_index > 0 && self.skipped(depth) {
+                    depth += 1;
+                }
                 window = ASPIRATION_WINDOW;
                 alpha = if depth < 4 { -INF } else { (result.score - window).max(-INF) };
                 beta = if depth < 4 { INF } else { (result.score + window).min(INF) };
@@ -816,6 +824,11 @@ impl Search {
 
     pub fn searched_nodes(&self) -> u64 {
         self.stats.cumulative
+    }
+
+    fn skipped(&self, depth: i32) -> bool {
+        let index = (self.thread_index - 1) % SKIP_SIZE.len();
+        ((depth + SKIP_PHASE[index]) / SKIP_SIZE[index]) % 2 != 0
     }
 
     pub fn selective_summary(&self) -> String {

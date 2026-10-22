@@ -78,6 +78,7 @@ impl ParallelSearch {
             let nnue = options.nnue.then(|| Box::new(Nnue::new()));
             let mut search = Search::new(Arc::clone(&table), index == 0, nnue, ordering, correction);
             search.thread_index = index;
+            search.skip_depths = options.skip_depths;
             search.owns_table_generation = false;
             searches.push(search);
         }

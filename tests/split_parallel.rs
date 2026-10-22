@@ -14,7 +14,7 @@ fn helper_searches_return_legal_moves_and_stop() {
     for selection in [Selection::Main, Selection::Deepest, Selection::Vote] {
         let options = Options {
             threads: 3,
-            skip_depths: false,
+            skip_depths: true,
             defer_moves: false,
             shared_history: false,
             selection,
