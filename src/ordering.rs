@@ -88,12 +88,16 @@ impl MoveOrdering {
         if mv.is_promotion() {
             score += value(mv.piece_type()) - value(PAWN);
         }
-        score
+        score + self.histories.capture[capture_index(state.piece_at(mv.from()), mv.to(), victim_type)].load(Relaxed) / 4
     }
 
     fn update(&self, state: &BoardState, mv: Move, previous: i32, bonus: i32) {
         let h = &*self.histories;
         if tactical(mv) {
+            let victim = state.piece_at(mv.to());
+            let victim_type = if victim == NONE { PAWN } else { type_of(victim) };
+            let entry = &h.capture[capture_index(state.piece_at(mv.from()), mv.to(), victim_type)];
+            entry.store(adjusted(entry.load(Relaxed), bonus), Relaxed);
         } else {
             let entry = &h.quiet[state.side_to_play() * 4096 + mv.from() * 64 + mv.to()];
             entry.store(adjusted(entry.load(Relaxed), bonus), Relaxed);
