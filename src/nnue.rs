@@ -104,13 +104,103 @@ impl Nnue {
         }
     }
 
-    /// Without incremental updates every child is evaluated from a full refresh.
-    pub fn push(&mut self, _before: &BoardState, after: &BoardState, ply: usize) {
-        self.refresh(after, ply);
+    /// For a null move or any transition whose changed squares are not known.
+    pub fn push(&mut self, before: &BoardState, after: &BoardState, ply: usize) {
+        let mut changed = 0;
+        for side in 0..2 {
+            for piece_type in 0..6 {
+                changed |= before.bitboard_of_side(side, piece_type) ^ after.bitboard_of_side(side, piece_type);
+            }
+        }
+        self.push_changed(before, after, ply, changed);
     }
 
-    pub fn push_move(&mut self, _before: &BoardState, after: &BoardState, _mv: Move, ply: usize) {
-        self.refresh(after, ply);
+    pub fn push_move(&mut self, before: &BoardState, after: &BoardState, mv: Move, ply: usize) {
+        let mut changed = 1u64 << mv.from() | 1u64 << mv.to();
+        if mv.flags() == Move::EN_PASSANT {
+            changed |= 1u64 << (mv.to() as i32 + if before.side_to_play() == 0 { -8 } else { 8 });
+        }
+        if mv.is_castling() {
+            let rank = if before.side_to_play() == 0 { 0 } else { 56 };
+            changed |= if mv.flags() == Move::OO { 1u64 << (rank + 7) | 1u64 << (rank + 5) } else { 1u64 << rank | 1u64 << (rank + 3) };
+        }
+        self.push_changed(before, after, ply, changed);
+    }
+
+    fn push_changed(&mut self, before: &BoardState, after: &BoardState, ply: usize, mut changed: u64) {
+        if self.positions[ply - 1].as_ref() != Some(before.bitboards()) {
+            self.refresh(before, ply - 1);
+        }
+        let mut added = [(0usize, 0usize); 4];
+        let mut removed = [(0usize, 0usize); 4];
+        let mut adds = 0;
+        let mut subs = 0;
+        while changed != 0 {
+            let square = changed.trailing_zeros() as usize;
+            changed &= changed - 1;
+            let old_piece = before.piece_at(square);
+            let new_piece = after.piece_at(square);
+            if old_piece == new_piece {
+                continue;
+            }
+            if old_piece != NONE {
+                removed[subs] = (old_piece, square);
+                subs += 1;
+            }
+            if new_piece != NONE {
+                added[adds] = (new_piece, square);
+                adds += 1;
+            }
+        }
+        for perspective in 0..2 {
+            let king = after.bitboard_of_side(perspective, KING).trailing_zeros() as usize;
+            let previous_king = before.bitboard_of_side(perspective, KING).trailing_zeros() as usize;
+            if bucket(king, perspective) != bucket(previous_king, perspective) || ((king & 7) > 3) != ((previous_king & 7) > 3) {
+                self.refresh_perspective(after, ply, perspective);
+                continue;
+            }
+            let bucket = bucket(king, perspective);
+            let (lower, upper) = self.stack.split_at_mut(ply);
+            let source = &lower[ply - 1][perspective];
+            let destination = &mut upper[0][perspective];
+            let offset = |(piece, square): (usize, usize)| (bucket * FEATURES + feature(piece, square, perspective, king)) * HIDDEN;
+            match (adds, subs) {
+                (0, 0) => *destination = *source,
+                (1, 1) => {
+                    let (add, sub) = (weights(offset(added[0])), weights(offset(removed[0])));
+                    for i in 0..HIDDEN {
+                        destination[i] = source[i].wrapping_sub(sub[i]).wrapping_add(add[i]);
+                    }
+                }
+                (1, 2) => {
+                    let (add, sub1, sub2) = (weights(offset(added[0])), weights(offset(removed[0])), weights(offset(removed[1])));
+                    for i in 0..HIDDEN {
+                        destination[i] = source[i].wrapping_sub(sub1[i]).wrapping_sub(sub2[i]).wrapping_add(add[i]);
+                    }
+                }
+                (2, 2) => {
+                    let (add1, add2) = (weights(offset(added[0])), weights(offset(added[1])));
+                    let (sub1, sub2) = (weights(offset(removed[0])), weights(offset(removed[1])));
+                    for i in 0..HIDDEN {
+                        destination[i] = source[i].wrapping_sub(sub1[i]).wrapping_sub(sub2[i]).wrapping_add(add1[i]).wrapping_add(add2[i]);
+                    }
+                }
+                _ => {
+                    *destination = *source;
+                    for &change in &removed[..subs] {
+                        for (value, weight) in destination.iter_mut().zip(weights(offset(change))) {
+                            *value = value.wrapping_sub(*weight);
+                        }
+                    }
+                    for &change in &added[..adds] {
+                        for (value, weight) in destination.iter_mut().zip(weights(offset(change))) {
+                            *value = value.wrapping_add(*weight);
+                        }
+                    }
+                }
+            }
+        }
+        self.positions[ply] = Some(*after.bitboards());
     }
 
     pub fn accumulator(&mut self, state: &BoardState, ply: usize, perspective: usize) -> Vec<i16> {
@@ -184,4 +274,43 @@ mod tests {
         }
     }
 
+    #[test]
+    fn incremental_special_moves_and_walks_match_refresh() {
+        let mut incremental = Nnue::new();
+        let mut fresh = Nnue::new();
+        for fen in [
+            START_POS,
+            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+            "4k3/P7/8/3pP3/8/8/8/4K3 w - d6 0 1",
+            "1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1",
+            "4k3/8/8/8/8/3K4/8/8 w - - 99 1",
+            "4k3/8/8/8/3Pp3/8/p7/1R2K3 b - d3 0 1",
+        ] {
+            let root = BoardState::from_fen(fen).unwrap();
+            incremental.reset(&root);
+            for mv in root.generate_legal_moves().iter() {
+                let child = root.do_move(mv);
+                incremental.push_move(&root, &child, mv, 1);
+                compare(&mut incremental, &mut fresh, &child, 1);
+                compare(&mut incremental, &mut fresh, &root, 0);
+            }
+            let null_state = root.do_null_move();
+            incremental.push(&root, &null_state, 1);
+            compare(&mut incremental, &mut fresh, &null_state, 1);
+        }
+        let mut random = JavaRandom::new(73);
+        let mut state = BoardState::from_fen(START_POS).unwrap();
+        incremental.reset(&state);
+        for ply in 1..=100 {
+            let moves = state.generate_legal_moves();
+            if moves.is_empty() {
+                break;
+            }
+            let mv = moves.get(random.next_int(moves.len() as i32) as usize);
+            let child = state.do_move(mv);
+            incremental.push_move(&state, &child, mv, ply);
+            compare(&mut incremental, &mut fresh, &child, ply);
+            state = child;
+        }
+    }
 }
