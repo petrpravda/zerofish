@@ -552,8 +552,13 @@ impl Search {
         self.clocked(state, evaluation)
     }
 
-    fn static_evaluation(&mut self, state: &BoardState, ply: usize, _entry: Option<TTEntry>) -> i32 {
-        self.evaluate(state, ply)
+    fn static_evaluation(&mut self, state: &BoardState, ply: usize, entry: Option<TTEntry>) -> i32 {
+        if let Some(entry) = entry.filter(|e| e.static_eval != UNKNOWN_EVAL) {
+            return entry.static_eval;
+        }
+        let evaluation = self.evaluate(state, ply);
+        self.tt.set_static_eval(state.transposition_key(), evaluation);
+        evaluation
     }
 
     fn aborted(&mut self) -> bool {
