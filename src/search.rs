@@ -389,6 +389,36 @@ impl Search {
                 }
             }
         }
+        let mut singular_move = None;
+        if let Some(entry) = entry {
+            if selective
+                && excluded.is_none()
+                && !in_check
+                && depth >= 6
+                && self.extensions[ply] < 8
+                && entry.flag != UPPER_BOUND
+                && entry.flag != EVAL_ONLY
+                && entry.depth >= depth - 3
+                && !entry.mv.is_null()
+            {
+                let tt_score = score_from_table(entry.score, ply);
+                if !is_score_checkmate(tt_score) && state.is_legal_move(entry.mv) {
+                    let singular_beta = tt_score - 12 * depth;
+                    self.counters.singular_checks += 1;
+                    self.excluded_moves[ply] = Some(entry.mv);
+                    self.verification[ply] = true;
+                    let alternative = self.nega_max(state, (depth - 1) / 2, ply, singular_beta - 1, singular_beta, false);
+                    self.excluded_moves[ply] = None;
+                    self.verification[ply] = false;
+                    if self.aborted() {
+                        return 0;
+                    }
+                    if alternative < singular_beta {
+                        singular_move = Some(entry.mv);
+                    }
+                }
+            }
+        }
 
         let mut best_score = -INF;
         let mut best_move = Move::NULL_MOVE;
@@ -449,7 +479,10 @@ impl Search {
             }
             let child = self.child(state, mv, ply);
             let gives_check = child.is_king_attacked();
-            let extension = i32::from(self.extensions[ply] < 8 && in_check);
+            let extension = i32::from(self.extensions[ply] < 8 && (in_check || Some(mv) == singular_move));
+            if Some(mv) == singular_move {
+                self.counters.singular_extensions += 1;
+            }
             self.extensions[ply + 1] += extension;
             let full_depth = depth - 1 + extension;
             let mut reduction = 0;

@@ -35,6 +35,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 30. Bound quiescence gains with delta margins
 31. Exclude losing exchanges from tactical search
 32. Limit later quiet escapes in quiescence
+33. Verify and extend singular transposition moves
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

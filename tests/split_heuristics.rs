@@ -32,6 +32,7 @@ fn reached_heuristics_are_exercised() {
     assert!(counters["futility"] > 0, "futility: {counters:?}");
     assert!(counters["see"] > 0, "see-pruning: {counters:?}");
     assert!(counters["delta"] > 0, "delta-pruning: {counters:?}");
+    assert!(counters["singularchecks"] > 0, "singular: {counters:?}");
 }
 
 /// Quiet histories only fall below the pruning threshold after many cutoffs.
