@@ -10,6 +10,7 @@ use crate::limits::Limits;
 use crate::nnue::Nnue;
 use crate::parallel::{Options, ParallelSearch, Selection, SEARCH_STACK_BYTES};
 use crate::perft::perft_string;
+use crate::pgn::san_to_uci;
 use crate::position::BoardPosition;
 use crate::search::MAX_PLY;
 use crate::tt::TranspositionTable;
@@ -169,6 +170,15 @@ impl Uci {
     }
 
     fn parse_position(args: &[&str]) -> Result<BoardPosition, String> {
+        if args.len() >= 2 && args[0] == "startpos" && args[1] == "movespgn" {
+            let moves = san_to_uci(&args[2..])?;
+            println!("{}", moves.join(" "));
+            let mut position = BoardPosition::start_pos();
+            for mv in &moves {
+                position.do_move_uci(mv)?;
+            }
+            return Ok(position);
+        }
         let moves_index = args.iter().position(|a| *a == "moves");
         let mut position = if args.first() == Some(&"startpos") {
             BoardPosition::start_pos()

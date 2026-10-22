@@ -95,7 +95,8 @@ fn time_controls_threads_and_stop() {
 #[test]
 fn utility_commands_and_errors() {
     let mut engine = Engine::start();
-    engine.send("position startpos moves e2e4 e7e5 g1f3");
+    engine.send("position startpos movespgn e4 e5 Nf3");
+    assert_eq!(engine.read_until("e2e4"), ["zerofish 0.1 by Petr Pravda", "e2e4 e7e5 g1f3"]);
     engine.send("go perft 3");
     let lines = engine.read_until("Nodes searched");
     assert_eq!(lines.last().unwrap(), "Nodes searched: 23193");
@@ -143,6 +144,8 @@ fn display_reports_checking_squares() {
         assert_eq!(lines.last().unwrap().trim_end(), format!("Checkers: {checkers}").trim_end(), "{position}");
         engine.read_until("Legal uci moves");
     }
+    engine.send("position startpos movespgn e4 exd5");
+    engine.read_until("info string Command failed: Illegal SAN: exd5");
     engine.quit();
 }
 
