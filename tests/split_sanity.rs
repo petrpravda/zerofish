@@ -1,15 +1,18 @@
 //! Sanity checks of the incremental rebuild; each test arrives with the feature it covers.
 
+use std::sync::Arc;
+
 use zerofish::limits::Limits;
 use zerofish::position::BoardPosition;
 use zerofish::search::{Search, SearchResult, INF};
+use zerofish::tt::TranspositionTable;
 
 fn position(fen: &str) -> BoardPosition {
     BoardPosition::from_fen(fen).unwrap()
 }
 
 fn search_with(position: &BoardPosition, depth: i32, limits: Limits) -> SearchResult {
-    Search::new().it_deep(position.state(), position.keys(), depth, limits)
+    Search::classical(Arc::new(TranspositionTable::default())).it_deep(position.state(), position.keys(), depth, limits)
 }
 
 fn search(fen: &str, depth: i32) -> SearchResult {
@@ -53,7 +56,7 @@ fn deeper_iterations_stop_at_a_found_mate() {
 fn expired_search_and_pre_start_cancellation_keep_legal_fallback() {
     let start = position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     assert!(start.state().is_legal_move(search_with(&start, 100, Limits::with_millis(0, 0)).mv.unwrap()));
-    let mut engine = Search::new();
+    let mut engine = Search::classical(Arc::new(TranspositionTable::default()));
     engine.stop();
     let result = engine.it_deep(start.state(), start.keys(), 100, Limits::infinite());
     assert!(start.state().is_legal_move(result.mv.unwrap()));
@@ -70,4 +73,11 @@ fn adjudicates_rule_draw_before_searching() {
     let result = search_with(&drawn, 3, Limits::infinite());
     assert_eq!(result.score, 0);
     assert!(drawn.state().is_legal_move(result.mv.unwrap()));
+}
+
+#[test]
+fn hash_table_keeps_deeper_search_legal_and_tactical() {
+    assert_eq!(search("4k3/8/8/3q4/8/8/8/3RK3 w - - 0 1", 6).mv.unwrap().uci(), "d1d5");
+    let middlegame = position("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3");
+    assert!(middlegame.state().is_legal_move(search_with(&middlegame, 6, Limits::infinite()).mv.unwrap()));
 }

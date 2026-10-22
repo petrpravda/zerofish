@@ -11,6 +11,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 6. Honor stop requests and search deadlines
 7. Resolve tactical leaves with quiescence
 8. Recognize repeated positions and rule draws in search
+9. Cache search bounds and prioritize the stored move
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.
