@@ -7,14 +7,11 @@ use std::sync::Arc;
 use crate::board::BoardState;
 use crate::moves::{Move, MoveList, MAX_MOVES};
 use crate::search::MAX_PLY;
+use crate::see::{see, value};
 use crate::tt::TTEntry;
 use crate::types::*;
 
 const CONTEXTS: usize = 14 * 64;
-
-fn value(piece_type: usize) -> i32 {
-    [100, 320, 330, 500, 900, 20000][piece_type]
-}
 
 struct Histories {
     quiet: Vec<AtomicI32>,
@@ -199,7 +196,11 @@ impl Picker {
                     0
                 } else if tactical(mv) {
                     self.scores[index] = ordering.capture_score(state, mv);
-                    1
+                    if see(state, mv, 0) {
+                        1
+                    } else {
+                        4
+                    }
                 } else if killers[0] == mv.bits() || killers[1] == mv.bits() {
                     self.scores[index] = i32::from(killers[0] == mv.bits());
                     2

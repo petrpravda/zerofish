@@ -17,6 +17,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 12. Update quiet ordering from search history
 13. Accumulate capture ordering statistics
 14. Condition ordering on the preceding move
+15. Use exchange analysis to rank tactics
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

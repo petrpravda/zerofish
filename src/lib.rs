@@ -15,6 +15,7 @@ pub mod position;
 pub mod pst;
 pub mod random;
 pub mod search;
+pub mod see;
 pub mod tt;
 pub mod types;
 pub mod zobrist;
