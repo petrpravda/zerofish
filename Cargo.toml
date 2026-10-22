@@ -3,7 +3,11 @@ name = "zerofish"
 version = "0.1.0"
 edition = "2021"
 description = "UCI chess engine, a Rust port of the Java javafish engine"
-license = "MIT"
+license = "GPL-3.0-or-later"
+
+[features]
+default = []
+stockfish-nnue = []
 
 [dependencies]
 

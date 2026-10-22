@@ -807,7 +807,12 @@ impl Search {
         if self.nnue.is_none() {
             evaluation
         } else {
-            evaluation * (200 - state.half_move_clock) / 200
+            {
+                #[cfg(feature = "stockfish-nnue")]
+                { evaluation - evaluation * state.half_move_clock / crate::nnue::RULE50_DENOMINATOR }
+                #[cfg(not(feature = "stockfish-nnue"))]
+                { evaluation * (200 - state.half_move_clock) / 200 }
+            }
         }
     }
 

@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/official-stockfish/Stockfish",
+  "commit": "effdc3fd3f6de6e75fe1374a51a7a7eed66f880b",
+  "license": "GPL-3.0-or-later",
+  "default_network": "nn-c9e480e92425.nnue",
+  "network_sha256": "c9e480e92425f887df6ab9b05c6180fbd762b07879df9d9845f1aa75440caa73",
+  "role": "Exact incremental NNUE inference and native position state only. Zerofish supplies search, move generation, time management and game rules."
+}

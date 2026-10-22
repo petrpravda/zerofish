@@ -8,6 +8,7 @@ use crate::search::MAX_PLY;
 use crate::types::*;
 
 pub const SHA256: &str = "85959e702a2147cceaf6829a6933211865e2c271d434f394ac46063b90f7a6b3";
+pub const RULE50_DENOMINATOR: i32 = 200;
 pub const HIDDEN: usize = 1024;
 const FEATURES: usize = 768;
 const NETWORK_BYTES: usize = 12_589_120;
