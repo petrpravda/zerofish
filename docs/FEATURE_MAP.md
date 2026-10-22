@@ -29,6 +29,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 24. Try null moves with material guards and verification
 25. Reduce search depth when hash guidance is absent
 26. Stop searching sufficiently late quiet candidates
+27. Discard quiet moves below futility margins
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.
