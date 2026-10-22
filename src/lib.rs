@@ -12,6 +12,7 @@ pub mod limits;
 pub mod moves;
 pub mod nnue;
 pub mod ordering;
+pub mod parallel;
 pub mod perft;
 pub mod position;
 pub mod pst;

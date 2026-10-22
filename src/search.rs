@@ -99,6 +99,8 @@ pub struct Search {
     counters: SelectiveCounters,
     root_node_share: f64,
     time_check_countdown: i32,
+    pub thread_index: usize,
+    pub owns_table_generation: bool,
     completed_depth: i32,
     completed_result: Option<SearchResult>,
     stop: Arc<AtomicBool>,
@@ -163,6 +165,8 @@ impl Search {
             counters: SelectiveCounters::default(),
             root_node_share: 0.5,
             time_check_countdown: 0,
+            thread_index: 0,
+            owns_table_generation: true,
             completed_depth: 0,
             completed_result: None,
             stop: Arc::new(AtomicBool::new(false)),
@@ -185,7 +189,9 @@ impl Search {
     /// `keys` are the position keys of the game, ending with the key of `state`.
     pub fn it_deep(&mut self, state: &BoardState, keys: &[u64], search_depth: i32, limits: Limits) -> SearchResult {
         self.limits = limits;
-        self.tt.new_search();
+        if self.owns_table_generation {
+            self.tt.new_search();
+        }
         self.completed_depth = 0;
         self.completed_result = None;
         self.stats.cumulative = 0;
