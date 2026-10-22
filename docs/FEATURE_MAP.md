@@ -32,6 +32,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 27. Discard quiet moves below futility margins
 28. Filter shallow quiets with weak history scores
 29. Apply depth-sensitive exchange pruning
+30. Bound quiescence gains with delta margins
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

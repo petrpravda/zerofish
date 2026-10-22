@@ -563,6 +563,9 @@ impl Search {
             best_score = stand_pat;
             alpha = alpha.max(stand_pat);
         }
+        let pruning = self.use_selective && !in_check;
+        let futility_base = stand_pat + 116;
+        let previous_target = if self.contexts[ply] >= 0 { (self.contexts[ply] & 63) as usize } else { NO_SQUARE };
         if in_check {
             self.pickers[ply].reset(&self.ordering, state, Some(&evasions), entry, ply, self.contexts[ply], false);
         } else {
@@ -573,6 +576,21 @@ impl Search {
             let is_tactical = tactical(mv);
             if !in_check && !is_tactical {
                 continue;
+            }
+            if pruning && mv.to() != previous_target {
+                if !mv.is_promotion() {
+                    let captured = state.piece_at(mv.to());
+                    let gain = if captured == NONE { value(PAWN) } else { value(type_of(captured)) };
+                    if stand_pat + gain + 108 < alpha {
+                        self.counters.delta_prunes += 1;
+                        continue;
+                    }
+                    if futility_base <= alpha && !see(state, mv, 1) {
+                        best_score = best_score.max(futility_base);
+                        self.counters.delta_prunes += 1;
+                        continue;
+                    }
+                }
             }
             let child = self.child(state, mv, ply);
             searched += 1;
