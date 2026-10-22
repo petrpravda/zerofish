@@ -438,6 +438,14 @@ impl Search {
                     self.pickers[ply].skip_quiets();
                     continue;
                 }
+                if depth <= 10 && !(is_tactical && stage <= 1) {
+                    let threshold = if is_tactical { -26 * depth * depth } else { -43 * depth - history / 128 };
+                    if !see(state, mv, threshold) {
+                        self.counters.see_prunes += 1;
+                        move_index += 1;
+                        continue;
+                    }
+                }
             }
             let child = self.child(state, mv, ply);
             let gives_check = child.is_king_attacked();
