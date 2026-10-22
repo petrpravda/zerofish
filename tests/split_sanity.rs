@@ -40,3 +40,10 @@ fn terminal_roots_distinguish_mate_and_stalemate() {
     assert_eq!(search("7k/6Q1/5K2/8/8/8/8/8 b - - 0 1", 2), SearchResult { mv: None, score: -INF });
     assert_eq!(search("7k/5K2/6Q1/8/8/8/8/8 b - - 0 1", 2), SearchResult { mv: None, score: 0 });
 }
+
+#[test]
+fn deeper_iterations_stop_at_a_found_mate() {
+    let result = search("6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", 64);
+    assert_eq!(result.mv.unwrap().uci(), "d1d8");
+    assert_eq!(result.score, INF - 1);
+}

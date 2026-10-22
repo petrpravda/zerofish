@@ -7,6 +7,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 2. Describe the Rust engine feature progression
 3. Introduce fixed-depth negamax with classical scores
 4. Bound negamax with alpha and beta
+5. Deepen the search one completed iteration at a time
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

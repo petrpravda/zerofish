@@ -28,7 +28,14 @@ impl Search {
 
     pub fn it_deep(&mut self, state: &BoardState, search_depth: i32) -> SearchResult {
         assert!(search_depth >= 1, "depth must be positive");
-        self.nega_max_root(state, search_depth, -INF, INF)
+        let mut result = self.nega_max_root(state, 1, -INF, INF);
+        for depth in 2..=search_depth.min(MAX_PLY as i32 - 1) {
+            if result.mv.is_none() || is_score_checkmate(result.score) {
+                break;
+            }
+            result = self.nega_max_root(state, depth, -INF, INF);
+        }
+        result
     }
 
     fn nega_max_root(&mut self, state: &BoardState, depth: i32, mut alpha: i32, beta: i32) -> SearchResult {
