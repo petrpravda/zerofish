@@ -6,11 +6,12 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
 use crate::evaluation;
+use crate::fen::START_POS;
 use crate::limits::Limits;
 use crate::nnue::Nnue;
 use crate::parallel::{Options, ParallelSearch, Selection, SEARCH_STACK_BYTES};
 use crate::perft::perft_string;
-use crate::pgn::san_to_uci;
+use crate::pgn::san;
 use crate::position::BoardPosition;
 use crate::search::MAX_PLY;
 use crate::tt::TranspositionTable;
@@ -29,6 +30,7 @@ option name SMP Shared History type check default false
 option name SMP Select type combo default vote var main var deepest var vote
 option name Move Overhead type spin default 20 min 0 max 5000
 option name Evaluation type combo default NNUE var NNUE var Classical
+option name UCI_Chess960 type check default false
 uciok";
 
 pub struct Uci {
@@ -41,6 +43,7 @@ pub struct Uci {
     nnue: Box<Nnue>,
     options: Options,
     nnue_evaluation: bool,
+    chess960: bool,
 }
 
 impl Default for Uci {
@@ -90,6 +93,7 @@ impl Uci {
             nnue: Box::new(Nnue::new()),
             options,
             nnue_evaluation: true,
+            chess960: false,
         }
     }
 
@@ -119,7 +123,7 @@ impl Uci {
             }
             "position" => {
                 self.stop_search();
-                self.position = Self::parse_position(args)?;
+                self.position = Self::parse_position(args, self.chess960)?;
             }
             "go" => {
                 self.stop_search();
@@ -162,28 +166,28 @@ impl Uci {
                 self.stop_search();
                 self.table.reset();
                 self.engine_mut().reset_histories();
-                self.position = BoardPosition::start_pos();
+                self.position = BoardPosition::from_fen_with_chess960(START_POS, self.chess960)?;
             }
             _ => {}
         }
         Ok(())
     }
 
-    fn parse_position(args: &[&str]) -> Result<BoardPosition, String> {
+    fn parse_position(args: &[&str], chess960: bool) -> Result<BoardPosition, String> {
         if args.len() >= 2 && args[0] == "startpos" && args[1] == "movespgn" {
-            let moves = san_to_uci(&args[2..])?;
-            println!("{}", moves.join(" "));
-            let mut position = BoardPosition::start_pos();
-            for mv in &moves {
-                position.do_move_uci(mv)?;
+            let mut position = BoardPosition::from_fen_with_chess960(START_POS, chess960)?;
+            let moves = san::decode(position.state(), &args[2..])?;
+            println!("{}", moves.iter().map(|mv| mv.uci()).collect::<Vec<_>>().join(" "));
+            for mv in moves {
+                position.do_move(mv);
             }
             return Ok(position);
         }
         let moves_index = args.iter().position(|a| *a == "moves");
         let mut position = if args.first() == Some(&"startpos") {
-            BoardPosition::start_pos()
+            BoardPosition::from_fen_with_chess960(START_POS, chess960)?
         } else if args.len() >= 7 && args[0] == "fen" {
-            BoardPosition::from_fen(&args[1..7].join(" "))?
+            BoardPosition::from_fen_with_chess960(&args[1..7].join(" "), chess960)?
         } else {
             return Err("Expected startpos or six-field FEN".to_string());
         };
@@ -206,6 +210,12 @@ impl Uci {
         let name = args[1..value_index].join(" ");
         let raw = *args.get(value_index + 1).ok_or("Missing option value")?;
         match name.as_str() {
+            "UCI_Chess960" => {
+                self.chess960 = check(raw)?;
+                self.table.reset();
+                self.engine_mut().reset_histories();
+                self.position = BoardPosition::from_fen_with_chess960(START_POS, self.chess960)?;
+            }
             "Hash" => {
                 self.table = Arc::new(TranspositionTable::new(parse_number(raw)?)?);
                 let table = Arc::clone(&self.table);

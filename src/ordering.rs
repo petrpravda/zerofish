@@ -230,7 +230,7 @@ impl Picker {
         self.scores[self.cursor - 1]
     }
 
-    fn load_stage(&mut self, ordering: &MoveOrdering, state: &BoardState) {
+    fn load_stage<const V: bool>(&mut self, ordering: &MoveOrdering, state: &BoardState) {
         let stage = self.stage as usize;
         if !self.lazy || self.loaded[stage] {
             return;
@@ -240,12 +240,12 @@ impl Picker {
         let killers = ordering.killers[self.ply];
         match stage {
             0 => {
-                if (!self.tactical_only || tactical(tt_move)) && state.is_legal_move(tt_move) {
+                if (!self.tactical_only || tactical(tt_move)) && state.is_legal_move_v::<V>(tt_move) {
                     self.append(tt_move, 0, 0);
                 }
             }
             1 => {
-                state.generate_legal_tactical(&mut self.generated);
+                state.generate_legal_tactical_v::<V>(&mut self.generated);
                 for index in 0..self.generated.len() {
                     let mv = self.generated.get(index);
                     if mv != tt_move {
@@ -260,13 +260,13 @@ impl Picker {
                         continue;
                     }
                     let killer = Move(bits);
-                    if killer != tt_move && !tactical(killer) && state.is_legal_move(killer) {
+                    if killer != tt_move && !tactical(killer) && state.is_legal_move_v::<V>(killer) {
                         self.append(killer, 2, 1 - index as i32);
                     }
                 }
             }
             3 if !self.tactical_only => {
-                state.generate_legal_quiets(&mut self.generated);
+                state.generate_legal_quiets_v::<V>(&mut self.generated);
                 for index in 0..self.generated.len() {
                     let mv = self.generated.get(index);
                     if mv != tt_move && mv.bits() != killers[0] && mv.bits() != killers[1] {
@@ -279,7 +279,7 @@ impl Picker {
         }
     }
 
-    fn has_next(&mut self, ordering: &MoveOrdering, state: &BoardState) -> bool {
+    fn has_next<const V: bool>(&mut self, ordering: &MoveOrdering, state: &BoardState) -> bool {
         if self.next_index.is_some() {
             return true;
         }
@@ -288,7 +288,7 @@ impl Picker {
                 self.stage += 1;
                 continue;
             }
-            self.load_stage(ordering, state);
+            self.load_stage::<V>(ordering, state);
             if self.stage == 3 && !self.quiet_scored {
                 for index in self.cursor..self.count {
                     if self.stages[index] == 3 {
@@ -312,8 +312,8 @@ impl Picker {
         false
     }
 
-    pub fn next_move(&mut self, ordering: &MoveOrdering, state: &BoardState) -> Option<Move> {
-        if !self.has_next(ordering, state) {
+    pub fn next_move<const V: bool>(&mut self, ordering: &MoveOrdering, state: &BoardState) -> Option<Move> {
+        if !self.has_next::<V>(ordering, state) {
             return None;
         }
         let best = self.next_index.take().unwrap();

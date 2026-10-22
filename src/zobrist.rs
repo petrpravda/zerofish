@@ -6,6 +6,7 @@ pub struct Zobrist {
     pub pieces: [[u64; 64]; 14],
     pub en_passant: [u64; 8],
     pub castling: [u64; 4],
+    pub chess960_castling: [[u64; 8]; 4],
     pub side: u64,
 }
 
@@ -27,5 +28,11 @@ pub static ZOBRIST: LazyLock<Zobrist> = LazyLock::new(|| {
     for key in castling.iter_mut() {
         *key = random.next_long() as u64;
     }
-    Zobrist { pieces, en_passant, castling, side }
+    let mut chess960_castling = [[0u64; 8]; 4];
+    for row in chess960_castling.iter_mut() {
+        for key in row.iter_mut() {
+            *key = random.next_long() as u64;
+        }
+    }
+    Zobrist { pieces, en_passant, castling, chess960_castling, side }
 });

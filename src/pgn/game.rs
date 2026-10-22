@@ -46,6 +46,10 @@ fn valid_tag_name(name: &str) -> bool {
     chars.next().is_some_and(|c| c.is_ascii_alphabetic()) && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
+fn chess960_variant(variant: &str) -> bool {
+    variant.eq_ignore_ascii_case("Chess960") || variant.eq_ignore_ascii_case("Fischerandom") || variant.eq_ignore_ascii_case("FischerRandom")
+}
+
 /// A `}` comment can only be written as a `;` comment, which ends at the line break.
 pub fn validate_comment(text: &str) -> Result<(), String> {
     if text.contains('}') && (text.contains('\n') || text.contains('\r')) {
@@ -97,7 +101,12 @@ impl PgnGame {
             _ => {}
         }
         if let Some(variant) = get("Variant").filter(|v| !v.eq_ignore_ascii_case("Standard")) {
-            return Err(format!("Unsupported variant: {variant}"));
+            if !chess960_variant(variant) {
+                return Err(format!("Unsupported variant: {variant}"));
+            }
+            if get("FEN").is_none() {
+                return Err("Chess960 requires FEN".to_string());
+            }
         }
         validate_line(&line)?;
         let mut normalized = Vec::with_capacity(tags.len() + ROSTER.len());
@@ -136,7 +145,7 @@ impl PgnGame {
     }
 
     pub fn starting_board(&self) -> Result<BoardState, String> {
-        BoardState::from_fen(self.starting_fen())
+        BoardState::from_fen_with_chess960(self.starting_fen(), self.tag("Variant").is_some_and(chess960_variant))
     }
 
     pub fn moves(&self) -> Vec<Move> {

@@ -206,6 +206,10 @@ impl Search {
 
     /// `keys` are the position keys of the game, ending with the key of `state`.
     pub fn it_deep(&mut self, state: &BoardState, keys: &[u64], search_depth: i32, limits: Limits) -> SearchResult {
+        if state.is_chess960() { self.it_deep_v::<true>(state, keys, search_depth, limits) } else { self.it_deep_v::<false>(state, keys, search_depth, limits) }
+    }
+
+    fn it_deep_v<const V: bool>(&mut self, state: &BoardState, keys: &[u64], search_depth: i32, limits: Limits) -> SearchResult {
         self.limits = limits;
         if self.owns_table_generation {
             self.tt.new_search();
@@ -230,7 +234,7 @@ impl Search {
         let mut beta = INF;
         let mut depth = 1;
         let mut window = ASPIRATION_WINDOW;
-        let legal_moves = state.generate_legal_moves();
+        let legal_moves = state.generate_legal_moves_v::<V>();
         let mut result = SearchResult {
             mv: legal_moves.iter().next(),
             score: if legal_moves.is_empty() && state.is_king_attacked() { -INF } else { 0 },
@@ -240,7 +244,7 @@ impl Search {
         }
 
         while depth <= search_depth.min(MAX_PLY as i32 - 1) && !self.aborted() {
-            let iteration = self.nega_max_root(state, depth, alpha, beta);
+            let iteration = self.nega_max_root::<V>(state, depth, alpha, beta);
             if self.stop.load(Relaxed) {
                 break;
             }
@@ -274,8 +278,8 @@ impl Search {
         result
     }
 
-    fn nega_max_root(&mut self, state: &BoardState, depth: i32, mut alpha: i32, beta: i32) -> SearchResult {
-        let moves = state.generate_legal_moves();
+    fn nega_max_root<const V: bool>(&mut self, state: &BoardState, depth: i32, mut alpha: i32, beta: i32) -> SearchResult {
+        let moves = state.generate_legal_moves_v::<V>();
         if moves.is_empty() {
             return SearchResult { mv: None, score: if state.is_king_attacked() { -INF } else { 0 } };
         }
@@ -287,9 +291,9 @@ impl Search {
         let mut move_index = 0;
         let mut total_work = 0u64;
         let mut best_work = 0u64;
-        while let Some(mv) = self.pickers[0].next_move(&self.ordering, state) {
+        while let Some(mv) = self.pickers[0].next_move::<V>(&self.ordering, state) {
             let before = self.stats.total_nodes();
-            let child = self.child(state, mv, 0);
+            let child = self.child::<V>(state, mv, 0);
             if let Some(nnue) = self.nnue.as_mut() {
                 nnue.push_move(state, &child, mv, 1);
             }
@@ -297,19 +301,19 @@ impl Search {
             move_index += 1;
             let mut value;
             if !self.use_pvs || index == 0 {
-                value = self.search_child(&child, depth - 1, 1, -beta, -alpha, false, true);
+                value = self.search_child::<V>(&child, depth - 1, 1, -beta, -alpha, false, true);
             } else {
                 let reduction = if self.use_selective && depth >= 3 && index >= 4 && !tactical(mv) && !state.is_king_attacked() && !child.is_king_attacked() {
                     (lmr(depth, index + 1) - 1).clamp(0, depth - 2)
                 } else {
                     0
                 };
-                value = self.search_child(&child, depth - 1 - reduction, 1, -alpha - 1, -alpha, true, true);
+                value = self.search_child::<V>(&child, depth - 1 - reduction, 1, -alpha - 1, -alpha, true, true);
                 if reduction > 0 && value > alpha && !self.aborted() {
-                    value = self.search_child(&child, depth - 1, 1, -alpha - 1, -alpha, false, true);
+                    value = self.search_child::<V>(&child, depth - 1, 1, -alpha - 1, -alpha, false, true);
                 }
                 if value > alpha && value < beta && !self.aborted() {
-                    value = self.search_child(&child, depth - 1, 1, -beta, -alpha, false, true);
+                    value = self.search_child::<V>(&child, depth - 1, 1, -beta, -alpha, false, true);
                 }
             }
             if self.stop.load(Relaxed) {
@@ -339,12 +343,12 @@ impl Search {
         SearchResult { mv: best_move, score: best_score }
     }
 
-    fn nega_max(&mut self, state: &BoardState, mut depth: i32, ply: usize, mut alpha: i32, beta: i32, can_apply_null: bool) -> i32 {
+    fn nega_max<const V: bool>(&mut self, state: &BoardState, mut depth: i32, ply: usize, mut alpha: i32, beta: i32, can_apply_null: bool) -> i32 {
         if self.aborted() {
             return 0;
         }
         if depth <= 0 {
-            return self.quiescence(state, ply, alpha, beta);
+            return self.quiescence::<V>(state, ply, alpha, beta);
         }
         self.stats.nodes += 1;
         self.stats.cumulative += 1;
@@ -394,7 +398,7 @@ impl Search {
             return beta + (static_eval - beta) / 3;
         }
         if pruning && depth <= 3 && static_eval + 400 * depth < alpha {
-            let score = self.quiescence(state, ply, alpha, alpha + 1);
+            let score = self.quiescence::<V>(state, ply, alpha, alpha + 1);
             if self.aborted() {
                 return 0;
             }
@@ -414,14 +418,14 @@ impl Search {
         {
             let reduction = depth.min(3 + depth / 3 + ((static_eval - beta) / 200).min(3));
             self.counters.null_attempts += 1;
-            let null_state = state.do_null_move();
+            let null_state = state.do_null_move_v::<V>();
             self.contexts[ply + 1] = -1;
             self.verification[ply + 1] = false;
             self.extensions[ply + 1] = self.extensions[ply];
             if let Some(nnue) = self.nnue.as_mut() {
                 nnue.push(state, &null_state, ply + 1);
             }
-            let mut score = self.search_child(&null_state, depth - reduction, ply + 1, -beta, -beta + 1, !cut_node, false);
+            let mut score = self.search_child::<V>(&null_state, depth - reduction, ply + 1, -beta, -beta + 1, !cut_node, false);
             if self.aborted() {
                 return 0;
             }
@@ -429,7 +433,7 @@ impl Search {
                 if depth >= 14 || non_pawns <= 2 {
                     self.counters.null_verifications += 1;
                     self.verification[ply] = true;
-                    score = self.nega_max(state, depth - reduction, ply, beta - 1, beta, false);
+                    score = self.nega_max::<V>(state, depth - reduction, ply, beta - 1, beta, false);
                     self.verification[ply] = false;
                     if self.aborted() {
                         return 0;
@@ -453,12 +457,12 @@ impl Search {
                 && !entry.mv.is_null()
             {
                 let tt_score = score_from_table(entry.score, ply);
-                if !is_score_checkmate(tt_score) && state.is_legal_move(entry.mv) {
+                if !is_score_checkmate(tt_score) && state.is_legal_move_v::<V>(entry.mv) {
                     let singular_beta = tt_score - 12 * depth;
                     self.counters.singular_checks += 1;
                     self.excluded_moves[ply] = Some(entry.mv);
                     self.verification[ply] = true;
-                    let alternative = self.nega_max(state, (depth - 1) / 2, ply, singular_beta - 1, singular_beta, false);
+                    let alternative = self.nega_max::<V>(state, (depth - 1) / 2, ply, singular_beta - 1, singular_beta, false);
                     self.excluded_moves[ply] = None;
                     self.verification[ply] = false;
                     if self.aborted() {
@@ -478,7 +482,7 @@ impl Search {
         let mut legal = 0;
         if in_check {
             let mut evasions = MoveList::new();
-            state.generate_legal_moves_into(&mut evasions);
+            state.generate_legal_moves_into_v::<V>(&mut evasions);
             self.pickers[ply].reset(&self.ordering, state, Some(&evasions), entry, ply, self.contexts[ply], false);
         } else {
             self.pickers[ply].reset(&self.ordering, state, None, entry, ply, self.contexts[ply], false);
@@ -492,7 +496,7 @@ impl Search {
             let stage;
             let pick_score;
             let mut original_index = move_index;
-            let picked = if deferred_phase { None } else { self.pickers[ply].next_move(&self.ordering, state) };
+            let picked = if deferred_phase { None } else { self.pickers[ply].next_move::<V>(&self.ordering, state) };
             if let Some(next) = picked {
                 mv = next;
                 stage = self.pickers[ply].last_stage();
@@ -561,7 +565,7 @@ impl Search {
                     continue;
                 }
             }
-            let child = self.child(state, mv, ply);
+            let child = self.child::<V>(state, mv, ply);
             let gives_check = child.is_king_attacked();
             let extension = i32::from(self.extensions[ply] < 8 && (in_check || Some(mv) == singular_move));
             if Some(mv) == singular_move {
@@ -592,16 +596,16 @@ impl Search {
             let probe_alpha = if probe { -alpha - 1 } else { -beta };
             let mut score;
             if reduction > 0 {
-                score = self.search_child(&child, full_depth - reduction, ply + 1, probe_alpha, -alpha, true, true);
+                score = self.search_child::<V>(&child, full_depth - reduction, ply + 1, probe_alpha, -alpha, true, true);
                 if score > alpha && !self.aborted() {
                     let new_depth = full_depth + i32::from(score > best_score + 37 + 5 * full_depth) - i32::from(score < best_score + full_depth);
-                    score = self.search_child(&child, new_depth, ply + 1, probe_alpha, -alpha, !cut_node, true);
+                    score = self.search_child::<V>(&child, new_depth, ply + 1, probe_alpha, -alpha, !cut_node, true);
                 }
             } else {
-                score = self.search_child(&child, full_depth, ply + 1, probe_alpha, -alpha, !(pv && searched == 0) && !cut_node, true);
+                score = self.search_child::<V>(&child, full_depth, ply + 1, probe_alpha, -alpha, !(pv && searched == 0) && !cut_node, true);
             }
             if probe && pv && score > alpha && score < beta && !self.aborted() {
-                score = self.search_child(&child, full_depth, ply + 1, -beta, -alpha, false, true);
+                score = self.search_child::<V>(&child, full_depth, ply + 1, -beta, -alpha, false, true);
             }
             if let Some(busy) = &busy {
                 if busy[busy_slot].load(Relaxed) == move_key {
@@ -653,7 +657,7 @@ impl Search {
         best_score
     }
 
-    fn quiescence(&mut self, state: &BoardState, ply: usize, mut alpha: i32, beta: i32) -> i32 {
+    fn quiescence<const V: bool>(&mut self, state: &BoardState, ply: usize, mut alpha: i32, beta: i32) -> i32 {
         if self.aborted() {
             return 0;
         }
@@ -663,7 +667,7 @@ impl Search {
         let in_check = state.is_king_attacked();
         let mut evasions = MoveList::new();
         if in_check {
-            state.generate_legal_moves_into(&mut evasions);
+            state.generate_legal_moves_into_v::<V>(&mut evasions);
             if evasions.is_empty() {
                 return -INF + ply as i32;
             }
@@ -709,7 +713,7 @@ impl Search {
             self.pickers[ply].reset(&self.ordering, state, None, entry, ply, self.contexts[ply], true);
         }
         let mut searched = 0;
-        while let Some(mv) = self.pickers[ply].next_move(&self.ordering, state) {
+        while let Some(mv) = self.pickers[ply].next_move::<V>(&self.ordering, state) {
             let is_tactical = tactical(mv);
             if !in_check && !is_tactical {
                 continue;
@@ -737,13 +741,13 @@ impl Search {
             if in_check && searched > 0 && !is_tactical && !is_score_checkmate(best_score) {
                 break;
             }
-            let child = self.child(state, mv, ply);
+            let child = self.child::<V>(state, mv, ply);
             if let Some(nnue) = self.nnue.as_mut() {
                 nnue.push_move(state, &child, mv, ply + 1);
             }
             searched += 1;
             self.keys.push(child.hash());
-            let value = -self.quiescence(&child, ply + 1, -beta, -alpha);
+            let value = -self.quiescence::<V>(&child, ply + 1, -beta, -alpha);
             self.keys.pop();
 
             if self.stop.load(Relaxed) {
@@ -776,16 +780,16 @@ impl Search {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn search_child(&mut self, child: &BoardState, depth: i32, ply: usize, alpha: i32, beta: i32, cut_node: bool, allow_null: bool) -> i32 {
+    fn search_child<const V: bool>(&mut self, child: &BoardState, depth: i32, ply: usize, alpha: i32, beta: i32, cut_node: bool, allow_null: bool) -> i32 {
         self.cut_nodes[ply] = cut_node;
         self.keys.push(child.hash());
-        let score = -self.nega_max(child, depth, ply, alpha, beta, allow_null);
+        let score = -self.nega_max::<V>(child, depth, ply, alpha, beta, allow_null);
         self.keys.pop();
         score
     }
 
-    fn child(&mut self, state: &BoardState, mv: Move, ply: usize) -> BoardState {
-        let child = state.do_move(mv);
+    fn child<const V: bool>(&mut self, state: &BoardState, mv: Move, ply: usize) -> BoardState {
+        let child = state.do_move_v::<V>(mv);
         self.contexts[ply + 1] = (state.piece_at(mv.from()) * 64 + mv.to()) as i32;
         self.extensions[ply + 1] = self.extensions[ply];
         self.verification[ply + 1] = false;

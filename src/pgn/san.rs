@@ -81,6 +81,7 @@ pub fn find(board: &BoardState, san: &str) -> Result<Option<Move>, String> {
         }
         legal
             .iter()
+            .filter(|mv| !mv.is_castling())
             .filter(|mv| board.piece_type_at(mv.from()) == n.piece && mv.to() == n.destination)
             .filter(|mv| (mv.flags() & Move::CAPTURE != 0) == n.capture)
             .filter(|mv| match n.promotion {
@@ -115,7 +116,7 @@ pub fn format(board: &BoardState, mv: Move) -> Result<String, String> {
         if piece != PAWN {
             notation.push(PIECES.as_bytes()[piece] as char);
             let others: Vec<Move> =
-                legal.iter().filter(|o| o.from() != mv.from() && o.to() == mv.to() && board.piece_type_at(o.from()) == piece).collect();
+                legal.iter().filter(|o| !o.is_castling() && o.from() != mv.from() && o.to() == mv.to() && board.piece_type_at(o.from()) == piece).collect();
             if !others.is_empty() {
                 let file_unique = others.iter().all(|o| o.from() & 7 != mv.from() & 7);
                 let rank_unique = others.iter().all(|o| o.from() >> 3 != mv.from() >> 3);

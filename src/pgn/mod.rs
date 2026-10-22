@@ -229,6 +229,23 @@ mod tests {
     }
 
     #[test]
+    fn chess960_variants_round_trip_castling() {
+        for variant in ["Chess960", "Fischerandom", "FischerRandom"] {
+            let game = parse(&format!("[Variant \"{variant}\"]\n[FEN \"4k3/8/8/8/8/8/8/1R1K2R1 w KQ - 0 1\"]\n1. O-O Kd7 *")).unwrap();
+            assert!(game.starting_board().unwrap().is_chess960());
+            assert!(game.moves()[0].is_castling());
+            assert_eq!(game.moves()[0].uci(), "d1g1");
+            round_trips(&game);
+        }
+        let black = BoardState::from_fen("1r1k2r1/8/8/8/8/8/8/7K b gb - 0 1").unwrap();
+        assert!(san::parse(&black, "Kg8").is_err());
+        assert_eq!(san::format(&black, black.find_legal_move("d8g8").unwrap()).unwrap(), "O-O");
+        assert_eq!(san::format(&black, black.find_legal_move("d8b8").unwrap()).unwrap(), "O-O-O");
+        assert!(parse("[Variant \"Atomic\"] *").is_err());
+        assert!(parse("[Variant \"Chess960\"] *").is_err());
+    }
+
+    #[test]
     fn reports_io_failures() {
         struct Broken;
         impl io::Read for Broken {

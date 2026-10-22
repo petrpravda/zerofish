@@ -1,11 +1,15 @@
 use crate::board::BoardState;
 
 pub fn perft(state: &BoardState, depth: u32) -> u64 {
-    let moves = state.generate_legal_moves();
+    if state.is_chess960() { perft_v::<true>(state, depth) } else { perft_v::<false>(state, depth) }
+}
+
+fn perft_v<const V: bool>(state: &BoardState, depth: u32) -> u64 {
+    let moves = state.generate_legal_moves_v::<V>();
     if depth <= 1 {
         return moves.len() as u64;
     }
-    moves.iter().map(|mv| perft(&state.do_move(mv), depth - 1)).sum()
+    moves.iter().map(|mv| perft_v::<V>(&state.do_move_v::<V>(mv), depth - 1)).sum()
 }
 
 /// Per-move node counts followed by the total, as printed by `go perft`.
@@ -82,6 +86,18 @@ mod tests {
     fn kiwipete() {
         let state = fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
         assert_eq!(perft(&state, 4), 4085603);
+    }
+
+    #[test]
+    fn chess960_matches_java_perft() {
+        for (position, nodes) in [
+            ("4k3/8/8/8/8/8/8/1R1K2R1 w GB - 0 1", 15869),
+            ("4k3/8/8/8/8/8/8/1R4KR w HB - 0 1", 16096),
+            ("4k3/8/8/8/8/8/8/2RK3R w HC - 0 1", 14843),
+            ("1r1k2r1/8/8/8/8/8/8/7K b gb - 0 1", 2674),
+        ] {
+            assert_eq!(perft(&fen(position), 4), nodes, "{position}");
+        }
     }
 
     #[test]

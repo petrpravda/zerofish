@@ -25,6 +25,8 @@ pub struct BoardState {
     checkers: u64,
     pinned: u64,
     null_branch: bool,
+    // Chess960 files + 1 (0 = none) in the struct's padding: [kings w|b<<4, white rooks k|q<<4, black rooks k|q<<4]
+    castling960: [u8; 3],
     pub full_move_normalized: i32,
     pub half_move_clock: i32,
     pub phase: i32,
@@ -46,6 +48,7 @@ impl BoardState {
             checkers: 0,
             pinned: 0,
             null_branch: false,
+            castling960: [0; 3],
             full_move_normalized: (full_move_count - 1) * 2 + if side == WHITE { 0 } else { 1 },
             half_move_clock,
             phase: TOTAL_PHASE,
@@ -71,6 +74,49 @@ impl BoardState {
 
     pub fn from_fen(fen: &str) -> Result<Self, String> {
         fen::from_fen(fen)
+    }
+
+    pub fn from_fen_with_chess960(fen: &str, chess960: bool) -> Result<Self, String> {
+        fen::from_fen_with_chess960(fen, chess960)
+    }
+
+    pub(crate) fn configure_chess960_castling(&mut self, squares: [u8; 6]) {
+        let nibble = |square: u8| if square < 64 { (square & 7) + 1 } else { 0 };
+        if squares[..4].iter().all(|&square| square >= 64) {
+            // without any right a Chess960 position behaves exactly like an orthodox one
+            self.movements |= castling_pieces_kingside_mask(WHITE) | castling_pieces_queenside_mask(WHITE) | castling_pieces_kingside_mask(BLACK) | castling_pieces_queenside_mask(BLACK);
+        } else {
+            self.castling960 = [nibble(squares[4]) | nibble(squares[5]) << 4, nibble(squares[0]) | nibble(squares[1]) << 4, nibble(squares[2]) | nibble(squares[3]) << 4];
+        }
+        self.key = self.compute_key();
+    }
+
+    #[inline(always)]
+    pub fn is_chess960(&self) -> bool {
+        self.castling960[0] != 0
+    }
+
+    fn chess960_file(&self, byte: usize, high: bool, side: usize) -> usize {
+        let file = (self.castling960[byte] >> if high { 4 } else { 0 } & 15) as usize;
+        if file == 0 { 64 } else { side * 56 + file - 1 }
+    }
+
+    pub fn has_castling_right(&self, side: usize, kingside: bool) -> bool {
+        if self.is_chess960() {
+            let rook = self.castling_rook_square(side, kingside);
+            let king = self.chess960_file(0, side == BLACK, side);
+            rook < 64 && king < 64 && self.movements & (1u64 << rook | 1u64 << king) == 0
+        } else {
+            self.movements & if kingside { castling_pieces_kingside_mask(side) } else { castling_pieces_queenside_mask(side) } == 0
+        }
+    }
+
+    pub fn castling_rook_square(&self, side: usize, kingside: bool) -> usize {
+        if self.is_chess960() {
+            self.chess960_file(1 + side, !kingside, side)
+        } else {
+            side * 56 + if kingside { 7 } else { 0 }
+        }
     }
 
     pub fn start_pos() -> Self {
@@ -132,8 +178,13 @@ impl BoardState {
 
     /// Completes a freshly built state: pins, checkers and the position key.
     fn finish(&mut self) {
+        if self.is_chess960() { self.finish_v::<true>() } else { self.finish_v::<false>() }
+    }
+
+    #[inline(never)]
+    pub(crate) fn finish_v<const V: bool>(&mut self) {
         self.compute_pins();
-        self.key = self.compute_key();
+        self.key = self.compute_key_v::<V>();
     }
 
     /// The position key: pieces, side, castling rights and a legal en passant only.
@@ -147,14 +198,24 @@ impl BoardState {
         self.key
     }
 
+    #[inline(always)]
     fn compute_key(&self) -> u64 {
+        if self.is_chess960() { self.compute_key_v::<true>() } else { self.compute_key_v::<false>() }
+    }
+
+    #[inline(always)]
+    pub(crate) fn compute_key_v<const V: bool>(&self) -> u64 {
         let mut key = self.zobrist;
-        for side in 0..2 {
-            if self.movements & castling_pieces_kingside_mask(side) == 0 {
-                key ^= ZOBRIST.castling[side * 2];
-            }
-            if self.movements & castling_pieces_queenside_mask(side) == 0 {
-                key ^= ZOBRIST.castling[side * 2 + 1];
+        if V {
+            key = self.chess960_key(key);
+        } else {
+            for side in 0..2 {
+                if self.movements & castling_pieces_kingside_mask(side) == 0 {
+                    key ^= ZOBRIST.castling[side * 2];
+                }
+                if self.movements & castling_pieces_queenside_mask(side) == 0 {
+                    key ^= ZOBRIST.castling[side * 2 + 1];
+                }
             }
         }
         if self.en_passant != 0 && !self.has_legal_en_passant() {
@@ -163,6 +224,20 @@ impl BoardState {
         key
     }
 
+    #[cold]
+    #[inline(never)]
+    fn chess960_key(&self, mut key: u64) -> u64 {
+        for side in 0..2 {
+            for wing in 0..2 {
+                if self.has_castling_right(side, wing == 0) {
+                    key ^= ZOBRIST.chess960_castling[side * 2 + wing][self.castling_rook_square(side, wing == 0) & 7];
+                }
+            }
+        }
+        key
+    }
+
+    #[inline(always)]
     fn has_legal_en_passant(&self) -> bool {
         let us = self.side;
         let them = 1 - us;
@@ -254,6 +329,10 @@ impl BoardState {
     }
 
     pub fn do_move(&self, mv: Move) -> BoardState {
+        if self.is_chess960() { self.do_move_v::<true>(mv) } else { self.do_move_v::<false>(mv) }
+    }
+
+    pub fn do_move_v<const V: bool>(&self, mv: Move) -> BoardState {
         let mut state = self.clone();
         let from = mv.from();
         let to = mv.to();
@@ -275,8 +354,8 @@ impl BoardState {
                 state.en_passant = 1 << (from as i32 + direction(FORWARD, state.side)) as usize;
                 state.zobrist ^= ZOBRIST.en_passant[lsb(state.en_passant) & 7];
             }
-            Move::OO => state.castle(G1, H1, F1),
-            Move::OOO => state.castle(C1, A1, D1),
+            Move::OO => state.castle_v::<V>(G1, H1, F1),
+            Move::OOO => state.castle_v::<V>(C1, A1, D1),
             Move::EN_PASSANT => {
                 state.move_piece_quiet(from, to);
                 state.remove_piece((to as i32 + direction(BACK, state.side)) as usize);
@@ -299,7 +378,7 @@ impl BoardState {
 
         state.side = flip(state.side);
         state.zobrist ^= ZOBRIST.side;
-        state.finish();
+        state.finish_v::<V>();
         state
     }
 
@@ -313,20 +392,70 @@ impl BoardState {
     }
 
     pub fn do_null_move(&self) -> BoardState {
+        if self.is_chess960() { self.do_null_move_v::<true>() } else { self.do_null_move_v::<false>() }
+    }
+
+    pub fn do_null_move_v<const V: bool>(&self) -> BoardState {
         let mut state = self.clone();
         state.null_branch = true;
         state.clear_en_passant();
         state.side = flip(state.side);
         state.zobrist ^= ZOBRIST.side;
-        state.finish();
+        state.finish_v::<V>();
         state
     }
 
     /// Squares are given for white and mirrored to the 8th rank for black.
-    fn castle(&mut self, king_to: usize, rook_from: usize, rook_to: usize) {
+    pub(crate) fn castle_v<const V: bool>(&mut self, king_to: usize, rook_from: usize, rook_to: usize) {
+        if V {
+            return self.castle960(king_to, rook_to);
+        }
         let rank = if self.side == WHITE { 0 } else { A8 };
         self.move_piece_quiet(rank + E1, rank + king_to);
         self.move_piece_quiet(rank + rook_from, rank + rook_to);
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn castle960(&mut self, king_to: usize, rook_to: usize) {
+        let rank = if self.side == WHITE { 0 } else { A8 };
+        let king_from = lsb(self.bitboard_of_side(self.side, KING));
+        let rook_from = self.castling_rook_square(self.side, king_to == G1);
+        // both leave first: either destination may be the other piece's start square
+        self.remove_piece(king_from);
+        self.remove_piece(rook_from);
+        self.set_piece_at(make_piece(self.side, KING), rank + king_to);
+        self.set_piece_at(make_piece(self.side, ROOK), rank + rook_to);
+    }
+
+    fn can_castle960(&self, kingside: bool, king: usize, occupancy: u64) -> bool {
+        if !self.has_castling_right(self.side, kingside) {
+            return false;
+        }
+        let rook = self.castling_rook_square(self.side, kingside);
+        let rank = self.side * 56;
+        let king_to = rank + if kingside { G1 } else { C1 };
+        let rook_to = rank + if kingside { F1 } else { D1 };
+        let starts = 1u64 << king | 1u64 << rook;
+        let paths = between(king, king_to) | 1u64 << king_to | between(rook, rook_to) | 1u64 << rook_to;
+        if occupancy & paths & !starts != 0 {
+            return false;
+        }
+        let enemy = flip(self.side);
+        let king_removed = occupancy & !(1u64 << king);
+        let step = (king_to as i32 - king as i32).signum();
+        let mut square = king;
+        loop {
+            if self.attackers_from_including_kings(square, king_removed, enemy) != 0 {
+                return false;
+            }
+            if square == king_to {
+                break;
+            }
+            square = (square as i32 + step) as usize;
+        }
+        let final_occupancy = (occupancy & !starts) | 1u64 << king_to | 1u64 << rook_to;
+        self.attackers_from_including_kings(king_to, final_occupancy, enemy) == 0
     }
 
     #[inline(always)]
@@ -342,6 +471,27 @@ impl BoardState {
 
     pub fn has_non_pawn_material(&self, side: usize) -> bool {
         (self.all_pieces_of(side) & !self.bitboard_of_side(side, PAWN) & !self.bitboard_of_side(side, KING)) != 0
+    }
+
+    pub fn generate_legal_moves_v<const V: bool>(&self) -> MoveList {
+        let mut moves = MoveList::new();
+        self.generate_v::<V>(0, false, u64::MAX, &mut moves);
+        moves
+    }
+
+    pub fn generate_legal_moves_into_v<const V: bool>(&self, moves: &mut MoveList) {
+        moves.clear();
+        self.generate_v::<V>(0, false, u64::MAX, moves);
+    }
+
+    pub fn generate_legal_tactical_v<const V: bool>(&self, moves: &mut MoveList) {
+        moves.clear();
+        self.generate_v::<V>(1, false, u64::MAX, moves);
+    }
+
+    pub fn generate_legal_quiets_v<const V: bool>(&self, moves: &mut MoveList) {
+        moves.clear();
+        self.generate_v::<V>(2, false, u64::MAX, moves);
     }
 
     pub fn generate_legal_moves(&self) -> MoveList {
@@ -379,12 +529,16 @@ impl BoardState {
     }
 
     pub fn is_legal_move(&self, mv: Move) -> bool {
+        if self.is_chess960() { self.is_legal_move_v::<true>(mv) } else { self.is_legal_move_v::<false>(mv) }
+    }
+
+    pub fn is_legal_move_v<const V: bool>(&self, mv: Move) -> bool {
         if mv.is_null() {
             return false;
         }
         let flags = mv.flags();
         if flags == Move::OO || flags == Move::OOO || flags == Move::EN_PASSANT {
-            return self.is_generated_move(mv);
+            return self.is_generated_move_v::<V>(mv);
         }
         let us = self.side;
         let from = mv.from();
@@ -437,18 +591,19 @@ impl BoardState {
             return self.attackers_from_including_kings(to, all ^ 1 << from, them) & !to_bit == 0;
         }
         if self.checkers != 0 {
-            return self.is_generated_move(mv);
+            return self.is_generated_move_v::<V>(mv);
         }
         let king = lsb(self.bitboard_of_side(us, KING));
         self.pinned & 1 << from == 0 || line(king, from) & to_bit != 0
     }
 
-    fn is_generated_move(&self, mv: Move) -> bool {
+    pub(crate) fn is_generated_move_v<const V: bool>(&self, mv: Move) -> bool {
         let mut candidates = MoveList::new();
-        self.generate(0, false, 1 << mv.from(), &mut candidates);
+        self.generate_v::<V>(0, false, 1 << mv.from(), &mut candidates);
         candidates.contains(mv)
     }
 
+    #[inline(always)]
     fn compute_pins(&mut self) {
         let us = self.side;
         let them = 1 - us;
@@ -484,13 +639,52 @@ impl BoardState {
         self.checkers
     }
 
+    #[inline(always)]
     fn king_danger(&self) -> u64 {
         self.attacked_squares(1 - self.side, self.all_pieces() ^ self.bitboard_of_side(self.side, KING))
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn generate_chess960(&self, mode: u8, first_only: bool, from_mask: u64, moves: &mut MoveList) {
+        let king = lsb(self.bitboard_of_side(self.side, KING));
+        let king_bit = 1u64 << king;
+        let king_allowed = from_mask & king_bit != 0;
+        if king_allowed {
+            let enemy = self.all_pieces_of(flip(self.side));
+            let targets = king_attacks(king) & !self.all_pieces_of(self.side) & !self.king_danger();
+            if mode != 1 {
+                moves.make_q(king, targets & !enemy);
+            }
+            if mode != 2 {
+                moves.make_c(king, targets & enemy);
+            }
+            if first_only && !moves.is_empty() {
+                return;
+            }
+        }
+        self.generate(mode, first_only, from_mask & !king_bit, moves);
+        if first_only && !moves.is_empty() {
+            return;
+        }
+        if king_allowed && mode != 1 && mode != 3 && !self.is_king_attacked() {
+            let all = self.all_pieces();
+            if self.can_castle960(true, king, all) {
+                moves.add(Move::new(king, self.castling_rook_square(self.side, true), Move::OO));
+            }
+            if (!first_only || moves.is_empty()) && self.can_castle960(false, king, all) {
+                moves.add(Move::new(king, self.castling_rook_square(self.side, false), Move::OOO));
+            }
+        }
     }
 
     /// Modes: 0 all moves, 1 tactical (captures and promotions), 2 quiets, 3 quiescence (captures and king quiets).
     /// The move order is relied upon by search tie-breaks and must stay stable.
     fn generate(&self, mode: u8, first_only: bool, from_mask: u64, moves: &mut MoveList) {
+        if self.is_chess960() { self.generate_v::<true>(mode, first_only, from_mask, moves) } else { self.generate_v::<false>(mode, first_only, from_mask, moves) }
+    }
+
+    pub(crate) fn generate_v<const V: bool>(&self, mode: u8, first_only: bool, from_mask: u64, moves: &mut MoveList) {
         let only_quiescence = mode == 1 || mode == 3;
         let captures = mode != 2;
         let us = self.side;
@@ -508,6 +702,9 @@ impl BoardState {
 
         // the squares attacked by them are only needed when our king can move or castle
         let king_allowed = our_king < 64 && from_mask & 1 << our_king != 0;
+        if king_allowed && V {
+            return self.generate_chess960(mode, first_only, from_mask, moves);
+        }
         let king_targets = if king_allowed { king_attacks(our_king) & !us_bb } else { 0 };
         let castling_candidate = king_allowed
             && !only_quiescence
@@ -700,6 +897,7 @@ impl BoardState {
     }
 
     /// Squares attacked by `side`, sliders seeing through the given occupancy.
+    #[inline(always)]
     fn attacked_squares(&self, side: usize, occ: u64) -> u64 {
         let king = self.bitboard_of_side(side, KING);
         let mut attacked = pawn_attacks_bb(self.bitboard_of_side(side, PAWN), side) | if king != 0 { king_attacks(lsb(king)) } else { 0 };
@@ -821,5 +1019,122 @@ impl fmt::Display for BoardState {
 impl fmt::Debug for BoardState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "BoardState({})", self.to_fen())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn chess960_metadata_keeps_board_compact() {
+        assert_eq!(std::mem::size_of::<BoardState>(), 272);
+    }
+
+    #[test]
+    fn chess960_castling_geometries() {
+        for side in [WHITE, BLACK] {
+            for king in 1..=6 {
+                for rook in 0..8 {
+                    if king == rook {
+                        continue;
+                    }
+                    let rank = side * 56;
+                    let kingside = rook > king;
+                    let mut items = [NONE; 64];
+                    items[rank + king] = make_piece(side, KING);
+                    items[rank + rook] = make_piece(side, ROOK);
+                    items[if side == WHITE { A8 - 1 } else { H1 + 8 }] = make_piece(flip(side), KING);
+                    let mut before = BoardState::new(&items, side, 0, 0, 7, 12);
+                    let mut squares = [64; 6];
+                    squares[side * 2 + usize::from(!kingside)] = (rank + rook) as u8;
+                    squares[4 + side] = (rank + king) as u8;
+                    before.configure_chess960_castling(squares);
+                    let castle = before.generate_legal_moves().iter().find(|mv| mv.is_castling()).unwrap();
+                    assert_eq!(castle.from(), rank + king);
+                    assert_eq!(castle.to(), rank + rook);
+                    assert!(before.is_legal_move(castle));
+                    let after = before.do_move(castle);
+                    assert_eq!(after.piece_at(rank + if kingside { G1 } else { C1 }), make_piece(side, KING));
+                    assert_eq!(after.piece_at(rank + if kingside { F1 } else { D1 }), make_piece(side, ROOK));
+                    assert_eq!(after.all_pieces().count_ones(), 3);
+                    assert_eq!(after.half_move_clock, 8);
+                    assert!(!after.has_castling_right(side, true));
+                    assert!(!after.has_castling_right(side, false));
+                    let rebuilt_items = std::array::from_fn(|square| after.piece_at(square));
+                    let rebuilt = BoardState::new(&rebuilt_items, flip(side), u64::MAX, 0, 8, 12);
+                    assert_eq!(after.hash(), rebuilt.hash());
+                    assert_eq!(after.mg(), rebuilt.mg());
+                    assert_eq!(after.eg(), rebuilt.eg());
+                    assert_eq!(before.piece_at(rank + king), make_piece(side, KING));
+                    assert!(before.has_castling_right(side, kingside));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn chess960_all_starting_positions() {
+        let mut positions = 0;
+        for bishop1 in (0..8).step_by(2) {
+            for bishop2 in (1..8).step_by(2) {
+                for queen in 0..8 {
+                    if queen == bishop1 || queen == bishop2 {
+                        continue;
+                    }
+                    for knight1 in 0..8 {
+                        if [bishop1, bishop2, queen].contains(&knight1) {
+                            continue;
+                        }
+                        for knight2 in (knight1 + 1)..8 {
+                            if [bishop1, bishop2, queen].contains(&knight2) {
+                                continue;
+                            }
+                            let mut back_rank = [' '; 8];
+                            back_rank[bishop1] = 'B';
+                            back_rank[bishop2] = 'B';
+                            back_rank[queen] = 'Q';
+                            back_rank[knight1] = 'N';
+                            back_rank[knight2] = 'N';
+                            let mut remaining = ['R', 'K', 'R'].into_iter();
+                            for piece in &mut back_rank {
+                                if *piece == ' ' {
+                                    *piece = remaining.next().unwrap();
+                                }
+                            }
+                            let rank: String = back_rank.into_iter().collect();
+                            let fen = format!("{}/pppppppp/8/8/8/8/PPPPPPPP/{rank} w KQkq - 0 1", rank.to_ascii_lowercase());
+                            let state = BoardState::from_fen_with_chess960(&fen, true).unwrap();
+                            let moves = state.generate_legal_moves();
+                            let mut quiets = MoveList::new();
+                            let mut tactical = MoveList::new();
+                            state.generate_legal_quiets(&mut quiets);
+                            state.generate_legal_tactical(&mut tactical);
+                            assert_eq!(moves.len(), quiets.len() + tactical.len(), "{fen}");
+                            for mv in quiets.iter().chain(tactical.iter()) {
+                                assert!(moves.contains(mv), "{fen}: {mv}");
+                            }
+                            assert_eq!(state.hash(), BoardState::from_fen_with_chess960(&state.to_fen(), true).unwrap().hash());
+                            for side in [WHITE, BLACK] {
+                                assert!(state.has_castling_right(side, true));
+                                assert!(state.has_castling_right(side, false));
+                            }
+                            let black = BoardState::from_fen_with_chess960(&fen.replace(" w ", " b "), true).unwrap();
+                            assert_eq!(moves.len(), black.generate_legal_moves().len(), "{fen}");
+                            for mv in moves.iter() {
+                                assert!(state.is_legal_move(mv), "{fen}: {mv}");
+                                let after = state.do_move(mv);
+                                assert!(!after.do_null_move().is_king_attacked(), "{fen}: {mv}");
+                                assert_eq!(after.all_pieces().count_ones(), 32, "{fen}: {mv}");
+                                assert_eq!(after.hash(), BoardState::from_fen_with_chess960(&after.to_fen(), true).unwrap().hash(), "{fen}: {mv}");
+                            }
+                            positions += 1;
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(positions, 960);
     }
 }

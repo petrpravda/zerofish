@@ -141,7 +141,14 @@ impl Nnue {
         }
         if mv.is_castling() {
             let rank = if before.side_to_play() == 0 { 0 } else { 56 };
-            changed |= if mv.flags() == Move::OO { 1u64 << (rank + 7) | 1u64 << (rank + 5) } else { 1u64 << rank | 1u64 << (rank + 3) };
+            changed |= if before.is_chess960() {
+                let kingside = mv.flags() == Move::OO;
+                1u64 << before.castling_rook_square(before.side_to_play(), kingside) | if kingside { 1u64 << (rank + 6) | 1u64 << (rank + 5) } else { 1u64 << (rank + 2) | 1u64 << (rank + 3) }
+            } else if mv.flags() == Move::OO {
+                1u64 << (rank + 7) | 1u64 << (rank + 5)
+            } else {
+                1u64 << rank | 1u64 << (rank + 3)
+            };
         }
         self.push_changed(before, after, ply, changed);
     }
@@ -436,6 +443,49 @@ mod tests {
             incremental.push_move(&state, &child, mv, ply);
             compare(&mut incremental, &mut fresh, &child, ply);
             state = child;
+        }
+    }
+
+    #[test]
+    fn chess960_incremental_castling_matches_refresh() {
+        let mut incremental = Nnue::new();
+        let mut fresh = Nnue::new();
+        for side in [WHITE, BLACK] {
+            for king in 1..=6 {
+                for rook in 0..8 {
+                    if king == rook {
+                        continue;
+                    }
+                    let mut rank = String::new();
+                    let mut empty = 0;
+                    for file in 0..8 {
+                        if file == king || file == rook {
+                            if empty != 0 {
+                                rank.push_str(&empty.to_string());
+                                empty = 0;
+                            }
+                            rank.push(if file == king { 'K' } else { 'R' });
+                        } else {
+                            empty += 1;
+                        }
+                    }
+                    if empty != 0 {
+                        rank.push_str(&empty.to_string());
+                    }
+                    let fen = if side == WHITE {
+                        format!("8/7k/8/8/8/8/8/{rank} w {} - 0 1", (b'A' + rook) as char)
+                    } else {
+                        format!("{}/8/8/8/8/8/7K/8 b {} - 0 1", rank.to_ascii_lowercase(), (b'a' + rook) as char)
+                    };
+                    let before = BoardState::from_fen(&fen).unwrap();
+                    let castle = before.generate_legal_moves().iter().find(|mv| mv.is_castling()).unwrap();
+                    incremental.reset(&before);
+                    let after = before.do_move(castle);
+                    incremental.push_move(&before, &after, castle, 1);
+                    compare(&mut incremental, &mut fresh, &after, 1);
+                    compare(&mut incremental, &mut fresh, &before, 0);
+                }
+            }
         }
     }
 }

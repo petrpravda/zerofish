@@ -11,7 +11,11 @@ pub struct BoardPosition {
 
 impl BoardPosition {
     pub fn from_fen(fen: &str) -> Result<Self, String> {
-        let state = BoardState::from_fen(fen)?;
+        Self::from_fen_with_chess960(fen, false)
+    }
+
+    pub fn from_fen_with_chess960(fen: &str, chess960: bool) -> Result<Self, String> {
+        let state = BoardState::from_fen_with_chess960(fen, chess960)?;
         Ok(BoardPosition { keys: vec![state.hash()], state })
     }
 
