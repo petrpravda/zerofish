@@ -18,6 +18,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 13. Accumulate capture ordering statistics
 14. Condition ordering on the preceding move
 15. Use exchange analysis to rank tactics
+16. Produce ordered moves in lazy stages
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.

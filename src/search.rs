@@ -293,9 +293,13 @@ impl Search {
         let mut move_index: i32 = 0;
         let mut searched = 0;
         let mut legal = 0;
-        let mut moves = MoveList::new();
-        state.generate_legal_moves_into(&mut moves);
-        self.pickers[ply].reset(&self.ordering, state, Some(&moves), entry, ply, self.contexts[ply], false);
+        if in_check {
+            let mut evasions = MoveList::new();
+            state.generate_legal_moves_into(&mut evasions);
+            self.pickers[ply].reset(&self.ordering, state, Some(&evasions), entry, ply, self.contexts[ply], false);
+        } else {
+            self.pickers[ply].reset(&self.ordering, state, None, entry, ply, self.contexts[ply], false);
+        }
         while let Some(mv) = self.pickers[ply].next_move(&self.ordering, state) {
             let stage = self.pickers[ply].last_stage();
             let pick_score = self.pickers[ply].last_score();
@@ -405,10 +409,11 @@ impl Search {
             best_score = stand_pat;
             alpha = alpha.max(stand_pat);
         }
-        if !in_check {
-            state.generate_legal_tactical(&mut evasions);
+        if in_check {
+            self.pickers[ply].reset(&self.ordering, state, Some(&evasions), entry, ply, self.contexts[ply], false);
+        } else {
+            self.pickers[ply].reset(&self.ordering, state, None, entry, ply, self.contexts[ply], true);
         }
-        self.pickers[ply].reset(&self.ordering, state, Some(&evasions), entry, ply, self.contexts[ply], !in_check);
         let mut searched = 0;
         while let Some(mv) = self.pickers[ply].next_move(&self.ordering, state) {
             let is_tactical = tactical(mv);
