@@ -332,6 +332,9 @@ impl Search {
             alpha = alpha.max(score);
             if alpha >= beta {
                 self.stats.beta_cutoffs += 1;
+                if !self.verification[ply] {
+                    self.ordering.cutoff(state, mv, ply, self.contexts[ply], depth, &self.pickers[ply]);
+                }
                 break;
             }
         }

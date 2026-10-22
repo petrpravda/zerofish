@@ -104,6 +104,10 @@ impl MoveOrdering {
 
     /// Rewards the cutoff move, penalises the earlier moves of the same kind and records a quiet killer.
     pub fn cutoff(&mut self, state: &BoardState, mv: Move, ply: usize, previous: i32, depth: i32, picker: &Picker) {
+        if !tactical(mv) && self.killers[ply][0] != mv.bits() {
+            self.killers[ply][1] = self.killers[ply][0];
+            self.killers[ply][0] = mv.bits();
+        }
     }
 }
 
@@ -180,6 +184,9 @@ impl Picker {
                 } else if tactical(mv) {
                     self.scores[index] = ordering.capture_score(state, mv);
                     1
+                } else if killers[0] == mv.bits() || killers[1] == mv.bits() {
+                    self.scores[index] = i32::from(killers[0] == mv.bits());
+                    2
                 } else {
                     3
                 };

@@ -13,6 +13,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 8. Recognize repeated positions and rule draws in search
 9. Cache search bounds and prioritize the stored move
 10. Rank tactical moves by material gain
+11. Remember quiet cutoff moves as killers
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.
