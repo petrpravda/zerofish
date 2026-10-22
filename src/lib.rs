@@ -14,6 +14,7 @@ pub mod nnue;
 pub mod ordering;
 pub mod parallel;
 pub mod perft;
+pub mod pgn;
 pub mod position;
 pub mod pst;
 pub mod random;

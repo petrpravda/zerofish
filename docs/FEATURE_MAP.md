@@ -48,6 +48,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 43. Coordinate helpers by deferring occupied moves
 44. Allow workers to share learned ordering statistics
 45. Connect asynchronous search to the UCI protocol
+46. Convert legal moves to and from SAN
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.
