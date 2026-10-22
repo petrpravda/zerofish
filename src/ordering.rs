@@ -78,6 +78,9 @@ impl MoveOrdering {
     pub fn quiet_score(&self, state: &BoardState, mv: Move, previous: i32) -> i32 {
         let h = &*self.histories;
         let mut score = h.quiet[state.side_to_play() * 4096 + mv.from() * 64 + mv.to()].load(Relaxed);
+        if previous >= 0 {
+            score += h.continuation[previous as usize * CONTEXTS + state.piece_at(mv.from()) * 64 + mv.to()].load(Relaxed) as i32;
+        }
         score
     }
 
@@ -101,6 +104,10 @@ impl MoveOrdering {
         } else {
             let entry = &h.quiet[state.side_to_play() * 4096 + mv.from() * 64 + mv.to()];
             entry.store(adjusted(entry.load(Relaxed), bonus), Relaxed);
+            if previous >= 0 {
+                let entry = &h.continuation[previous as usize * CONTEXTS + state.piece_at(mv.from()) * 64 + mv.to()];
+                entry.store(adjusted(entry.load(Relaxed) as i32, bonus) as i16, Relaxed);
+            }
         }
     }
 

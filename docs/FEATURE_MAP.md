@@ -16,6 +16,7 @@ checkpoints as its implementation base. Each commit introduces the next feature.
 11. Remember quiet cutoff moves as killers
 12. Update quiet ordering from search history
 13. Accumulate capture ordering statistics
+14. Condition ordering on the preceding move
 
 The neural evaluation stages retain runtime-selected AVX2/SSE2 kernels,
 incremental accumulators and king-bucket refresh caching.
