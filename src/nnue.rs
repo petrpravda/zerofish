@@ -84,6 +84,7 @@ impl Nnue {
         self.positions[ply] = Some(*state.bitboards());
     }
 
+    #[inline(always)]
     fn refresh_perspective(&mut self, state: &BoardState, ply: usize, perspective: usize) {
         let king = state.bitboard_of_side(perspective, KING).trailing_zeros() as usize;
         let bucket = bucket(king, perspective);
@@ -127,7 +128,24 @@ impl Nnue {
         self.push_changed(before, after, ply, changed);
     }
 
-    fn push_changed(&mut self, before: &BoardState, after: &BoardState, ply: usize, mut changed: u64) {
+    fn push_changed(&mut self, before: &BoardState, after: &BoardState, ply: usize, changed: u64) {
+        #[cfg(target_arch = "x86_64")]
+        if is_x86_feature_detected!("avx2") {
+            // SAFETY: AVX2 support was just checked.
+            return unsafe { self.push_changed_avx2(before, after, ply, changed) };
+        }
+        self.push_changed_impl(before, after, ply, changed)
+    }
+
+    // same code, auto-vectorized with 256-bit registers
+    #[cfg(target_arch = "x86_64")]
+    #[target_feature(enable = "avx2")]
+    fn push_changed_avx2(&mut self, before: &BoardState, after: &BoardState, ply: usize, changed: u64) {
+        self.push_changed_impl(before, after, ply, changed)
+    }
+
+    #[inline(always)]
+    fn push_changed_impl(&mut self, before: &BoardState, after: &BoardState, ply: usize, mut changed: u64) {
         if self.positions[ply - 1].as_ref() != Some(before.bitboards()) {
             self.refresh(before, ply - 1);
         }
@@ -235,18 +253,88 @@ pub fn forward(us: &Accumulator, them: &Accumulator) -> i32 {
     let network = &*NETWORK;
     let (out_us, out_them): (&Accumulator, &Accumulator) =
         (network.output[..HIDDEN].try_into().unwrap(), network.output[HIDDEN..].try_into().unwrap());
-    let mut sum = 0i32;
-    for i in 0..HIDDEN {
-        let ours = us[i].clamp(0, 255);
-        let theirs = them[i].clamp(0, 255);
-        sum = sum
-            .wrapping_add((ours as i32).wrapping_mul(ours.wrapping_mul(out_us[i]) as i32))
-            .wrapping_add((theirs as i32).wrapping_mul(theirs.wrapping_mul(out_them[i]) as i32));
-    }
+    let mut sum = screlu_dot(us, out_us).wrapping_add(screlu_dot(them, out_them));
     sum /= 255;
     sum += network.output_bias as i32;
     sum *= 400;
     sum / (255 * 64)
+}
+
+/// Sum of clamp(v)^2 * w as clamp(v) * (clamp(v) * w wrapping in i16), wrapping in i32.
+#[inline(always)]
+fn screlu_dot(accumulator: &Accumulator, weights: &Accumulator) -> i32 {
+    #[cfg(target_arch = "x86_64")]
+    {
+        if is_x86_feature_detected!("avx2") {
+            // SAFETY: AVX2 support was just checked.
+            return unsafe { simd::screlu_dot_avx2(accumulator, weights) };
+        }
+        simd::screlu_dot_sse2(accumulator, weights)
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    screlu_dot_scalar(accumulator, weights)
+}
+
+#[cfg_attr(target_arch = "x86_64", allow(dead_code))]
+fn screlu_dot_scalar(accumulator: &Accumulator, weights: &Accumulator) -> i32 {
+    let mut sum = 0i32;
+    for i in 0..HIDDEN {
+        let value = accumulator[i].clamp(0, 255);
+        sum = sum.wrapping_add((value as i32).wrapping_mul(value.wrapping_mul(weights[i]) as i32));
+    }
+    sum
+}
+
+// pmaddwd sums two i16 products into one i32 lane; |255 * i16| * 2 cannot overflow, and the
+// i32 lane sums wrap, so the result is bit-identical to the scalar loop.
+#[cfg(target_arch = "x86_64")]
+mod simd {
+    use super::{Accumulator, HIDDEN};
+    use std::arch::x86_64::*;
+
+    #[target_feature(enable = "avx2")]
+    pub(super) fn screlu_dot_avx2(accumulator: &Accumulator, weights: &Accumulator) -> i32 {
+        let zero = _mm256_setzero_si256();
+        let max = _mm256_set1_epi16(255);
+        let mut sum = zero;
+        for i in (0..HIDDEN).step_by(16) {
+            // SAFETY: i + 16 <= HIDDEN, unaligned loads.
+            let (value, weight) = unsafe {
+                (
+                    _mm256_loadu_si256(accumulator.as_ptr().add(i).cast()),
+                    _mm256_loadu_si256(weights.as_ptr().add(i).cast()),
+                )
+            };
+            let value = _mm256_min_epi16(_mm256_max_epi16(value, zero), max);
+            sum = _mm256_add_epi32(sum, _mm256_madd_epi16(value, _mm256_mullo_epi16(value, weight)));
+        }
+        let sum = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256::<1>(sum));
+        // SAFETY: SSE2 is part of the x86_64 baseline.
+        unsafe { horizontal_sum(sum) }
+    }
+
+    pub(super) fn screlu_dot_sse2(accumulator: &Accumulator, weights: &Accumulator) -> i32 {
+        // SAFETY: SSE2 is part of the x86_64 baseline; i + 8 <= HIDDEN, unaligned loads.
+        unsafe {
+            let zero = _mm_setzero_si128();
+            let max = _mm_set1_epi16(255);
+            let mut sum = zero;
+            for i in (0..HIDDEN).step_by(8) {
+                let value = _mm_loadu_si128(accumulator.as_ptr().add(i).cast());
+                let weight = _mm_loadu_si128(weights.as_ptr().add(i).cast());
+                let value = _mm_min_epi16(_mm_max_epi16(value, zero), max);
+                sum = _mm_add_epi32(sum, _mm_madd_epi16(value, _mm_mullo_epi16(value, weight)));
+            }
+            horizontal_sum(sum)
+        }
+    }
+
+    #[inline(always)]
+    unsafe fn horizontal_sum(sum: __m128i) -> i32 {
+        let sum = _mm_add_epi32(sum, _mm_shuffle_epi32::<0b01_00_11_10>(sum));
+        let sum = _mm_add_epi32(sum, _mm_shuffle_epi32::<0b10_11_00_01>(sum));
+        _mm_cvtsi128_si32(sum)
+    }
 }
 
 pub fn feature(piece: usize, square: usize, perspective: usize, king: usize) -> usize {
@@ -271,6 +359,25 @@ mod tests {
         assert_eq!(fresh.evaluate(state, 0), incremental.evaluate(state, ply));
         for perspective in 0..2 {
             assert_eq!(fresh.accumulator(state, 0, perspective), incremental.accumulator(state, ply, perspective));
+        }
+    }
+
+    #[test]
+    fn screlu_dot_matches_scalar() {
+        let mut random = JavaRandom::new(11);
+        let mut values = Box::new([0i16; HIDDEN]);
+        let mut weights = Box::new([0i16; HIDDEN]);
+        for round in 0..64 {
+            for (value, weight) in values.iter_mut().zip(weights.iter_mut()) {
+                *value = random.next_int(65536) as i16;
+                *weight = if round % 2 == 0 { random.next_int(65536) as i16 } else { [i16::MIN, i16::MAX][random.next_int(2) as usize] };
+            }
+            if round % 4 == 1 {
+                values.fill(255);
+            }
+            assert_eq!(screlu_dot(&values, &weights), screlu_dot_scalar(&values, &weights));
+            #[cfg(target_arch = "x86_64")]
+            assert_eq!(simd::screlu_dot_sse2(&values, &weights), screlu_dot_scalar(&values, &weights));
         }
     }
 
