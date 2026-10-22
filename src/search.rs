@@ -433,6 +433,11 @@ impl Search {
                     self.pickers[ply].skip_quiets();
                     continue;
                 }
+                if !is_tactical && lmr_depth <= 5 && history < -2048 * depth - 1024 {
+                    self.counters.history_prunes += 1;
+                    self.pickers[ply].skip_quiets();
+                    continue;
+                }
             }
             let child = self.child(state, mv, ply);
             let gives_check = child.is_king_attacked();
