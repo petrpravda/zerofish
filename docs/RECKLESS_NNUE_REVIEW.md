@@ -52,21 +52,34 @@ combining them. Later layers execute floating-point FMA with defined reduction
 order. Its accumulator stack also performs lazy per-perspective updates and uses
 a piece-square refresh cache.
 
-Generic techniques such as nonzero-index compaction and independent VNNI chains
-could be adapted to Zerofish's Stockfish-shaped kernels. Such an experiment would
-be a new Stockfish-compatible implementation inspired by those techniques, not
-running Reckless's evaluator. It was not added here because the requested trial
-was conditional on the architectures being the same. No Reckless source was
-copied into the engine and no network, kernel or benchmark behavior was changed.
+## Stockfish-compatible follow-up
 
-## Benchmark disposition
+The follow-up request implemented these portable design techniques while retaining
+the Stockfish network:
 
-The [existing benchmark table](RUST_NNUE.md#measured-comparison-on-2026-10-22)
-now records Reckless as **N/A: incompatible network** for full and incremental
-inference. Its existing Rust/scalar/library timings remain unchanged. Timing
-Reckless's smaller, differently encoded network alongside these numbers would
-not measure SIMD algorithms doing the same evaluation work.
+- `Kernel::Avx512SparseVnni` uses shifted multiply-high and unsigned packing for
+  the transformer, restoring canonical neuron order after lane-local packing.
+- AVX-512 nonzero masks and `vpcompressd` produce an ascending list of nonzero
+  four-byte groups. This adapts the sparse-index idea using native 32-bit index
+  compaction instead of Reckless's small lookup table.
+- Pairs of those groups feed independent VNNI accumulation chains; the chains are
+  combined once, with explicit handling of an odd final group.
 
-Review metadata and SHA-256 hashes of the inspected upstream files are saved in
-`target/nnue/reckless-review-20261023/architecture.json`. This was a source and
-documentation review; no engine or timing tests needed to be rerun.
+The implementation is independent Rust code; Reckless's sources and network are
+not copied. Stockfish feature encoders, quantization, output stacks, integer
+activations, skip connection and score calibration remain unchanged. The existing
+incremental delta machinery and accumulator-update kernel are shared between the
+baseline and sparse variants. The sparse variant is now the AVX-512 default;
+`Kernel::Avx512Vnni` retains the previous implementation for comparisons.
+
+The [benchmark table](RUST_NNUE.md#measured-comparison-on-2026-10-23) now measures
+this **Stockfish-compatible Reckless-style variant**, alongside the baseline,
+scalar evaluator and linked reference, using identical weights and positions.
+These are not timings of Reckless's incompatible native network. Both Rust SIMD
+variants pass 10,491 reference transition checks each, and the timing harness
+validates all 6,033 corpus positions before measurement.
+
+Original review metadata and upstream file hashes remain in
+`target/nnue/reckless-review-20261023/architecture.json`. Follow-up tests, timings,
+frozen binaries and metadata are under
+`target/nnue/reckless-style-avx512-20261023/`.

@@ -221,61 +221,95 @@ fn full_and_incremental_match_linked_reference() {
             assert_eq!(expected, full.accumulator(state, 0, p));
         }
     }
-    let mut rust = Nnue::new();
-    let mut full = Nnue::with_kernel(Kernel::Scalar);
-    let mut reference = Reference::new();
-    let mut reference_full = Reference::new();
-    let fens = [
-        START_POS,
-        "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
-        "4k3/P7/8/3pP3/8/8/8/4K3 w - d6 0 1",
-        "1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1",
-        "4k3/8/8/8/3Pp3/8/p7/1R2K3 b - d3 0 1",
-        "4k3/8/8/8/8/8/8/1R1K2R1 w GB - 0 1",
-        "1r1k2r1/8/8/8/8/8/8/7K b gb - 0 1",
-        "8/8/4k3/8/4K3/4P3/8/8 w - - 99 60",
-        "r2qk2r/pp1n1ppp/2p1bn2/3p4/3P4/2NBPN2/PPQ2PPP/R3K2R w KQkq - 5 10",
-    ];
-    let mut checked = 0;
-    for fen in fens {
-        let root = BoardState::from_fen(fen).unwrap();
-        rust.reset(&root);
-        reference.reset(&root);
-        assert_position(
-            &mut rust,
-            &mut full,
-            &mut reference,
-            &mut reference_full,
-            &root,
-            0,
-        );
-        for mv in root.generate_legal_moves().iter() {
-            let child = root.do_move(mv);
-            rust.push_move(&root, &child, mv, 1);
-            reference.push_move(&root, &child, mv, 1);
+    let kernels: &[Kernel] = if Kernel::avx512_available() {
+        &[Kernel::Avx512Vnni, Kernel::Avx512SparseVnni]
+    } else {
+        &[Kernel::Scalar]
+    };
+    for &kernel in kernels {
+        let mut rust = Nnue::with_kernel(kernel);
+        let mut full = Nnue::with_kernel(Kernel::Scalar);
+        let mut reference = Reference::new();
+        let mut reference_full = Reference::new();
+        let fens = [
+            START_POS,
+            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+            "4k3/P7/8/3pP3/8/8/8/4K3 w - d6 0 1",
+            "1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1",
+            "4k3/8/8/8/3Pp3/8/p7/1R2K3 b - d3 0 1",
+            "4k3/8/8/8/8/8/8/1R1K2R1 w GB - 0 1",
+            "1r1k2r1/8/8/8/8/8/8/7K b gb - 0 1",
+            "8/8/4k3/8/4K3/4P3/8/8 w - - 99 60",
+            "r2qk2r/pp1n1ppp/2p1bn2/3p4/3P4/2NBPN2/PPQ2PPP/R3K2R w KQkq - 5 10",
+        ];
+        let mut checked = 0;
+        for fen in fens {
+            let root = BoardState::from_fen(fen).unwrap();
+            rust.reset(&root);
+            reference.reset(&root);
             assert_position(
                 &mut rust,
                 &mut full,
                 &mut reference,
                 &mut reference_full,
-                &child,
-                1,
+                &root,
+                0,
             );
-            checked += 1;
-        }
-    }
-    let mut random = JavaRandom::new(20261022);
-    for _ in 0..24 {
-        let mut state = BoardState::from_fen(START_POS).unwrap();
-        rust.reset(&state);
-        reference.reset(&state);
-        for ply in 1..=110 {
-            let moves = state.generate_legal_moves();
-            if moves.is_empty() {
-                break;
+            for mv in root.generate_legal_moves().iter() {
+                let child = root.do_move(mv);
+                rust.push_move(&root, &child, mv, 1);
+                reference.push_move(&root, &child, mv, 1);
+                assert_position(
+                    &mut rust,
+                    &mut full,
+                    &mut reference,
+                    &mut reference_full,
+                    &child,
+                    1,
+                );
+                checked += 1;
             }
-            for i in 0..moves.len().min(2) {
-                let mv = moves.get(i);
+        }
+        let mut random = JavaRandom::new(20261022);
+        for _ in 0..24 {
+            let mut state = BoardState::from_fen(START_POS).unwrap();
+            rust.reset(&state);
+            reference.reset(&state);
+            for ply in 1..=110 {
+                let moves = state.generate_legal_moves();
+                if moves.is_empty() {
+                    break;
+                }
+                for i in 0..moves.len().min(2) {
+                    let mv = moves.get(i);
+                    let child = state.do_move(mv);
+                    rust.push_move(&state, &child, mv, ply);
+                    reference.push_move(&state, &child, mv, ply);
+                    assert_position(
+                        &mut rust,
+                        &mut full,
+                        &mut reference,
+                        &mut reference_full,
+                        &child,
+                        ply,
+                    );
+                    checked += 1;
+                }
+                if !state.is_king_attacked() {
+                    let child = state.do_null_move();
+                    rust.push(&state, &child, ply);
+                    reference.push(&state, &child, ply);
+                    assert_position(
+                        &mut rust,
+                        &mut full,
+                        &mut reference,
+                        &mut reference_full,
+                        &child,
+                        ply,
+                    );
+                    checked += 1;
+                }
+                let mv = moves.get(random.next_int(moves.len() as i32) as usize);
                 let child = state.do_move(mv);
                 rust.push_move(&state, &child, mv, ply);
                 reference.push_move(&state, &child, mv, ply);
@@ -287,39 +321,12 @@ fn full_and_incremental_match_linked_reference() {
                     &child,
                     ply,
                 );
+                state = child;
                 checked += 1;
             }
-            if !state.is_king_attacked() {
-                let child = state.do_null_move();
-                rust.push(&state, &child, ply);
-                reference.push(&state, &child, ply);
-                assert_position(
-                    &mut rust,
-                    &mut full,
-                    &mut reference,
-                    &mut reference_full,
-                    &child,
-                    ply,
-                );
-                checked += 1;
-            }
-            let mv = moves.get(random.next_int(moves.len() as i32) as usize);
-            let child = state.do_move(mv);
-            rust.push_move(&state, &child, mv, ply);
-            reference.push_move(&state, &child, mv, ply);
-            assert_position(
-                &mut rust,
-                &mut full,
-                &mut reference,
-                &mut reference_full,
-                &child,
-                ply,
-            );
-            state = child;
-            checked += 1;
         }
+        println!("Exact full/incremental reference comparisons ({kernel:?}): {checked} positions, both 1024-lane accumulators and raw/scaled scores");
     }
-    println!("Exact full/incremental reference comparisons: {checked} positions, both 1024-lane accumulators and raw/scaled scores");
 }
 
 #[test]
@@ -341,4 +348,40 @@ fn invalid_positions_and_feature_rows_fail_before_simd_reads() {
         )))
         .is_err()
     );
+}
+
+#[test]
+fn sparse_vnni_matches_scalar_for_empty_odd_dense_and_boundary_inputs() {
+    if !Kernel::avx512_available() {
+        return;
+    }
+    let kernel = Kernel::Avx512SparseVnni;
+    let mut random = JavaRandom::new(20261023);
+    for _ in 0..64 {
+        let acc = std::array::from_fn(|_| random.next_int(65536) as i16);
+        let mut expected = [0; 512];
+        let mut actual = expected;
+        Kernel::Scalar.transform(&acc, &mut expected);
+        kernel.transform(&acc, &mut actual);
+        assert_eq!(expected, actual);
+    }
+    for stack in &NETWORK.stacks {
+        let layer = &stack.first;
+        // Exercise empty lists, pair boundaries, vector boundaries, odd remainders
+        // and all 256 groups. Include high-bit bytes to check signed mask handling.
+        for groups in [0, 1, 2, 3, 15, 16, 17, 127, 128, 129, 255, 256] {
+            let mut input = [0u8; HIDDEN];
+            for group in 0..groups {
+                let index = (group * 73 + 251) % 256;
+                for k in 0..4 {
+                    input[index * 4 + k] = (random.next_int(255) + 1) as u8;
+                }
+            }
+            let mut expected = [0; 32];
+            let mut actual = expected;
+            Kernel::Scalar.affine(layer, &input, &mut expected);
+            kernel.affine(layer, &input, &mut actual);
+            assert_eq!(expected, actual, "active groups={groups}");
+        }
+    }
 }

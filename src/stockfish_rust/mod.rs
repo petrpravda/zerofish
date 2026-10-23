@@ -46,7 +46,7 @@ impl Nnue {
     }
     pub fn with_kernel(kernel: Kernel) -> Self {
         assert!(
-            kernel != Kernel::Avx512Vnni || Kernel::avx512_available(),
+            kernel == Kernel::Scalar || Kernel::avx512_available(),
             "AVX-512BW/VNNI unavailable on this host"
         );
         init();

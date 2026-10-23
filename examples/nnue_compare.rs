@@ -130,17 +130,22 @@ mod comparison {
             }
         }
         // Validate this exact timing corpus before collecting measurements.
-        let mut rust = Nnue::new();
+        let mut rust = Nnue::with_kernel(Kernel::Avx512Vnni);
+        let mut sparse = Nnue::with_kernel(Kernel::Avx512SparseVnni);
+        let mut sparse_full = Nnue::with_kernel(Kernel::Avx512SparseVnni);
         let mut reference = stockfish_reference::Nnue::new();
         let mut full = Nnue::with_kernel(Kernel::Scalar);
         let mut ref_full = stockfish_reference::Nnue::new();
         let mut positions = 0;
         for walk in &walks {
             rust.reset(&walk.states[0]);
+            sparse.reset(&walk.states[0]);
             reference.reset(&walk.states[0]);
             for (i, &mv) in walk.moves.iter().enumerate() {
                 let (before, state) = (&walk.states[i], &walk.states[i + 1]);
                 rust.push_move(before, state, mv, i + 1);
+                sparse.push_move(before, state, mv, i + 1);
+                sparse_full.refresh(state, 0);
                 reference.push_move(before, state, mv, i + 1);
                 full.refresh(state, 0);
                 ref_full.refresh_full(state, 0);
@@ -148,6 +153,16 @@ mod comparison {
                 assert_eq!(expected, reference.raw(state, i + 1));
                 assert_eq!(expected, rust.raw(state, i + 1));
                 assert_eq!(expected, full.raw(state, 0));
+                assert_eq!(expected, sparse.raw(state, i + 1));
+                assert_eq!(expected, sparse_full.raw(state, 0));
+                assert_eq!(
+                    reference.evaluate_position(state, i + 1),
+                    sparse.evaluate_position(state, i + 1)
+                );
+                assert_eq!(
+                    reference.full_internal(state, i + 1),
+                    sparse.full_internal(state, i + 1)
+                );
                 assert_eq!(
                     reference.evaluate_position(state, i + 1),
                     rust.evaluate_position(state, i + 1)
@@ -159,6 +174,14 @@ mod comparison {
                 for p in 0..2 {
                     assert_eq!(
                         reference.accumulator(state, i + 1, p),
+                        sparse.accumulator(state, i + 1, p)
+                    );
+                    assert_eq!(
+                        reference.accumulator(state, i + 1, p),
+                        sparse_full.accumulator(state, 0, p)
+                    );
+                    assert_eq!(
+                        reference.accumulator(state, i + 1, p),
                         rust.accumulator(state, i + 1, p)
                     );
                 }
@@ -166,12 +189,16 @@ mod comparison {
             }
         }
         println!("Network SHA256: {}", zerofish::nnue::SHA256);
-        println!("Validated {positions} positions over {} legal walks: raw/scaled scores and both accumulator arrays match.", walks.len());
+        println!("Validated {positions} positions over {} legal walks: baseline/sparse/scalar/full/incremental raw/scaled scores and both accumulator arrays match.", walks.len());
         println!("Timings: median of 7 batches, {rounds} corpus repetitions/batch; warm initialization excluded.");
         let mut evaluators: Vec<(&str, Box<dyn Evaluator>)> = vec![
             (
                 "Rust AVX-512/VNNI",
                 Box::new(Nnue::with_kernel(Kernel::Avx512Vnni)),
+            ),
+            (
+                "Rust sparse VNNI",
+                Box::new(Nnue::with_kernel(Kernel::Avx512SparseVnni)),
             ),
             ("Rust scalar", Box::new(Nnue::with_kernel(Kernel::Scalar))),
             ("linked .so", Box::new(stockfish_reference::Nnue::new())),

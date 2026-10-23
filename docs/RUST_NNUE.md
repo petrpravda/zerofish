@@ -18,9 +18,13 @@ The implementation is in `src/stockfish_rust/`:
 - `simd.rs`: direct `std::arch::x86_64` intrinsics, dispatched at runtime.
   AVX-512BW widens signed byte weights into wrapping 16-bit accumulator updates
   and transforms paired accumulator halves. AVX-512 VNNI `vpdpbusd` implements
-  the sparse first affine layer and both later affine layers. Squared/linear
-  activations also execute in AVX-512. A scalar implementation is retained for
-  other CPUs and for differential checks.
+  the first affine layer and both later affine layers. The default sparse
+  variant also uses nonzero-input compaction, paired independent VNNI chains,
+  and multiply-high/packing for the transformer, adapting techniques reviewed in
+  Reckless to the Stockfish feature/weight contract. The earlier AVX-512 kernel
+  remains selectable with `Kernel::Avx512Vnni`; the new kernel is
+  `Kernel::Avx512SparseVnni`. Squared/linear activations also execute in AVX-512.
+  A scalar implementation remains for other CPUs and differential checks.
 - `mod.rs`: aligned per-ply accumulators and sibling-safe position validation.
   Incremental updates re-encode affected pieces, attackers and pawn pairs, then
   add/remove only changed weight rows. Discovered slider attacks, captures,
@@ -44,7 +48,7 @@ Finny entries before an uncached full rebuild.
 
 ## Correctness checks
 
-- 10,491 transition checks compare Rust scalar/full, Rust SIMD/incremental,
+- 10,491 transition checks per SIMD variant compare Rust scalar/full, Rust SIMD/incremental,
   linked/full and linked/incremental raw scores. Both 1,024-neuron accumulators,
   centipawn scores and exact internal rule-50 scaling also agree.
 - A separate timing corpus checks 6,033 evaluated positions over 64 seeded legal
@@ -53,9 +57,11 @@ Finny entries before an uncached full rebuild.
   en passant, orthodox castling and Chess960 castling geometries.
 - SIMD/scalar boundary checks cover signed-short accumulator overflow, negative
   and extreme activation inputs, every output stack and randomized affine inputs.
+  Sparse-list tests also cover empty, single, odd/even, vector-boundary and dense
+  lists through all 256 input groups, with high-bit bytes and shuffled positions.
 - Invalid-board/feature-index checks run before SIMD memory reads, with regression
   coverage for pawns on promotion ranks and out-of-range network rows.
-- Full suites passed: 68 tests for the direct-Rust default, 72 with the linked
+- Full suites passed: 69 tests for the direct-Rust default, 73 with the linked
   oracle enabled, and 66 for the preserved legacy evaluator.
 - `ldd target/release/zerofish` shows only normal runtime libraries; no NNUE or
   C++ library is linked. Disassembly contains actual ZMM `vpdpbusd` instructions.
@@ -64,32 +70,34 @@ These are exact agreements on the tested corpus, not a claim of exhaustive proof
 for every possible board. The optional library's previous independent executable
 oracle tests remain in the combined suite.
 
-## Measured comparison on 2026-10-22
+## Measured comparison on 2026-10-23
 
 CPU: AMD Ryzen 7 8845HS (AVX-512BW/VNNI). Compiler: rustc 1.93.0. Rust release
 profile uses opt-level 3, fat LTO and one codegen unit; the reference library uses
 the existing native `-O3 -march=native` build. One evaluation stream at a time.
 
-Median of seven batches, five repetitions of all 6,033 positions per batch:
+Median of seven batches, five repetitions of all 6,033 positions per batch.
+All four columns were remeasured together on 2026-10-23:
 
-| Path | Rust AVX-512/VNNI | Rust scalar | Linked reference | Reckless |
-|---|---:|---:|---:|---|
-| Full rebuild + inference | 3.845 µs | 17.837 µs | 4.639 µs | N/A: incompatible network |
-| Incremental push + inference | 2.726 µs | 13.971 µs | 1.518 µs | N/A: incompatible network |
+| Path | Baseline Rust VNNI | Reckless-style Rust VNNI | Rust scalar | Linked reference |
+|---|---:|---:|---:|---:|
+| Full rebuild + inference | 3.605 µs | 3.411 µs | 17.266 µs | 4.330 µs |
+| Incremental push + inference | 2.805 µs | 2.568 µs | 13.576 µs | 1.406 µs |
 
-Reckless was reviewed on 2026-10-23 at revision
-`ffe556dcfd38e1ac29f3c554137b69ee0ecf7904`. Its feature encoding, dimensions,
-weights and later-layer arithmetic differ from this Stockfish network, so its
-evaluator cannot be inserted into this same-network benchmark. No Reckless
-timing was measured; the original measurements above are unchanged. See the
+The adapted sparse variant reduced elapsed time by 5.4% for full rebuilds and
+8.4% incrementally versus baseline Rust in this run, and is now the AVX-512
+default. The baseline remains available for comparisons. The linked reference
+remains faster incrementally: Rust sparse inference took 1.83 times its cost.
+Relative to scalar Rust, the sparse SIMD variant was 5.06 times faster for full
+rebuilds and 5.29 times faster for incremental evaluation. All modes/backends
+produced checksum 10,283,525 in every timed batch.
+
+The "Reckless-style" column uses our Stockfish features, weights and integer
+layers throughout. It adapts sparse input indexing, paired independent VNNI
+chains and multiply-high/packing from the reviewed techniques; it does not run
+Reckless's incompatible network or float layers. The review is pinned at
+`ffe556dcfd38e1ac29f3c554137b69ee0ecf7904`; see the
 [architecture and SIMD review](RECKLESS_NNUE_REVIEW.md).
-
-Rust SIMD was about 17% faster than the linked full-rebuild path in this harness.
-For incremental evaluation it was about 1.80 times the library's cost; the linked
-implementation remains faster. Relative to Rust scalar, SIMD was 4.64 times
-faster for full rebuilds and 5.13 times faster for incremental evaluation.
-The two modes and all backends produced the same checksum, 10,283,525, in every
-timed batch.
 
 Timings include feature encoding/updates and propagation, not just dot products.
 The library's full-rebuild path also includes its FEN/native-position reset and
@@ -123,6 +131,8 @@ cargo run --release --offline --features stockfish-nnue --example nnue_compare -
 cargo test --offline --no-default-features
 ```
 
-Artifacts are under `target/nnue/rust-avx512-vnni-20261022/`: test logs, timing
-output, corpus, build/dependency/instruction evidence, metadata and frozen binaries.
-The previous Elo-match engines in `target/elo/` remain unchanged.
+Current artifacts are under `target/nnue/reckless-style-avx512-20261023/`: test
+logs, timing output, corpus, build/dependency/instruction evidence, metadata and
+frozen binaries. The earlier comparison remains archived under
+`target/nnue/rust-avx512-vnni-20261022/`; previous Elo engines in `target/elo/`
+remain unchanged.
