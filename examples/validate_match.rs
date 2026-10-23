@@ -2,7 +2,12 @@
 use std::{collections::BTreeMap, fs::File, io::BufReader};
 use zerofish::{pgn, position::{BoardPosition, is_threefold_repetition}, types::WHITE};
 fn main() {
-    let path = std::env::args().nth(1).expect("usage: validate_match games.pgn");
+    let mut args = std::env::args().skip(1);
+    let path = args.next().expect("usage: validate_match games.pgn [expected-games]");
+    let expected_games: usize = args.next().map(|value| value.parse().expect("expected-games must be an integer")).unwrap_or(100);
+    assert!(expected_games > 0 && expected_games % 2 == 0, "expected-games must be positive and even");
+    assert!(args.next().is_none(), "unexpected argument");
+    let expected_pairs = expected_games / 2;
     let mut games = 0;
     let mut plies = 0;
     let mut wdl = [0; 3];
@@ -43,8 +48,8 @@ fn main() {
         pairs.entry(game.tag("Round").unwrap().to_string()).or_default().push((game.starting_fen().to_string(), game.tag("White").unwrap().to_string()));
         games += 1;
     }
-    assert_eq!(games, 100);
-    assert_eq!(pairs.len(), 50);
+    assert_eq!(games, expected_games);
+    assert_eq!(pairs.len(), expected_pairs);
     let mut unique = std::collections::BTreeSet::new();
     for entries in pairs.values() {
         assert_eq!(entries.len(), 2);
@@ -52,7 +57,7 @@ fn main() {
         assert_ne!(entries[0].1, entries[1].1);
         assert!(unique.insert(entries[0].0.split_whitespace().take(4).collect::<Vec<_>>().join(" ")));
     }
-    println!("Validated {games} games, 50 unique color-reversed position pairs, {plies} legal plies.");
+    println!("Validated {games} games, {expected_pairs} unique color-reversed position pairs, {plies} legal plies.");
     println!("Zerofish W/D/L: {}/{}/{}", wdl[0], wdl[1], wdl[2]);
     println!("Terminations: {endings:?}");
 }
