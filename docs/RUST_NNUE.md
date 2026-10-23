@@ -72,10 +72,17 @@ the existing native `-O3 -march=native` build. One evaluation stream at a time.
 
 Median of seven batches, five repetitions of all 6,033 positions per batch:
 
-| Path | Rust AVX-512/VNNI | Rust scalar | Linked reference |
-|---|---:|---:|---:|
-| Full rebuild + inference | 3.845 µs | 17.837 µs | 4.639 µs |
-| Incremental push + inference | 2.726 µs | 13.971 µs | 1.518 µs |
+| Path | Rust AVX-512/VNNI | Rust scalar | Linked reference | Reckless |
+|---|---:|---:|---:|---|
+| Full rebuild + inference | 3.845 µs | 17.837 µs | 4.639 µs | N/A: incompatible network |
+| Incremental push + inference | 2.726 µs | 13.971 µs | 1.518 µs | N/A: incompatible network |
+
+Reckless was reviewed on 2026-10-23 at revision
+`ffe556dcfd38e1ac29f3c554137b69ee0ecf7904`. Its feature encoding, dimensions,
+weights and later-layer arithmetic differ from this Stockfish network, so its
+evaluator cannot be inserted into this same-network benchmark. No Reckless
+timing was measured; the original measurements above are unchanged. See the
+[architecture and SIMD review](RECKLESS_NNUE_REVIEW.md).
 
 Rust SIMD was about 17% faster than the linked full-rebuild path in this harness.
 For incremental evaluation it was about 1.80 times the library's cost; the linked
