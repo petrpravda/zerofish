@@ -46,6 +46,7 @@ variant, Rust scalar and the linked library. Enabling the
 `stockfish-nnue` comparison feature does not select library inference for search.
 
 See [the Rust/library comparison](docs/RUST_NNUE.md),
-[the previous Elo benchmark](docs/BENCHMARK.md),
+[the new SIMD 40-game Elo benchmark](docs/BENCHMARK_RUST_SIMD_40.md),
+[the earlier 100-game benchmark](docs/BENCHMARK.md),
 [the feature progression](docs/FEATURE_MAP.md) and [Chess960 notes](docs/chess960.md).
 Java training and Elo-runner modules are outside this engine port.
