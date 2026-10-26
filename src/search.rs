@@ -105,6 +105,10 @@ pub struct Search {
     verification: [bool; MAX_PLY + 2],
     cut_nodes: [bool; MAX_PLY + 2],
     excluded_moves: [Option<Move>; MAX_PLY + 2],
+    /// Optional root restriction for structured clients (MultiPV / played-move scoring).
+    pub root_moves: Option<Vec<Move>>,
+    /// Per-search node budget, checked with the clock every 1024 nodes.
+    pub node_limit: Option<u64>,
     pub use_pvs: bool,
     pub use_selective: bool,
     counters: SelectiveCounters,
@@ -175,6 +179,8 @@ impl Search {
             verification: [false; MAX_PLY + 2],
             cut_nodes: [false; MAX_PLY + 2],
             excluded_moves: [None; MAX_PLY + 2],
+            root_moves: None,
+            node_limit: None,
             use_pvs: true,
             use_selective: true,
             counters: SelectiveCounters::default(),
@@ -236,7 +242,7 @@ impl Search {
         let mut window = ASPIRATION_WINDOW;
         let legal_moves = state.generate_legal_moves_v::<V>();
         let mut result = SearchResult {
-            mv: legal_moves.iter().next(),
+            mv: legal_moves.iter().find(|mv| self.root_moves.as_ref().is_none_or(|allowed| allowed.contains(mv))),
             score: if legal_moves.is_empty() && state.is_king_attacked() { -INF } else { 0 },
         };
         if legal_moves.is_empty() || is_rule_draw(state, keys) {
@@ -292,6 +298,7 @@ impl Search {
         let mut total_work = 0u64;
         let mut best_work = 0u64;
         while let Some(mv) = self.pickers[0].next_move::<V>(&self.ordering, state) {
+            if self.root_moves.as_ref().is_some_and(|allowed| !allowed.contains(&mv)) { continue; }
             let before = self.stats.total_nodes();
             let child = self.child::<V>(state, mv, 0);
             if let Some(nnue) = self.nnue.as_mut() {
@@ -834,7 +841,7 @@ impl Search {
             return false;
         }
         self.time_check_countdown = TIME_CHECK_INTERVAL;
-        if self.limits.expired() {
+        if self.limits.expired() || self.node_limit.is_some_and(|limit| self.searched_nodes() >= limit) {
             self.stop.store(true, Relaxed);
         }
         self.stop.load(Relaxed)
@@ -975,4 +982,21 @@ mod tests {
         };
         assert_eq!(run(), run());
     }
+    #[test]
+    fn root_restriction_and_node_budget_are_respected() {
+        let position = BoardPosition::start_pos();
+        let mut search = Search::classical(Arc::new(TranspositionTable::default()));
+        let only = position.state().find_legal_move("a2a3").unwrap();
+        search.root_moves = Some(vec![only]);
+        let result = search.it_deep(position.state(), position.keys(), 4, Limits::infinite());
+        assert_eq!(result.mv, Some(only));
+        search.root_moves = None;
+        search.node_limit = Some(2000);
+        search.reset_stop();
+        search.it_deep(position.state(), position.keys(), 30, Limits::infinite());
+        assert!(search.searched_nodes() >= 2000);
+        assert!(search.searched_nodes() <= 3024);
+        assert!(search.completed_depth() < 30);
+    }
+
 }

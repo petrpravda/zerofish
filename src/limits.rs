@@ -1,6 +1,21 @@
 //! Search time limits: a soft budget checked between iterations and a hard one checked during search.
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
+
+// The browser host supplies a monotonic clock; std::time has no WASM host clock.
+#[cfg(target_arch = "wasm32")]
+#[link(wasm_import_module = "zerofish")]
+extern "C" { fn now_ms() -> f64; }
+#[cfg(target_arch = "wasm32")]
+struct Instant(f64);
+#[cfg(target_arch = "wasm32")]
+impl Instant {
+    fn now() -> Self { Self(unsafe { now_ms() }) }
+    fn elapsed(&self) -> std::time::Duration {
+        std::time::Duration::from_secs_f64(((unsafe { now_ms() } - self.0) / 1000.0).max(0.0))
+    }
+}
 
 use crate::moves::Move;
 
