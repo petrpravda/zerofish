@@ -15,8 +15,9 @@ The executable speaks UCI. Use `uci`, `isready`, `position startpos`,
 
 The default evaluator implements the pinned Stockfish NNUE architecture directly
 in Rust: feature encoding, network loading, incremental accumulators, inference
-and score calibration. Sparse AVX-512BW/VNNI kernels, using vector nonzero
-compaction and independent dot-product chains, are selected at runtime on
+and score calibration. Stockfish-style AVX-512BW/VNNI kernels, using paired
+weight widening, fused incremental updates, vector nonzero compaction and
+independent dot-product chains, are selected at runtime on
 supported CPUs, with a scalar fallback. It does not link or call the Stockfish NNUE library.
 
 Builds read `../stockfish/src/nn-c9e480e92425.nnue` by default. Set
@@ -42,10 +43,13 @@ An optional second argument selects a six-field FEN/EPD corpus, for example the
 previous match's `target/elo/stockfish-1t-5s-50pairs/match/openings.epd`.
 The comparison first checks full and incremental accumulators/scores, then times
 both paths in baseline Rust SIMD, the Stockfish-compatible Reckless-style sparse
-variant, Rust scalar and the linked library. Enabling the
+variant, the new Stockfish-style Rust kernel, Rust scalar and the linked library. Enabling the
 `stockfish-nnue` comparison feature does not select library inference for search.
 
-See [the Rust/library comparison](docs/RUST_NNUE.md),
+See [the NNUE Elo-parity plan and confirmed noninferiority result](docs/STOCKFISH_NNUE_ELO_PARITY_PLAN.md),
+[Vulkan training and the trained-network match](docs/VULKAN_NNUE_TRAINING.md),
+[the 100-game network comparison](docs/BENCHMARK_NETWORKS_100.md),
+[the Rust/library comparison](docs/RUST_NNUE.md),
 [the new SIMD 40-game Elo benchmark](docs/BENCHMARK_RUST_SIMD_40.md),
 [the earlier 100-game benchmark](docs/BENCHMARK.md),
 [the feature progression](docs/FEATURE_MAP.md) and [Chess960 notes](docs/chess960.md).
