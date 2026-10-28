@@ -18,16 +18,17 @@ The implementation is in `src/stockfish_rust/`:
 - `simd.rs`: direct `std::arch::x86_64` intrinsics, dispatched at runtime.
   AVX-512BW widens signed byte weights into wrapping 16-bit accumulator updates
   and transforms paired accumulator halves. AVX-512 VNNI `vpdpbusd` implements
-  the first affine layer and both later affine layers. The default sparse
-  variant also uses nonzero-input compaction, paired independent VNNI chains,
-  and multiply-high/packing for the transformer, adapting techniques reviewed in
-  Reckless to the Stockfish feature/weight contract. The earlier AVX-512 kernel
-  remains selectable with `Kernel::Avx512Vnni`; the new kernel is
-  `Kernel::Avx512SparseVnni`. Squared/linear activations also execute in AVX-512.
+  the first affine layer and both later affine layers. The default
+  `Kernel::Avx512Stockfish` adds paired signed-byte widening, explicit
+  16-register tiles, fused parent-to-child updates, fused activation/nonzero
+  gathering, and three independent VNNI chains. Propagation runs inside one
+  AVX-512 function so the layers inline without repeated SIMD call boundaries.
+  The earlier `Kernel::Avx512Vnni` and Reckless-style
+  `Kernel::Avx512SparseVnni` remain selectable for comparisons.
   A scalar implementation remains for other CPUs and differential checks.
 - `mod.rs`: aligned per-ply accumulators and sibling-safe position validation.
-  Incremental updates re-encode affected pieces, attackers and pawn pairs, then
-  add/remove only changed weight rows. Discovered slider attacks, captures,
+  The default directly emits dirty piece, threat-edge and pawn-pair indices,
+  avoiding sorting/merging unchanged features, then updates only changed rows. Discovered slider attacks, captures,
   en passant, promotions, Chess960 castling, king orientation changes and opponent
   queen-presence changes are included. Null transitions preserve the accumulators.
 
@@ -61,7 +62,7 @@ Finny entries before an uncached full rebuild.
   lists through all 256 input groups, with high-bit bytes and shuffled positions.
 - Invalid-board/feature-index checks run before SIMD memory reads, with regression
   coverage for pawns on promotion ranks and out-of-range network rows.
-- Full suites passed: 69 tests for the direct-Rust default, 73 with the linked
+- Full suites passed: 70 tests for the direct-Rust default, 74 with the linked
   oracle enabled, and 66 for the preserved legacy evaluator.
 - `ldd target/release/zerofish` shows only normal runtime libraries; no NNUE or
   C++ library is linked. Disassembly contains actual ZMM `vpdpbusd` instructions.
@@ -77,20 +78,18 @@ profile uses opt-level 3, fat LTO and one codegen unit; the reference library us
 the existing native `-O3 -march=native` build. One evaluation stream at a time.
 
 Median of seven batches, five repetitions of all 6,033 positions per batch.
-All four columns were remeasured together on 2026-10-23:
+All five backends were remeasured together on 2026-10-23:
 
-| Path | Baseline Rust VNNI | Reckless-style Rust VNNI | Rust scalar | Linked reference |
-|---|---:|---:|---:|---:|
-| Full rebuild + inference | 3.605 µs | 3.411 µs | 17.266 µs | 4.330 µs |
-| Incremental push + inference | 2.805 µs | 2.568 µs | 13.576 µs | 1.406 µs |
+| Path | Baseline Rust VNNI | Reckless-style Rust VNNI | Stockfish-style Rust VNNI | Rust scalar | Linked reference |
+|---|---:|---:|---:|---:|---:|
+| Full rebuild + inference | 3.540 µs | 3.429 µs | 2.865 µs | 17.192 µs | 4.319 µs |
+| Incremental push + inference | 2.715 µs | 2.579 µs | 1.490 µs | 13.443 µs | 1.414 µs |
 
-The adapted sparse variant reduced elapsed time by 5.4% for full rebuilds and
-8.4% incrementally versus baseline Rust in this run, and is now the AVX-512
-default. The baseline remains available for comparisons. The linked reference
-remains faster incrementally: Rust sparse inference took 1.83 times its cost.
-Relative to scalar Rust, the sparse SIMD variant was 5.06 times faster for full
-rebuilds and 5.29 times faster for incremental evaluation. All modes/backends
-produced checksum 10,283,525 in every timed batch.
+A longer run (15 repetitions per batch) measured 2.939 µs full rebuild and
+1.437 µs incremental for the new kernel versus 4.303 µs and 1.441 µs for the
+library. Incremental evaluation reached parity within the observed timing noise;
+this is not evidence of a meaningful incremental speed advantage. The full
+rebuild includes different board setup costs, described below.
 
 The "Reckless-style" column uses our Stockfish features, weights and integer
 layers throughout. It adapts sparse input indexing, paired independent VNNI
@@ -107,10 +106,9 @@ measurements retain each backend's normal per-walk state; root resets are amorti
 over at most 96 moves. Network loading, table initialization, construction and
 corpus validation are excluded, with one untimed warmup per backend/mode. Backend
 order rotates between batches. No CPU affinity or fixed frequency was imposed.
-These are evaluator timings, not search-NPS or Elo measurements. Rust still
-reconstructs affected attack/pair sets from board states, while the reference
-uses native dirty-feature bookkeeping; there is room to improve Rust incremental
-performance further.
+These are evaluator timings, not search-NPS or Elo measurements. Rust derives
+dirty edges from the two supplied board states; the reference records them during
+its native move. The native PSQ Finny cache remains specific to the reference.
 
 ## Reproduce
 
@@ -131,8 +129,50 @@ cargo run --release --offline --features stockfish-nnue --example nnue_compare -
 cargo test --offline --no-default-features
 ```
 
-Current artifacts are under `target/nnue/reckless-style-avx512-20261023/`: test
+Current artifacts are under `target/nnue/stockfish-parity-20261023/`: test
 logs, timing output, corpus, build/dependency/instruction evidence, metadata and
 frozen binaries. The earlier comparison remains archived under
 `target/nnue/rust-avx512-vnni-20261022/`; previous Elo engines in `target/elo/`
 remain unchanged.
+
+## Native source review and adaptation
+
+The optional library builds the vendored source at Stockfish commit
+`effdc3fd3f6de6e75fe1374a51a7a7eed66f880b`; it contains the actual implementation,
+not an opaque external evaluator. Relevant files are
+`native/stockfish/nnue/nnue_accumulator.cpp`, `nnue_feature_transformer.h`,
+`layers/affine_transform_sparse_input.h`, `layers/affine_transform.h`, and
+`features/{full_threats,pp_3wide,k32q2}.cpp`.
+
+The Rust port applies the following approaches:
+
+- Native accumulator tiling and source-to-destination updates remove a separate
+  accumulator copy. Explicit register names avoid LLVM spilling an indexed
+  16-vector array. Two signed-byte rows are interleaved and summed with
+  `vpmaddubsw`, then added/subtracted with wrapping 16-bit arithmetic.
+- At load time, each transformer weight cache line is rearranged in eight-byte
+  blocks `[0,4,1,5,2,6,3,7]`. This makes paired byte unpacking produce canonical
+  neuron order. Scalar and older kernels lazily retain their canonical layout;
+  a normal engine initializes only its selected layout.
+- Exact dirty threat edges and pawn pairs replace sorted affected-feature lists.
+  Emission prefetches the changed row; this CPU measured better with T0 prefetch
+  across the row than with only the native-style first-line T2 prefetch.
+- Activation packs the multiplied halves while producing nonzero four-byte group
+  indices. Register compression followed by a normal store avoids the expensive
+  compress-store instruction on Zen 4. POPCNT is explicitly enabled and detected.
+- Three independent VNNI chains feed both hidden affine layers; a single SIMD
+  propagation function allows inlining across their activation boundaries.
+
+Experiments with eight-register tiles and separately indexed vector arrays were
+slower and were discarded. Tests cover paired odd/even row counts, in-place and
+parent-to-child updates, wrapping overflow, all output stacks, and empty through
+dense sparse lists. The network digest and all tested integer outputs are unchanged.
+
+## Training-compatible network builds
+
+The Maven module in `../javafish/nnue-training` now provides all-layer Vulkan
+fine-tuning for this exact architecture. See [the training and match report](VULKAN_NNUE_TRAINING.md).
+For a derived network, set both `ZEROFISH_STOCKFISH_NETWORK` and its expected
+`ZEROFISH_STOCKFISH_NETWORK_SHA256` when compiling. The default digest remains
+pinned to the original network. All architecture, stack-hash, length and EOF checks
+remain active. Use a separate `CARGO_TARGET_DIR` to retain both engine builds.

@@ -3,7 +3,7 @@
 // Rust adaptation of the pinned NNUE contracts; see native/UPSTREAM.json.
 use super::{features::DIMENSIONS, simd::Kernel};
 use crate::{board::BoardState, types::*};
-use std::sync::LazyLock;
+use std::sync::{LazyLock, OnceLock};
 pub const HIDDEN: usize = 1024;
 pub type Accumulator = [i16; HIDDEN];
 const FT_HASH: u32 = {
@@ -83,6 +83,53 @@ impl Layer {
         })
     }
 }
+pub struct TransformerWeights {
+    serialized: &'static [u8],
+    canonical: OnceLock<AlignedBytes>,
+    paired: OnceLock<AlignedBytes>,
+}
+impl TransformerWeights {
+    fn new(serialized: &'static [u8]) -> Self {
+        Self {
+            serialized,
+            canonical: OnceLock::new(),
+            paired: OnceLock::new(),
+        }
+    }
+    fn paired(&self) -> &[i8] {
+        &self.paired.get_or_init(|| {
+            let mut output = AlignedBytes::new(self.serialized);
+            // In each 64-byte row segment, unpacklo/unpackhi must produce
+            // consecutive canonical i16 lanes. This is Stockfish's paired
+            // widening layout, independent of its additional packus layout.
+            const ORDER: [usize; 8] = [0, 4, 1, 5, 2, 6, 3, 7];
+            for line in &mut output.0 {
+                let source = line.0;
+                for (block, &from) in ORDER.iter().enumerate() {
+                    line.0[block * 8..block * 8 + 8]
+                        .copy_from_slice(&source[from * 8..from * 8 + 8]);
+                }
+            }
+            output
+        })[..]
+    }
+    pub fn for_kernel(&self, kernel: Kernel) -> &[i8] {
+        if kernel == Kernel::Avx512Stockfish {
+            self.paired()
+        } else {
+            self
+        }
+    }
+}
+impl std::ops::Deref for TransformerWeights {
+    type Target = [i8];
+    fn deref(&self) -> &[i8] {
+        &self
+            .canonical
+            .get_or_init(|| AlignedBytes::new(self.serialized))[..]
+    }
+}
+
 pub struct Stack {
     pub first: Layer,
     pub second: Layer,
@@ -90,7 +137,7 @@ pub struct Stack {
 }
 pub struct Network {
     pub biases: Accumulator,
-    pub weights: AlignedBytes,
+    pub weights: TransformerWeights,
     pub stacks: Vec<Stack>,
 }
 struct Reader {
@@ -140,7 +187,7 @@ impl Network {
             *bias = i16::from_le_bytes(reader.take(2)?.try_into().unwrap());
         }
         let raw = reader.take(DIMENSIONS * HIDDEN)?;
-        let weights = AlignedBytes::new(raw);
+        let weights = TransformerWeights::new(raw);
         let mut stacks = Vec::with_capacity(32);
         for _ in 0..32 {
             reader.expect(ARCH_HASH)?;
@@ -170,19 +217,7 @@ impl Network {
             + usize::from(state.bitboard_of_side(1 - stm, QUEEN) != 0);
         let bucket = (state.all_pieces().count_ones() as usize - 1) / 4 * 4 + queen_bucket;
         let stack = &self.stacks[bucket];
-        let mut input = [0; HIDDEN];
-        kernel.transform(&accumulators[stm], &mut input[..512]);
-        kernel.transform(&accumulators[1 - stm], &mut input[512..]);
-        let mut first = [0; 32];
-        kernel.affine(&stack.first, &input, &mut first);
-        let mut concat = [0; 128];
-        kernel.activate(&first, &mut concat[..64], 7);
-        let mut second = [0; 32];
-        kernel.affine(&stack.second, &concat[..64], &mut second);
-        kernel.activate(&second, &mut concat[64..], 6);
-        let mut last = [0];
-        kernel.affine(&stack.last, &concat, &mut last);
-        let out = last[0] + first[30] - first[31];
+        let out = kernel.propagate(stack, accumulators, stm);
         ((out as i64 * 9600) / 16384) as i32 / 16
     }
 }

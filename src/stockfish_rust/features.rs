@@ -290,3 +290,253 @@ pub fn changed(
         list.sort_unstable();
     }
 }
+
+#[derive(Clone, Copy)]
+struct Context {
+    perspective: usize,
+    psq_base: usize,
+    psq_flip: usize,
+    threat_flip: usize,
+}
+impl Context {
+    fn new(state: &BoardState, perspective: usize) -> Self {
+        let king = state.bitboard_of_side(perspective, KING).trailing_zeros() as usize;
+        let relative = king ^ (56 * perspective);
+        let bucket = (7 - relative / 8) * 4 + (relative & 7).min(7 - (relative & 7));
+        Self {
+            perspective,
+            psq_base: THREATS
+                + PAIRS
+                + bucket * 1408
+                + usize::from(state.bitboard_of_side(1 - perspective, QUEEN) != 0) * 704,
+            psq_flip: (if king & 7 < 4 { 7 } else { 0 }) ^ (56 * perspective),
+            threat_flip: (if king & 7 >= 4 { 7 } else { 0 }) ^ (56 * perspective),
+        }
+    }
+    #[inline(always)]
+    fn psq(self, piece: usize, square: usize) -> u32 {
+        let pt = type_of(piece);
+        let offset = if pt == KING {
+            640
+        } else {
+            (2 * pt + (side_of(piece) ^ self.perspective)) * 64
+        };
+        (self.psq_base + offset + (square ^ self.psq_flip)) as u32
+    }
+    #[inline(always)]
+    fn threat(
+        self,
+        tables: &ThreatTables,
+        piece: usize,
+        from: usize,
+        target: usize,
+        to: usize,
+    ) -> u32 {
+        let f = from ^ self.threat_flip;
+        let t = to ^ self.threat_flip;
+        tables.offsets[piece ^ (8 * self.perspective)][target ^ (8 * self.perspective)]
+            [usize::from(f < t)]
+            + tables.squares[(type_of(piece) * 64 + f) * 64 + t] as u32
+    }
+    #[inline(always)]
+    fn pair(self, state: &BoardState, from: usize, to: usize) -> u32 {
+        let a =
+            48 * (side_of(state.piece_at(from)) ^ self.perspective) + (from ^ self.threat_flip) - 8;
+        let b = 48 * (side_of(state.piece_at(to)) ^ self.perspective) + (to ^ self.threat_flip) - 8;
+        let (hi, lo) = (a.max(b), a.min(b));
+        (THREATS + hi * (hi - 1) / 2 + lo) as u32
+    }
+}
+#[inline(always)]
+fn threat_targets(state: &BoardState, square: usize, piece: usize) -> u64 {
+    if piece == NONE || type_of(piece) == KING {
+        return 0;
+    }
+    let pt = type_of(piece);
+    let knights = state.bitboard_of_side(0, KNIGHT) | state.bitboard_of_side(1, KNIGHT);
+    let rooks = state.bitboard_of_side(0, ROOK) | state.bitboard_of_side(1, ROOK);
+    if pt == PAWN {
+        return pawn_attacks(square, side_of(piece)) & (knights | rooks);
+    }
+    let kings = state.bitboard_of_side(0, KING) | state.bitboard_of_side(1, KING);
+    let mut targets = state.all_pieces() & !kings;
+    if pt == BISHOP || pt == ROOK {
+        targets &= !(state.bitboard_of_side(0, QUEEN) | state.bitboard_of_side(1, QUEEN));
+    }
+    attacks(pt, square, state.all_pieces()) & targets
+}
+static PAWN_BANDS: LazyLock<[u64; 64]> = LazyLock::new(|| {
+    std::array::from_fn(|square| {
+        let file = 0x0101_0101_0101_0101u64 << (square & 7);
+        let left = if square & 7 > 0 { file >> 1 } else { 0 };
+        let right = if square & 7 < 7 { file << 1 } else { 0 };
+        (file | left | right) & !PAWN_FINAL_RANKS & !(1 << square)
+    })
+});
+fn pair_changes(
+    state: &BoardState,
+    changed: u64,
+    context: Context,
+    output: &mut Vec<u32>,
+    weights: &[i8],
+) {
+    let pawns = state.bitboard_of_side(0, PAWN) | state.bitboard_of_side(1, PAWN);
+    let mut dirty = pawns & changed;
+    while dirty != 0 {
+        let from = pop(&mut dirty);
+        let mut others = pawns & PAWN_BANDS[from];
+        // A pair with two changed endpoints is emitted exactly once.
+        others &= !(changed & ((1u64 << from) - 1));
+        while others != 0 {
+            emit(output, context.pair(state, from, pop(&mut others)), weights);
+        }
+    }
+}
+
+/// Exact dirty feature lists: unchanged edges never become indices, so no
+/// per-move sorting/merging is needed. Includes discovered attacks and changed
+/// target identities, as in Stockfish's dirty threat/pawn-pair bookkeeping.
+#[cfg_attr(
+    target_arch = "x86_64",
+    target_feature(enable = "avx512f,avx512bw,avx512vnni,popcnt")
+)]
+pub unsafe fn dirty(
+    before: &BoardState,
+    after: &BoardState,
+    removed: &mut [Vec<u32>; 2],
+    added: &mut [Vec<u32>; 2],
+    weights: &[i8],
+) {
+    for list in removed.iter_mut().chain(added.iter_mut()) {
+        list.clear();
+    }
+    let mut squares = 0;
+    for side in [WHITE, BLACK] {
+        assert_eq!(
+            after.bitboard_of_side(side, KING).count_ones(),
+            1,
+            "NNUE needs one king per side"
+        );
+        for pt in PAWN..=KING {
+            squares |= before.bitboard_of_side(side, pt) ^ after.bitboard_of_side(side, pt);
+        }
+    }
+    let pawn_changes = (before.bitboard_of_side(0, PAWN) ^ after.bitboard_of_side(0, PAWN))
+        | (before.bitboard_of_side(1, PAWN) ^ after.bitboard_of_side(1, PAWN));
+    assert_eq!(
+        (after.bitboard_of_side(0, PAWN) | after.bitboard_of_side(1, PAWN)) & PAWN_FINAL_RANKS,
+        0,
+        "NNUE cannot encode pawns on promotion ranks"
+    );
+    if squares == 0 {
+        return;
+    }
+    let old = [Context::new(before, 0), Context::new(before, 1)];
+    let new = [Context::new(after, 0), Context::new(after, 1)];
+    let mirror_changed = [
+        old[0].threat_flip != new[0].threat_flip,
+        old[1].threat_flip != new[1].threat_flip,
+    ];
+    for p in 0..2 {
+        let psq_context_changed =
+            old[p].psq_base != new[p].psq_base || old[p].psq_flip != new[p].psq_flip;
+        let mask = if psq_context_changed { !0 } else { squares };
+        let mut bb = before.all_pieces() & mask;
+        while bb != 0 {
+            let sq = pop(&mut bb);
+            emit(
+                &mut removed[p],
+                old[p].psq(before.piece_at(sq), sq),
+                weights,
+            );
+        }
+        let mut bb = after.all_pieces() & mask;
+        while bb != 0 {
+            let sq = pop(&mut bb);
+            emit(&mut added[p], new[p].psq(after.piece_at(sq), sq), weights);
+        }
+        let pairs = if mirror_changed[p] { !0 } else { pawn_changes };
+        if pairs != 0 {
+            pair_changes(before, pairs, old[p], &mut removed[p], weights);
+            pair_changes(after, pairs, new[p], &mut added[p], weights);
+        }
+    }
+    let mut affected = squares;
+    if mirror_changed[0] || mirror_changed[1] {
+        affected = before.all_pieces() | after.all_pieces();
+    } else {
+        let knights = before.bitboard_of_side(0, KNIGHT)
+            | before.bitboard_of_side(1, KNIGHT)
+            | after.bitboard_of_side(0, KNIGHT)
+            | after.bitboard_of_side(1, KNIGHT);
+        let mut changed_squares = squares;
+        while changed_squares != 0 {
+            let sq = pop(&mut changed_squares);
+            affected |= knight_attacks(sq) & knights;
+            for state in [before, after] {
+                let diagonal = bishop_attacks(sq, state.all_pieces());
+                let straight = rook_attacks(sq, state.all_pieces());
+                for side in 0..2 {
+                    affected |= diagonal & state.diagonal_sliders(side);
+                    affected |= straight & state.orthogonal_sliders(side);
+                    affected |= pawn_attacks(sq, 1 - side) & state.bitboard_of_side(side, PAWN);
+                }
+            }
+        }
+    }
+    let tables = &*THREAT_TABLES;
+    while affected != 0 {
+        let from = pop(&mut affected);
+        let a = before.piece_at(from);
+        let b = after.piece_at(from);
+        let old_targets = threat_targets(before, from, a);
+        let new_targets = threat_targets(after, from, b);
+        for p in 0..2 {
+            let same_attacker = a == b && !mirror_changed[p];
+            let mut r = if same_attacker {
+                old_targets & (!new_targets | squares)
+            } else {
+                old_targets
+            };
+            let mut n = if same_attacker {
+                new_targets & (!old_targets | squares)
+            } else {
+                new_targets
+            };
+            while r != 0 {
+                let to = pop(&mut r);
+                let row = old[p].threat(tables, a, from, before.piece_at(to), to);
+                if row < THREATS as u32 {
+                    emit(&mut removed[p], row, weights);
+                }
+            }
+            while n != 0 {
+                let to = pop(&mut n);
+                let row = new[p].threat(tables, b, from, after.piece_at(to), to);
+                if row < THREATS as u32 {
+                    emit(&mut added[p], row, weights);
+                }
+            }
+        }
+    }
+}
+
+#[inline(always)]
+fn emit(output: &mut Vec<u32>, row: u32, weights: &[i8]) {
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        // The validated feature index addresses a complete 1024-byte row.
+        let offset = row as usize * 1024;
+        assert!(
+            offset + 1024 <= weights.len(),
+            "NNUE feature row outside network"
+        );
+        let ptr = weights.as_ptr().add(offset);
+        for offset in (0..1024).step_by(128) {
+            std::arch::x86_64::_mm_prefetch::<{ std::arch::x86_64::_MM_HINT_T0 }>(
+                ptr.add(offset).cast(),
+            );
+        }
+    }
+    output.push(row);
+}

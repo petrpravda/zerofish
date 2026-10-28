@@ -154,8 +154,10 @@ fn simd_kernels_match_scalar_at_arithmetic_boundaries() {
             let mut scalar = vec![0; layer.outputs];
             let mut simd = scalar.clone();
             Kernel::Scalar.affine(layer, &input, &mut scalar);
-            Kernel::Avx512Vnni.affine(layer, &input, &mut simd);
-            assert_eq!(scalar, simd);
+            for kernel in [Kernel::Avx512Vnni, Kernel::Avx512Stockfish] {
+                kernel.affine(layer, &input, &mut simd);
+                assert_eq!(scalar, simd);
+            }
         }
     }
     let weights: Vec<_> = (0..4 * HIDDEN)
@@ -222,7 +224,11 @@ fn full_and_incremental_match_linked_reference() {
         }
     }
     let kernels: &[Kernel] = if Kernel::avx512_available() {
-        &[Kernel::Avx512Vnni, Kernel::Avx512SparseVnni]
+        &[
+            Kernel::Avx512Vnni,
+            Kernel::Avx512SparseVnni,
+            Kernel::Avx512Stockfish,
+        ]
     } else {
         &[Kernel::Scalar]
     };
@@ -355,33 +361,69 @@ fn sparse_vnni_matches_scalar_for_empty_odd_dense_and_boundary_inputs() {
     if !Kernel::avx512_available() {
         return;
     }
-    let kernel = Kernel::Avx512SparseVnni;
-    let mut random = JavaRandom::new(20261023);
-    for _ in 0..64 {
-        let acc = std::array::from_fn(|_| random.next_int(65536) as i16);
-        let mut expected = [0; 512];
-        let mut actual = expected;
-        Kernel::Scalar.transform(&acc, &mut expected);
-        kernel.transform(&acc, &mut actual);
-        assert_eq!(expected, actual);
-    }
-    for stack in &NETWORK.stacks {
-        let layer = &stack.first;
-        // Exercise empty lists, pair boundaries, vector boundaries, odd remainders
-        // and all 256 groups. Include high-bit bytes to check signed mask handling.
-        for groups in [0, 1, 2, 3, 15, 16, 17, 127, 128, 129, 255, 256] {
-            let mut input = [0u8; HIDDEN];
-            for group in 0..groups {
-                let index = (group * 73 + 251) % 256;
-                for k in 0..4 {
-                    input[index * 4 + k] = (random.next_int(255) + 1) as u8;
-                }
-            }
-            let mut expected = [0; 32];
+    for kernel in [Kernel::Avx512SparseVnni, Kernel::Avx512Stockfish] {
+        let mut random = JavaRandom::new(20261023);
+        for _ in 0..64 {
+            let acc = std::array::from_fn(|_| random.next_int(65536) as i16);
+            let mut expected = [0; 512];
             let mut actual = expected;
-            Kernel::Scalar.affine(layer, &input, &mut expected);
-            kernel.affine(layer, &input, &mut actual);
-            assert_eq!(expected, actual, "active groups={groups}");
+            Kernel::Scalar.transform(&acc, &mut expected);
+            kernel.transform(&acc, &mut actual);
+            assert_eq!(expected, actual);
         }
+        for stack in &NETWORK.stacks {
+            let layer = &stack.first;
+            // Exercise empty lists, pair boundaries, vector boundaries, odd remainders
+            // and all 256 groups. Include high-bit bytes to check signed mask handling.
+            for groups in [0, 1, 2, 3, 15, 16, 17, 127, 128, 129, 255, 256] {
+                let mut input = [0u8; HIDDEN];
+                for group in 0..groups {
+                    let index = (group * 73 + 251) % 256;
+                    for k in 0..4 {
+                        input[index * 4 + k] = (random.next_int(255) + 1) as u8;
+                    }
+                }
+                let mut expected = [0; 32];
+                let mut actual = expected;
+                Kernel::Scalar.affine(layer, &input, &mut expected);
+                kernel.affine(layer, &input, &mut actual);
+                assert_eq!(expected, actual, "active groups={groups}");
+            }
+        }
+    }
+}
+
+#[test]
+fn stockfish_paired_updates_preserve_wrapping_arithmetic_and_source() {
+    if !Kernel::avx512_available() {
+        return;
+    }
+    let mut random = JavaRandom::new(20261024);
+    let mut canonical = vec![0i8; 5 * HIDDEN];
+    for value in &mut canonical {
+        *value = random.next_int(256) as i8;
+    }
+    let mut paired = canonical.clone();
+    let order = [0, 4, 1, 5, 2, 6, 3, 7];
+    for (input, output) in canonical.chunks_exact(64).zip(paired.chunks_exact_mut(64)) {
+        for (block, &from) in order.iter().enumerate() {
+            output[block * 8..block * 8 + 8].copy_from_slice(&input[from * 8..from * 8 + 8]);
+        }
+    }
+    let source = std::array::from_fn(|_| random.next_int(65536) as i16);
+    for (removed, added) in [
+        (&[][..], &[][..]),
+        (&[0][..], &[1, 2][..]),
+        (&[0, 1][..], &[2, 3, 4][..]),
+        (&[0, 1, 2][..], &[3][..]),
+    ] {
+        let mut expected = source;
+        Kernel::Scalar.update(&mut expected, &canonical, removed, added);
+        let mut actual = [0; HIDDEN];
+        Kernel::Avx512Stockfish.update_from(&source, &mut actual, &paired, removed, added);
+        assert_eq!(expected, actual);
+        let mut in_place = source;
+        Kernel::Avx512Stockfish.update(&mut in_place, &paired, removed, added);
+        assert_eq!(expected, in_place);
     }
 }

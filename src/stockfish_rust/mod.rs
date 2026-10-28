@@ -8,10 +8,11 @@ use crate::{board::BoardState, moves::Move, search::MAX_PLY};
 pub use network::HIDDEN;
 use network::{Accumulator, NETWORK};
 pub use simd::Kernel;
-pub const SHA256: &str = "c9e480e92425f887df6ab9b05c6180fbd762b07879df9d9845f1aa75440caa73";
+pub const SHA256: &str = env!("ZEROFISH_STOCKFISH_NETWORK_SHA256");
 pub const RULE50_DENOMINATOR: i32 = 189;
 pub fn init() {
-    std::sync::LazyLock::force(&NETWORK);
+    let network = std::sync::LazyLock::force(&NETWORK);
+    let _ = network.weights.for_kernel(Kernel::best());
 }
 
 #[repr(align(64))]
@@ -76,7 +77,7 @@ impl Nnue {
             frame.accumulator[perspective] = network.biases;
             self.kernel.update(
                 &mut frame.accumulator[perspective],
-                &network.weights,
+                network.weights.for_kernel(self.kernel),
                 &[],
                 &self.new_features[perspective],
             );
@@ -93,43 +94,66 @@ impl Nnue {
         let (parents, children) = self.frames.split_at_mut(ply);
         let parent = &parents[ply - 1];
         let child = &mut children[0];
-        child.accumulator = parent.accumulator;
-        features::changed(
-            before,
-            after,
-            &mut self.old_features,
-            &mut self.new_features,
-        );
-        for perspective in 0..2 {
-            self.removed.clear();
-            self.added.clear();
-            let old = &self.old_features[perspective];
-            let new = &self.new_features[perspective];
-            let (mut i, mut j) = (0, 0);
-            while i < old.len() && j < new.len() {
-                match old[i].cmp(&new[j]) {
-                    std::cmp::Ordering::Less => {
-                        self.removed.push(old[i]);
-                        i += 1;
-                    }
-                    std::cmp::Ordering::Greater => {
-                        self.added.push(new[j]);
-                        j += 1;
-                    }
-                    std::cmp::Ordering::Equal => {
-                        i += 1;
-                        j += 1;
+        if self.kernel != Kernel::Avx512Stockfish {
+            child.accumulator = parent.accumulator;
+        }
+        if self.kernel == Kernel::Avx512Stockfish {
+            unsafe {
+                features::dirty(
+                    before,
+                    after,
+                    &mut self.old_features,
+                    &mut self.new_features,
+                    NETWORK.weights.for_kernel(self.kernel),
+                );
+            }
+            for p in 0..2 {
+                self.kernel.update_from(
+                    &parent.accumulator[p],
+                    &mut child.accumulator[p],
+                    NETWORK.weights.for_kernel(self.kernel),
+                    &self.old_features[p],
+                    &self.new_features[p],
+                );
+            }
+        } else {
+            features::changed(
+                before,
+                after,
+                &mut self.old_features,
+                &mut self.new_features,
+            );
+            for perspective in 0..2 {
+                self.removed.clear();
+                self.added.clear();
+                let old = &self.old_features[perspective];
+                let new = &self.new_features[perspective];
+                let (mut i, mut j) = (0, 0);
+                while i < old.len() && j < new.len() {
+                    match old[i].cmp(&new[j]) {
+                        std::cmp::Ordering::Less => {
+                            self.removed.push(old[i]);
+                            i += 1;
+                        }
+                        std::cmp::Ordering::Greater => {
+                            self.added.push(new[j]);
+                            j += 1;
+                        }
+                        std::cmp::Ordering::Equal => {
+                            i += 1;
+                            j += 1;
+                        }
                     }
                 }
+                self.removed.extend_from_slice(&old[i..]);
+                self.added.extend_from_slice(&new[j..]);
+                self.kernel.update(
+                    &mut child.accumulator[perspective],
+                    NETWORK.weights.for_kernel(self.kernel),
+                    &self.removed,
+                    &self.added,
+                );
             }
-            self.removed.extend_from_slice(&old[i..]);
-            self.added.extend_from_slice(&new[j..]);
-            self.kernel.update(
-                &mut child.accumulator[perspective],
-                &NETWORK.weights,
-                &self.removed,
-                &self.added,
-            );
         }
         child.key = Some(after.hash());
     }
