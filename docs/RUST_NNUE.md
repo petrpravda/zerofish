@@ -4,7 +4,7 @@ The default engine now evaluates the Stockfish network entirely in Rust. It does
 not call or link `libzerofish_nnue.so`. The C++ implementation remains an optional
 oracle under the `stockfish-nnue` comparison feature; search still uses Rust when
 that feature is enabled. The original SCReLU evaluator remains available through
-`--no-default-features`, with its existing AVX2/SSE2 and refresh-cache improvements.
+`--evaluation-backend zerofish-nnue`, with its existing AVX2/SSE2 and refresh-cache improvements.
 
 ## Implementation
 
@@ -32,9 +32,8 @@ The implementation is in `src/stockfish_rust/`:
   en passant, promotions, Chess960 castling, king orientation changes and opponent
   queen-presence changes are included. Null transitions preserve the accumulators.
 
-The network is embedded at build time. Its SHA-256 is checked before compilation;
-version, feature-transformer hash, all stack hashes, exact lengths and EOF are
-checked again by the Rust loader. Default network path:
+The network is an external file loaded at runtime. The Rust loader checks its
+SHA-256, version, feature-transformer hash, all stack hashes, exact lengths and EOF. Default network path:
 `../stockfish/src/nn-c9e480e92425.nnue`; override its location with
 `ZEROFISH_STOCKFISH_NETWORK`. The expected digest is:
 
@@ -126,7 +125,7 @@ cargo run --release --offline --features stockfish-nnue --example nnue_compare -
   5 target/elo/stockfish-1t-5s-50pairs/match/openings.epd
 
 # Preserved original evaluator.
-cargo test --offline --no-default-features
+cargo test --locked --offline
 ```
 
 Current artifacts are under `target/nnue/stockfish-parity-20261023/`: test
@@ -173,6 +172,10 @@ dense sparse lists. The network digest and all tested integer outputs are unchan
 The Maven module in `../javafish/nnue-training` now provides all-layer Vulkan
 fine-tuning for this exact architecture. See [the training and match report](VULKAN_NNUE_TRAINING.md).
 For a derived network, set both `ZEROFISH_STOCKFISH_NETWORK` and its expected
-`ZEROFISH_STOCKFISH_NETWORK_SHA256` when compiling. The default digest remains
+`ZEROFISH_STOCKFISH_NETWORK_SHA256` when running the engine. The default digest remains
 pinned to the original network. All architecture, stack-hash, length and EOF checks
-remain active. Use a separate `CARGO_TARGET_DIR` to retain both engine builds.
+remain active. One engine binary can load either pinned network at startup.
+
+Network files are loaded at runtime, never embedded. Evaluator modules are explicitly
+`zerofish_nnue` and `stockfish_rust`; `nnue` provides the search-facing backend wrapper.
+Use native `--evaluation-backend` and `--network` flags rather than Cargo feature selection.

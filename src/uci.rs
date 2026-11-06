@@ -40,7 +40,7 @@ pub struct Uci {
     worker: Option<JoinHandle<ParallelSearch>>,
     stop_flags: Vec<Arc<AtomicBool>>,
     move_overhead: i64,
-    nnue: Box<Nnue>,
+    nnue: Option<Box<Nnue>>,
     options: Options,
     nnue_evaluation: bool,
     chess960: bool,
@@ -90,9 +90,9 @@ impl Uci {
             worker: None,
             stop_flags: Vec::new(),
             move_overhead: 20,
-            nnue: Box::new(Nnue::new()),
+            nnue: Nnue::for_backend(crate::nnue::default_backend()).map(Box::new),
             options,
-            nnue_evaluation: true,
+            nnue_evaluation: crate::nnue::default_backend() != crate::nnue::EvaluationBackend::Classical,
             chess960: false,
         }
     }
@@ -154,7 +154,7 @@ impl Uci {
                 self.stop_search();
                 let state = self.position.state();
                 let (mode, value) =
-                    if self.nnue_evaluation { ("NNUE", self.nnue.evaluate(state, 0)) } else { ("Classical", evaluation::evaluate_state(state)) };
+                    if self.nnue_evaluation { ("NNUE", self.nnue.as_mut().ok_or("No NNUE backend configured")?.evaluate(state, 0)) } else { ("Classical", evaluation::evaluate_state(state)) };
                 println!("info string Evaluation {mode} {value}");
             }
             "stop" => self.stop_search(),
@@ -252,7 +252,7 @@ impl Uci {
             "Move Overhead" => self.move_overhead = parse_number::<i64>(raw)?.clamp(0, 5000),
             "Evaluation" => {
                 self.nnue_evaluation = match raw {
-                    "NNUE" => true,
+                    "NNUE" if self.nnue.is_some() => true,
                     "Classical" => false,
                     _ => return Err("Evaluation must be NNUE or Classical".to_string()),
                 };

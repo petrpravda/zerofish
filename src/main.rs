@@ -8,7 +8,8 @@ use zerofish::uci::{Uci, BANNER};
 use zerofish::{bitboard, nnue};
 
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let (backend, network, args) = nnue::cli_configuration(nnue::EvaluationBackend::StockfishNnue)
+        .unwrap_or_else(|e| { eprintln!("{e}"); std::process::exit(2) });
     bitboard::init();
     match args.first().map(String::as_str) {
         Some("bench") => bench(),
@@ -23,7 +24,10 @@ fn main() {
                 }
             }
         }
-        _ => uci_loop(),
+        _ => {
+            nnue::configure(backend, network.as_deref()).unwrap_or_else(|e| { eprintln!("{e}"); std::process::exit(2) });
+            uci_loop()
+        },
     }
 }
 

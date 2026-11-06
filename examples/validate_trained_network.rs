@@ -1,10 +1,9 @@
 //! Cross-check an exported network against trainer integer inference and Rust kernels.
-#[cfg(feature = "rust-stockfish-nnue")]
 fn main() {
     use std::{env, fs};
     use zerofish::{
         board::BoardState,
-        nnue::{Kernel, Nnue, SHA256},
+        stockfish_rust::{Kernel, Nnue},
     };
     let input = env::args()
         .nth(1)
@@ -45,10 +44,6 @@ fn main() {
         cases += 1;
     }
     assert!(cases > 0);
-    println!("Network SHA256: {SHA256}");
+    println!("Network SHA256: {}", zerofish::stockfish_rust::identity().unwrap().1);
     println!("Validated {cases} trainer/scalar/SIMD positions and {transitions} incremental sibling transitions, including both accumulator arrays.");
-}
-#[cfg(not(feature = "rust-stockfish-nnue"))]
-fn main() {
-    panic!("This validator requires the Stockfish-format evaluator");
 }

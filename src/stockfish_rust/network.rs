@@ -3,7 +3,7 @@
 // Rust adaptation of the pinned NNUE contracts; see native/UPSTREAM.json.
 use super::{features::DIMENSIONS, simd::Kernel};
 use crate::{board::BoardState, types::*};
-use std::sync::{LazyLock, OnceLock};
+use std::sync::OnceLock;
 pub const HIDDEN: usize = 1024;
 pub type Accumulator = [i16; HIDDEN];
 const FT_HASH: u32 = {
@@ -21,9 +21,50 @@ const ARCH_HASH: u32 = affine_hash(
     .wrapping_add(0x538D24C7),
     1,
 );
-const BYTES: &[u8] = include_bytes!(env!("ZEROFISH_STOCKFISH_NETWORK"));
-pub static NETWORK: LazyLock<Network> =
-    LazyLock::new(|| Network::read(BYTES).expect("invalid pinned Stockfish network"));
+static NETWORK: OnceLock<Network> = OnceLock::new();
+#[cfg(not(target_arch = "wasm32"))]
+static LOAD_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+pub fn load(bytes: &[u8]) -> Result<(), String> {
+    if NETWORK.get().is_some() {
+        return Err("Stockfish network is already initialized".into());
+    }
+    let expected =
+        std::env::var("ZEROFISH_STOCKFISH_NETWORK_SHA256").unwrap_or_else(|_| super::SHA256.into());
+    crate::nnue::validate(bytes, bytes.len(), &expected)?;
+    let network = Network::read(bytes)?;
+    NETWORK
+        .set(network)
+        .map_err(|_| "Stockfish network is already initialized".into())
+}
+pub fn identity() -> Option<(usize, String)> {
+    NETWORK.get().map(|n| (n.bytes, n.sha256.clone()))
+}
+pub fn is_loaded() -> bool {
+    NETWORK.get().is_some()
+}
+pub fn network() -> &'static Network {
+    #[cfg(not(target_arch = "wasm32"))]
+    if NETWORK.get().is_none() {
+        let _guard = LOAD_LOCK.lock().unwrap();
+        if let Some(network) = NETWORK.get() {
+            return network;
+        }
+        let path = std::env::var_os("ZEROFISH_STOCKFISH_NETWORK")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                std::path::PathBuf::from(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../stockfish/src/nn-c9e480e92425.nnue"
+                ))
+            });
+        let bytes = std::fs::read(&path)
+            .unwrap_or_else(|e| panic!("Cannot read NNUE {}: {e}", path.display()));
+        let _ = load(&bytes);
+    }
+    NETWORK
+        .get()
+        .expect("Stockfish NNUE must be loaded before evaluation")
+}
 
 #[repr(C, align(64))]
 struct CacheLine([i8; 64]);
@@ -84,21 +125,21 @@ impl Layer {
     }
 }
 pub struct TransformerWeights {
-    serialized: &'static [u8],
+    serialized: Vec<u8>,
     canonical: OnceLock<AlignedBytes>,
     paired: OnceLock<AlignedBytes>,
 }
 impl TransformerWeights {
-    fn new(serialized: &'static [u8]) -> Self {
+    fn new(serialized: &[u8]) -> Self {
         Self {
-            serialized,
+            serialized: serialized.to_vec(),
             canonical: OnceLock::new(),
             paired: OnceLock::new(),
         }
     }
     fn paired(&self) -> &[i8] {
         &self.paired.get_or_init(|| {
-            let mut output = AlignedBytes::new(self.serialized);
+            let mut output = AlignedBytes::new(&self.serialized);
             // In each 64-byte row segment, unpacklo/unpackhi must produce
             // consecutive canonical i16 lanes. This is Stockfish's paired
             // widening layout, independent of its additional packus layout.
@@ -126,7 +167,7 @@ impl std::ops::Deref for TransformerWeights {
     fn deref(&self) -> &[i8] {
         &self
             .canonical
-            .get_or_init(|| AlignedBytes::new(self.serialized))[..]
+            .get_or_init(|| AlignedBytes::new(&self.serialized))[..]
     }
 }
 
@@ -136,16 +177,18 @@ pub struct Stack {
     pub last: Layer,
 }
 pub struct Network {
+    pub bytes: usize,
+    pub sha256: String,
     pub biases: Accumulator,
     pub weights: TransformerWeights,
     pub stacks: Vec<Stack>,
 }
-struct Reader {
-    bytes: &'static [u8],
+struct Reader<'a> {
+    bytes: &'a [u8],
     position: usize,
 }
-impl Reader {
-    fn take(&mut self, count: usize) -> Result<&'static [u8], String> {
+impl<'a> Reader<'a> {
+    fn take(&mut self, count: usize) -> Result<&'a [u8], String> {
         let end = self
             .position
             .checked_add(count)
@@ -175,7 +218,7 @@ impl Reader {
     }
 }
 impl Network {
-    pub fn read(bytes: &'static [u8]) -> Result<Self, String> {
+    pub fn read(bytes: &[u8]) -> Result<Self, String> {
         let mut reader = Reader { bytes, position: 0 };
         reader.expect(0x6A448AFA)?;
         reader.expect(FT_HASH ^ ARCH_HASH)?;
@@ -201,6 +244,8 @@ impl Network {
             return Err("trailing network data".into());
         }
         Ok(Self {
+            bytes: bytes.len(),
+            sha256: crate::nnue::digest(bytes),
             biases,
             weights,
             stacks,

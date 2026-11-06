@@ -6,12 +6,13 @@ mod network;
 mod simd;
 use crate::{board::BoardState, moves::Move, search::MAX_PLY};
 pub use network::HIDDEN;
-use network::{Accumulator, NETWORK};
+use network::{Accumulator, network};
+pub use network::{load, is_loaded, identity};
 pub use simd::Kernel;
-pub const SHA256: &str = env!("ZEROFISH_STOCKFISH_NETWORK_SHA256");
+pub const SHA256: &str = "c9e480e92425f887df6ab9b05c6180fbd762b07879df9d9845f1aa75440caa73";
 pub const RULE50_DENOMINATOR: i32 = 189;
 pub fn init() {
-    let network = std::sync::LazyLock::force(&NETWORK);
+    let network = network();
     let _ = network.weights.for_kernel(Kernel::best());
 }
 
@@ -70,7 +71,7 @@ impl Nnue {
         self.refresh(state, 0);
     }
     pub fn refresh(&mut self, state: &BoardState, ply: usize) {
-        let network = &*NETWORK;
+        let network = network();
         let frame = &mut self.frames[ply];
         features::active(state, &mut self.new_features);
         for perspective in 0..2 {
@@ -104,14 +105,14 @@ impl Nnue {
                     after,
                     &mut self.old_features,
                     &mut self.new_features,
-                    NETWORK.weights.for_kernel(self.kernel),
+                    network().weights.for_kernel(self.kernel),
                 );
             }
             for p in 0..2 {
                 self.kernel.update_from(
                     &parent.accumulator[p],
                     &mut child.accumulator[p],
-                    NETWORK.weights.for_kernel(self.kernel),
+                    network().weights.for_kernel(self.kernel),
                     &self.old_features[p],
                     &self.new_features[p],
                 );
@@ -149,7 +150,7 @@ impl Nnue {
                 self.added.extend_from_slice(&new[j..]);
                 self.kernel.update(
                     &mut child.accumulator[perspective],
-                    NETWORK.weights.for_kernel(self.kernel),
+                    network().weights.for_kernel(self.kernel),
                     &self.removed,
                     &self.added,
                 );
@@ -166,7 +167,7 @@ impl Nnue {
     }
     pub fn raw(&mut self, state: &BoardState, ply: usize) -> i32 {
         self.ensure(state, ply);
-        NETWORK.forward(state, &self.frames[ply].accumulator, self.kernel)
+        network().forward(state, &self.frames[ply].accumulator, self.kernel)
     }
     pub fn full_internal(&mut self, state: &BoardState, ply: usize) -> i32 {
         let raw = self.raw(state, ply);

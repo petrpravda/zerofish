@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Differential and timing comparison: direct Rust versus the optional linked oracle.
 //! Run with --features stockfish-nnue. Timings include feature encoding and propagation.
-#[cfg(all(feature = "rust-stockfish-nnue", feature = "stockfish-nnue"))]
+#[cfg(feature = "stockfish-nnue")]
 mod comparison {
     use std::{hint::black_box, time::Instant};
     use zerofish::{
         board::BoardState,
         fen::START_POS,
         moves::Move,
-        nnue::{Kernel, Nnue},
+        stockfish_rust::{Kernel, Nnue},
         random::JavaRandom,
         stockfish_reference,
     };
@@ -211,7 +211,7 @@ mod comparison {
                 positions += 1;
             }
         }
-        println!("Network SHA256: {}", zerofish::nnue::SHA256);
+        println!("Network SHA256: {}", zerofish::stockfish_rust::SHA256);
         println!("Validated {positions} positions over {} legal walks: baseline/sparse/Stockfish-style/scalar/full/incremental raw/scaled scores and both accumulator arrays match.", walks.len());
         println!("Timings: median of 7 batches, {rounds} corpus repetitions/batch; warm initialization excluded.");
         let mut evaluators: Vec<(&str, Box<dyn Evaluator>)> = vec![
@@ -265,8 +265,8 @@ mod comparison {
     }
 }
 fn main() {
-    #[cfg(all(feature = "rust-stockfish-nnue", feature = "stockfish-nnue"))]
+    #[cfg(feature = "stockfish-nnue")]
     comparison::run();
-    #[cfg(not(all(feature = "rust-stockfish-nnue", feature = "stockfish-nnue")))]
-    panic!("Build this comparison with default features and --features stockfish-nnue");
+    #[cfg(not(feature = "stockfish-nnue"))]
+    panic!("Build this comparison with --features stockfish-nnue");
 }

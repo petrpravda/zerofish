@@ -146,7 +146,7 @@ fn simd_kernels_match_scalar_at_arithmetic_boundaries() {
             assert_eq!(scalar, simd);
         }
     }
-    for stack in &NETWORK.stacks {
+    for stack in &network().stacks {
         for layer in [&stack.first, &stack.second, &stack.last] {
             let input: Vec<_> = (0..layer.inputs)
                 .map(|_| random.next_int(128) as u8)
@@ -371,7 +371,7 @@ fn sparse_vnni_matches_scalar_for_empty_odd_dense_and_boundary_inputs() {
             kernel.transform(&acc, &mut actual);
             assert_eq!(expected, actual);
         }
-        for stack in &NETWORK.stacks {
+        for stack in &network().stacks {
             let layer = &stack.first;
             // Exercise empty lists, pair boundaries, vector boundaries, odd remainders
             // and all 256 groups. Include high-bit bytes to check signed mask handling.

@@ -20,16 +20,22 @@ weight widening, fused incremental updates, vector nonzero compaction and
 independent dot-product chains, are selected at runtime on
 supported CPUs, with a scalar fallback. It does not link or call the Stockfish NNUE library.
 
-Builds read `../stockfish/src/nn-c9e480e92425.nnue` by default. Set
+Native startup reads `../stockfish/src/nn-c9e480e92425.nnue` by default. Set
 `ZEROFISH_STOCKFISH_NETWORK` to another location of that exact network if needed.
-The build checks its SHA-256 before embedding it; the Rust loader checks the
-version, architecture hashes, lengths and end of file. See
+The runtime loader checks its SHA-256, version, architecture hashes, lengths
+and end of file before accepting it. See
 [native/UPSTREAM.json](native/UPSTREAM.json) for the pinned source/network and
 [native/COPYING.Stockfish](native/COPYING.Stockfish) for the GPLv3 license.
 
-The original 8-bucket evaluator remains available with `--no-default-features`,
-including its AVX2/SSE2 kernels and king-bucket refresh cache. That configuration
-uses the bundled `resources/weights-original.nnue`.
+Evaluator selection is explicit at runtime: `--evaluation-backend stockfish-nnue`
+(the native default), `--evaluation-backend zerofish-nnue`, or
+`--evaluation-backend classical`. Use `--network /path/to/weights.nnue` to select
+an external compatible file. Without it, the existing source-resource path is used.
+Network weights are not embedded. `ZEROFISH_NETWORK` and
+`ZEROFISH_STOCKFISH_NETWORK` override those paths; a trained Stockfish network
+also requires its expected `ZEROFISH_STOCKFISH_NETWORK_SHA256` digest at runtime.
+Cargo features do not switch evaluation architecture. The optional `stockfish-nnue`
+feature links only the independent native comparison oracle.
 
 The linked Stockfish evaluator is retained as an optional comparison oracle:
 

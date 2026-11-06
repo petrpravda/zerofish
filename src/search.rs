@@ -814,7 +814,7 @@ impl Search {
         if self.nnue.is_none() {
             evaluation
         } else {
-            Nnue::clocked(state, evaluation)
+            self.nnue.as_ref().unwrap().clocked(state, evaluation)
         }
     }
 
