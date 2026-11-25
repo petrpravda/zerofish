@@ -1,4 +1,4 @@
-//! Explicit evaluation backends. Weights are runtime data, never embedded in engine code.
+//! Explicit evaluation backends with optional embedded Stockfish weights.
 use crate::{board::BoardState, moves::Move};
 use sha2::{Digest, Sha256};
 use std::sync::{
@@ -44,6 +44,9 @@ impl EvaluationBackend {
         }
     }
     pub fn load_file(self, path: Option<&std::path::Path>) -> Result<(), String> {
+        if self == Self::StockfishNnue {
+            return crate::stockfish_rust::load_from(path);
+        }
         if self == Self::Classical {
             return if path.is_none() {
                 Ok(())
@@ -51,26 +54,11 @@ impl EvaluationBackend {
                 Err("Classical evaluation does not accept --network".into())
             };
         }
-        let fallback = match self {
-            Self::ZerofishNnue => std::env::var_os("ZEROFISH_NETWORK")
-                .map(std::path::PathBuf::from)
-                .unwrap_or_else(|| {
-                    concat!(
-                        env!("CARGO_MANIFEST_DIR"),
-                        "/resources/weights-original.nnue"
-                    )
-                    .into()
-                }),
-            _ => std::env::var_os("ZEROFISH_STOCKFISH_NETWORK")
-                .map(std::path::PathBuf::from)
-                .unwrap_or_else(|| {
-                    concat!(
-                        env!("CARGO_MANIFEST_DIR"),
-                        "/../stockfish/src/nn-c9e480e92425.nnue"
-                    )
-                    .into()
-                }),
-        };
+        let fallback = std::env::var_os("ZEROFISH_NETWORK")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                concat!(env!("CARGO_MANIFEST_DIR"), "/resources/weights-original.nnue").into()
+            });
         let path = path.unwrap_or(&fallback);
         self.load(
             &std::fs::read(path)

@@ -1,0 +1,13 @@
+Zerofish is a UCI chess engine by Petr Pravda, based on Javafish.
+Zerofish is distributed under GPL-3.0-or-later. See COPYING.
+
+The Rust NNUE implementation adapts Stockfish code and contracts.
+Copyright (C) 2004–2026 The Stockfish developers.
+https://github.com/official-stockfish/Stockfish
+See native/UPSTREAM.json in the source for the pinned upstream revision.
+
+The embedded Stockfish network is nn-c9e480e92425.nnue (CC0 1.0).
+https://github.com/official-stockfish/networks/blob/master/nn-c9e480e92425.nnue
+
+Matching source and build instructions are available with each binary release.
+https://github.com/petrpravda/zerofish/releases

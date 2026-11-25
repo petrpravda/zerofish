@@ -1,0 +1,16 @@
+FROM docker.io/library/ubuntu:22.04
+
+RUN printf 'APT::Sandbox::User "root";\n' > /etc/apt/apt.conf.d/99container-sandbox \
+    && printf 'Dir::Cache::archives "/tmp/zerofish-apt";\n' >> /etc/apt/apt.conf.d/99container-sandbox \
+    && mkdir -p /tmp/zerofish-apt/partial \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates curl gcc gcc-aarch64-linux-gnu libc6-dev libc6-dev-arm64-cross \
+    gcc-mingw-w64-x86-64-posix python3 qemu-user \
+    && rm -rf /var/lib/apt/lists/* /tmp/zerofish-apt
+
+ENV RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo PATH=/opt/cargo/bin:$PATH
+RUN curl --fail --silent --show-error --location https://sh.rustup.rs -o /tmp/rustup.sh \
+    && sh /tmp/rustup.sh -y --no-modify-path --profile minimal --default-toolchain 1.93.0 \
+    && rustup target add aarch64-unknown-linux-gnu x86_64-pc-windows-gnu \
+    && rm /tmp/rustup.sh \
+    && chmod -R a+rX /opt/rustup /opt/cargo

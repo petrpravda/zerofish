@@ -1,8 +1,16 @@
 use std::{env, path::PathBuf};
 fn main() {
+    println!("cargo:rustc-check-cfg=cfg(embedded_stockfish_network)");
+    println!("cargo:rerun-if-env-changed=ZEROFISH_EMBED_STOCKFISH_NETWORK");
+    if let Some(path) = env::var_os("ZEROFISH_EMBED_STOCKFISH_NETWORK") {
+        let path = PathBuf::from(path)
+            .canonicalize()
+            .expect("ZEROFISH_EMBED_STOCKFISH_NETWORK must point to the pinned network");
+        println!("cargo:rerun-if-changed={}", path.display());
+        println!("cargo:rustc-cfg=embedded_stockfish_network");
+        println!("cargo:rustc-env=ZEROFISH_EMBEDDED_NETWORK_PATH={}", path.display());
+    }
     println!("cargo:rerun-if-env-changed=ZEROFISH_NNUE_LIBRARY");
-    println!("cargo:rerun-if-env-changed=ZEROFISH_STOCKFISH_NETWORK");
-    println!("cargo:rerun-if-env-changed=ZEROFISH_STOCKFISH_NETWORK_SHA256");
     if env::var_os("CARGO_FEATURE_STOCKFISH_NNUE").is_none() {
         return;
     }

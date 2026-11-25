@@ -8,6 +8,7 @@ use crate::{board::BoardState, moves::Move, search::MAX_PLY};
 pub use network::HIDDEN;
 use network::{Accumulator, network};
 pub use network::{load, is_loaded, identity};
+pub(crate) use network::load_from;
 pub use simd::Kernel;
 pub const SHA256: &str = "c9e480e92425f887df6ab9b05c6180fbd762b07879df9d9845f1aa75440caa73";
 pub const RULE50_DENOMINATOR: i32 = 189;

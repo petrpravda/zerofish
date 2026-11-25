@@ -1,0 +1,8 @@
+FROM docker.io/library/debian:trixie-slim
+
+RUN printf 'APT::Sandbox::User "root";\n' > /etc/apt/apt.conf.d/99container-sandbox \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    python3 wine64 xvfb xauth \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV WINEARCH=win64 WINEDEBUG=-all WINEDLLOVERRIDES=mscoree,mshtml=

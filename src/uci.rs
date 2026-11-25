@@ -17,9 +17,9 @@ use crate::search::MAX_PLY;
 use crate::tt::TranspositionTable;
 use crate::types::square_name;
 
-pub const BANNER: &str = "zerofish 0.1 by Petr Pravda";
+pub const BANNER: &str = concat!("zerofish ", env!("CARGO_PKG_VERSION"), " by Petr Pravda");
 
-const UCI_INFO: &str = "id name zerofish
+const UCI_INFO: &str = concat!("id name zerofish ", env!("CARGO_PKG_VERSION"), "
 id author Petr Pravda
 option name Hash type spin default 16 min 1 max 512
 option name Threads type spin default 1 min 1 max 64
@@ -31,7 +31,7 @@ option name SMP Select type combo default vote var main var deepest var vote
 option name Move Overhead type spin default 20 min 0 max 5000
 option name Evaluation type combo default NNUE var NNUE var Classical
 option name UCI_Chess960 type check default false
-uciok";
+uciok");
 
 pub struct Uci {
     table: Arc<TranspositionTable>,

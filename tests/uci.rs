@@ -44,10 +44,10 @@ impl Engine {
 #[test]
 fn uci_handshake_and_search() {
     let mut engine = Engine::start();
-    assert_eq!(engine.read_until("zerofish"), ["zerofish 0.1 by Petr Pravda"]);
+    assert_eq!(engine.read_until("zerofish"), [zerofish::uci::BANNER]);
     engine.send("uci");
     let lines = engine.read_until("uciok");
-    assert!(lines.contains(&"id name zerofish".to_string()));
+    assert!(lines.contains(&concat!("id name zerofish ", env!("CARGO_PKG_VERSION")).to_string()));
     assert!(lines.iter().any(|l| l.starts_with("option name Threads")));
     engine.send("isready");
     engine.read_until("readyok");
@@ -96,7 +96,7 @@ fn time_controls_threads_and_stop() {
 fn utility_commands_and_errors() {
     let mut engine = Engine::start();
     engine.send("position startpos movespgn e4 e5 Nf3");
-    assert_eq!(engine.read_until("e2e4"), ["zerofish 0.1 by Petr Pravda", "e2e4 e7e5 g1f3"]);
+    assert_eq!(engine.read_until("e2e4"), [zerofish::uci::BANNER, "e2e4 e7e5 g1f3"]);
     engine.send("go perft 3");
     let lines = engine.read_until("Nodes searched");
     assert_eq!(lines.last().unwrap(), "Nodes searched: 23193");

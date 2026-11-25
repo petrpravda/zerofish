@@ -4,6 +4,11 @@ Rust chess engine port following the feature progression in `../javafish`.
 The commit history introduces board rules, search heuristics, NNUE, parallel
 search, UCI, SAN/PGN and Chess960 in separate steps.
 
+Download a ready-to-run Linux or Windows build from [GitHub Releases](https://github.com/petrpravda/zerofish/releases).
+Extract the archive and select the `zerofish` executable in your UCI chess GUI.
+The default NNUE weights are embedded in the release executable. See the
+[release build instructions](docs/RELEASING.md) to build or verify these packages locally.
+
 ```sh
 cargo test --offline
 cargo build --release --offline
@@ -31,9 +36,11 @@ Evaluator selection is explicit at runtime: `--evaluation-backend stockfish-nnue
 (the native default), `--evaluation-backend zerofish-nnue`, or
 `--evaluation-backend classical`. Use `--network /path/to/weights.nnue` to select
 an external compatible file. Without it, the existing source-resource path is used.
-Network weights are not embedded. `ZEROFISH_NETWORK` and
-`ZEROFISH_STOCKFISH_NETWORK` override those paths; a trained Stockfish network
-also requires its expected `ZEROFISH_STOCKFISH_NETWORK_SHA256` digest at runtime.
+Ordinary source builds load weights from disk. Set `ZEROFISH_EMBED_STOCKFISH_NETWORK`
+at build time to embed the pinned Stockfish weights. An explicit `--network` path
+takes precedence over `ZEROFISH_NETWORK` or `ZEROFISH_STOCKFISH_NETWORK` at runtime.
+A trained Stockfish network also requires its expected
+`ZEROFISH_STOCKFISH_NETWORK_SHA256` digest at runtime.
 Cargo features do not switch evaluation architecture. The optional `stockfish-nnue`
 feature links only the independent native comparison oracle.
 

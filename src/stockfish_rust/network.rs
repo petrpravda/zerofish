@@ -42,6 +42,24 @@ pub fn identity() -> Option<(usize, String)> {
 pub fn is_loaded() -> bool {
     NETWORK.get().is_some()
 }
+pub(crate) fn load_from(path: Option<&std::path::Path>) -> Result<(), String> {
+    let configured_path = std::env::var_os("ZEROFISH_STOCKFISH_NETWORK");
+    let path = path.or_else(|| configured_path.as_deref().map(std::path::Path::new));
+    #[cfg(embedded_stockfish_network)]
+    let Some(path) = path else {
+        return load(include_bytes!(env!("ZEROFISH_EMBEDDED_NETWORK_PATH")));
+    };
+    #[cfg(not(embedded_stockfish_network))]
+    let path = path.unwrap_or_else(|| {
+        std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../stockfish/src/nn-c9e480e92425.nnue"
+        ))
+    });
+    let bytes = std::fs::read(path)
+        .map_err(|error| format!("Cannot read NNUE {}: {error}", path.display()))?;
+    load(&bytes)
+}
 pub fn network() -> &'static Network {
     #[cfg(not(target_arch = "wasm32"))]
     if NETWORK.get().is_none() {
@@ -49,17 +67,10 @@ pub fn network() -> &'static Network {
         if let Some(network) = NETWORK.get() {
             return network;
         }
-        let path = std::env::var_os("ZEROFISH_STOCKFISH_NETWORK")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| {
-                std::path::PathBuf::from(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/../stockfish/src/nn-c9e480e92425.nnue"
-                ))
-            });
-        let bytes = std::fs::read(&path)
-            .unwrap_or_else(|e| panic!("Cannot read NNUE {}: {e}", path.display()));
-        let _ = load(&bytes);
+        if let Err(error) = load_from(None) {
+            // An explicit load may have initialized the same process in parallel.
+            assert!(NETWORK.get().is_some(), "{error}");
+        }
     }
     NETWORK
         .get()
